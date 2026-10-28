@@ -1,7 +1,7 @@
 import { config } from '../config.js';
 
-// Frontend (Render static site) and API are on different origins, so allow
-// exactly one origin with credentials. Nothing else is ever reflected.
+// Needed locally (Vite :5173 -> API :4000). In production the app is served by this same server, so requests
+// are same-origin and CORS is not involved. Allow exactly one origin with credentials; nothing else is reflected.
 export function cors(req, res, next) {
   const origin = req.headers.origin;
   if (origin && origin === config.frontendUrl) {
