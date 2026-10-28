@@ -1,0 +1,17 @@
+{
+  "name": "natra-erp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Natra ERP - HR, QR selfie attendance, leave and payroll MVP",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "test": "npm --prefix backend test && npm --prefix frontend test",
+    "migrate": "npm --prefix backend run migrate"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
