@@ -8,7 +8,7 @@ HR, QR-selfie attendance, leave and payroll for a company of about 50 people. On
 | API (`backend/`) | Node 24 + Express, server-side sessions in HTTP-only cookies, hand-written SQL via `pg` |
 | Database (`database/migrations/`) | PostgreSQL (Neon in production), plain SQL migrations |
 | Selfies | Cloudinary, private (`authenticated`) storage, signed expiring links |
-| Hosting | Render (static site + free web service), UptimeRobot for keep-alive |
+| Hosting | Render: one free web service (the API also serves the built frontend, one URL), UptimeRobot for keep-alive |
 
 The plan, task list, decisions and per-feature notes are in `plan/`. Start with `plan/project status.md`.
 
@@ -101,12 +101,12 @@ All variables are documented, with comments, in `.env.example`. Summary:
 | `DATABASE_URL` | API | PostgreSQL URL. On Render: Neon's **pooled** URL, `sslmode=require`. |
 | `MIGRATION_DATABASE_URL` | API (Render) | Neon's **direct** (non-pooler) URL for the **same** database. Migrations take a session advisory lock, which Neon's pooler does not support. |
 | `SESSION_SECRET` | API | 32+ characters. Render generates it. The app refuses to start in production without it. |
-| `FRONTEND_URL` | API | The exact browser origin of the site, no path (e.g. `https://natra-erp-web.onrender.com`). Used for CORS, CSRF Origin checks and cookies. |
-| `COOKIE_SAMESITE` | API | `lax` locally or on sibling custom domains; `none` for two separate `*.onrender.com` hosts (cookie is then also `Secure`). |
+| `FRONTEND_URL` | API | The exact browser origin, no path. Local dev: `http://localhost:5173` (Vite). On Render it is **optional**: it defaults to the service's own `RENDER_EXTERNAL_URL`. Set it only if you use a custom domain. Used for CORS and CSRF Origin checks. |
+| `COOKIE_SAMESITE` | API | `lax` (default, and what the Blueprint sets: app and API share one origin). `none` is only for a legacy split deployment of two cross-site hosts. |
 | `COMPANY_NAME`, `COMPANY_TIMEZONE` | API | Shown on the QR page; the timezone decides work dates and lateness (default `Africa/Addis_Ababa`). |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | API only | Selfie storage. Blank = app boots, selfie scans return 503. |
 | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` | one-off | Only read by the seed script. Never stored in Render. |
-| `VITE_API_URL` | frontend build | Public API origin, no trailing `/api`. Baked into the bundle at build time; only `VITE_` values reach the browser. |
+| `VITE_API_URL` | frontend build | Local dev only (`http://localhost:4000`). **Leave unset on Render**: empty means the frontend calls the same origin it was loaded from. Baked in at build time; only `VITE_` values reach the browser. |
 | `TEST_DATABASE_URL` | tests | Disposable database, name must contain `test`. |
 
 `PORT` is supplied by Render. `NODE_ENV=production` is set by the Blueprint. Do not put `NODE_ENV` in your local `.env`.
@@ -115,7 +115,7 @@ All variables are documented, with comments, in `.env.example`. Summary:
 
 ## 4. Deploy to Render + Neon + Cloudinary
 
-`render.yaml` defines both services: `natra-erp-api` (free Node web service, health check `/health`) and `natra-erp-web` (static site, with a rewrite of every path to `index.html`). Automatic redeploy on commit is **off**; deploy manually from the Render dashboard.
+`render.yaml` defines **one** service, `natra-erp` (free Node web service, health check `/health`). Its build step builds the frontend, and in production the Express server serves `frontend/dist` (every non-API path falls back to `index.html`) next to the `/api` routes, so the whole app lives at a single URL. Automatic redeploy on commit is **off**; deploy manually from the Render dashboard.
 
 ### 4.1 Accounts and secrets
 
@@ -126,14 +126,12 @@ All variables are documented, with comments, in `.env.example`. Summary:
 ### 4.2 Create the services
 
 1. Render → **New → Blueprint** → pick the repository. Render reads `render.yaml`.
-2. Fill in the prompted secrets for `natra-erp-api`:
+2. Fill in the prompted secrets for `natra-erp`:
    - `DATABASE_URL` = Neon **pooled** URL
    - `MIGRATION_DATABASE_URL` = Neon **direct** URL
-   - `FRONTEND_URL` = the static site's final HTTPS origin. Render shows the URL only after creation, so enter a placeholder, then come back (step 4).
    - the three `CLOUDINARY_*` values
-3. Let both services build. On every API start the command first applies pending migrations using the direct URL and only then starts the API; a failed or tampered migration stops the start.
-4. Copy the static site's URL (e.g. `https://natra-erp-web.onrender.com`) into the API's `FRONTEND_URL`, save, and **redeploy the API**. If `VITE_API_URL` changed, **redeploy the static site** too, because it is baked in at build time.
-5. Open `https://<api>/health`: expect `{"status":"ok"}`.
+3. Let the service build. On every start the command first applies pending migrations using the direct URL and only then starts the server; a failed or tampered migration stops the start.
+4. Open `https://<your-service>.onrender.com/health`: expect `{"status":"ok"}`. Open the root URL for the app. No second URL, placeholder or redeploy is needed.
 
 ### 4.3 Create the first HR administrator (once)
 
@@ -147,24 +145,27 @@ SEED_ADMIN_NAME='HR Administrator' \
 npm --prefix backend run seed
 ```
 
-Run it once. Do not put these `SEED_ADMIN_*` values into Render, and do not seed on every deploy. Then sign in at the static site's URL and change nothing else until Settings is configured.
+Run it once. Do not put these `SEED_ADMIN_*` values into Render, and do not seed on every deploy. Then sign in at the service's URL and change nothing else until Settings is configured.
 
-### 4.4 Cookies and the two-host caveat
+### 4.4 Cookies, custom domain and the one-URL design
 
-The two default `*.onrender.com` hosts are *cross-site*, so the session cookie is `SameSite=None; Secure` (the Blueprint sets this). Some browsers or privacy settings block such third-party cookies, and then login appears to succeed but the next request is signed out. **For dependable sessions, use two custom domains under one registrable domain** (for example `app.yourcompany.com` and `api.yourcompany.com`), then in `render.yaml` set `COOKIE_SAMESITE` to `lax`, set `FRONTEND_URL` to the app origin, make `VITE_API_URL` the API origin, and redeploy both. Do not set a cookie `Domain` and do not move tokens into `localStorage`. Test login on the actual phones and tablet you will use.
+Because the app and API share one origin, the session cookie is first-party (`SameSite=Lax`, `Secure`, `__Host-` prefix) and the third-party-cookie problem of a split deployment does not exist. The API's CORS and CSRF Origin checks compare against the service's own origin automatically (`RENDER_EXTERNAL_URL`).
+
+If you attach a **custom domain** (for example `erp.yourcompany.com`), add an environment variable `FRONTEND_URL=https://erp.yourcompany.com` to the service (exact origin, no path), because users then reach the app on a different origin than `RENDER_EXTERNAL_URL`. Keep it in `render.yaml` too, since Blueprint sync can overwrite dashboard-only settings. Do not set a cookie `Domain` and do not move tokens into `localStorage`. Test login on the actual phones and tablet you will use.
+
+The server sends a Content-Security-Policy for the app's pages: scripts only from the same origin plus the one inline theme script (allowed by hash, computed from the built `index.html`), images from the same origin, `data:`/`blob:` (QR code, selfie preview) and Cloudinary (signed selfie links). If you add a new external image, font or script host, extend it in `backend/src/middleware/frontend.js`.
 
 Details and the full per-service variable matrix: `plan/references/render-configuration.md`.
 
 ---
 
-## 5. UptimeRobot (keep the free API awake)
+## 5. UptimeRobot (keep the free service awake)
 
-A free Render web service sleeps after a period without traffic, and the first request after that is slow. A monitor that pings `/health` regularly avoids this, and also alerts you if the API is down. `/health` does not touch the database, so frequent pings are cheap.
+A free Render web service sleeps after a period without traffic, and the first request after that is slow. Since the web app is served by this same service, a sleeping service also means a slow first page load, so the keep-alive matters more than in a split deployment. A monitor that pings `/health` regularly avoids this, and also alerts you if the API is down. `/health` does not touch the database, so frequent pings are cheap.
 
 1. Create a free account at uptimerobot.com → **Add New Monitor**.
-2. Monitor type **HTTP(s)**, URL `https://<your-api>.onrender.com/health`, friendly name e.g. "Natra API".
+2. Monitor type **HTTP(s)**, URL `https://<your-service>.onrender.com/health`, friendly name e.g. "Natra ERP".
 3. Interval **5 minutes** (the shortest the free plan offers; check current limits). Add your email as an alert contact.
-4. Optionally add a second monitor for the static site's URL.
 
 Check Render's current free-tier rules before relying on this, as they change. If you outgrow it, a paid Render instance removes the sleep behaviour.
 
@@ -179,7 +180,7 @@ natra-erp/
 ├── database/migrations/   001 core · 002 attendance · 003 leave · 004 payroll
 ├── plan/           task list, decisions, session notes, test evidence
 ├── loc-report.md   actual size of the code base and how it was counted
-├── render.yaml     Render Blueprint (API + static site)
+├── render.yaml     Render Blueprint (one service: API + built frontend)
 └── .env.example    every setting, documented
 ```
 
