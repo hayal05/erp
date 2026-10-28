@@ -23,8 +23,10 @@ import payrollRoutes from './routes/payroll.js';
 import salaryProfileRoutes from './routes/salaryProfiles.js';
 import deductionRoutes from './routes/deductions.js';
 import { notFound, errorHandler } from './middleware/error.js';
+import { frontendRouter } from './middleware/frontend.js';
 
-export function createApp() {
+// serveFrontend: true/false forces it; by default only production serves frontend/dist (when built).
+export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // Render terminates TLS in front of the app
@@ -37,6 +39,12 @@ export function createApp() {
 
   // Lightweight liveness check for UptimeRobot. Deliberately does not touch the database.
   app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+
+  // Single-URL hosting: serve the built React app. Mounted BEFORE the session, CSRF and lock layers on
+  // purpose: pages and assets are public, must not cost a database lookup, and must still load on a
+  // locked tablet after a refresh. The router ignores /api and /health, which fall through below.
+  const web = serveFrontend ? frontendRouter(frontendDist) : null;
+  if (web) app.use(web);
 
   app.use(cookieParser());
   app.use(loadSession); // after /health so uptime pings never touch the database

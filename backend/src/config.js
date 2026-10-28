@@ -25,7 +25,9 @@ export const config = {
   isTest: nodeEnv === 'test',
   port: num('PORT', 4000),
   databaseUrl: need('DATABASE_URL', ''),
-  frontendUrl: need('FRONTEND_URL', 'http://localhost:5173').replace(/\/+$/, ''),
+  // Single-service hosting: the app and API share one origin. Render supplies RENDER_EXTERNAL_URL, so
+  // FRONTEND_URL is only needed locally (Vite on :5173) or when serving from a custom domain.
+  frontendUrl: (env.FRONTEND_URL || (isProd && env.RENDER_EXTERNAL_URL) || need('FRONTEND_URL', 'http://localhost:5173')).replace(/\/+$/, ''),
   sessionSecret: need('SESSION_SECRET', 'dev-only-secret-change-me-dev-only-secret'),
   company: {
     name: env.COMPANY_NAME || 'Natra',
