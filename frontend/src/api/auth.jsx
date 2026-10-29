@@ -44,20 +44,22 @@ export function AuthProvider({ children }) {
   const userId = state.user?.id;
   useEffect(() => {
     if (!userId) return undefined;
-    let busy = false;
+    let busy = false, disposed = false;
     const sync = async () => {
       if (busy || document.visibilityState === 'hidden') return;
       busy = true;
       try {
         const data = await get('/auth/me');
-        setState((s) => (s.user && (s.locked !== !!data.locked || s.user.mustChangePassword !== data.user?.mustChangePassword) ? { ...s, user: data.user, locked: !!data.locked } : s));
+        if (disposed) return;
+        setCsrfToken(data.csrfToken);
+        setState((s) => s.user ? { ...s, user: data.user, locked: !!data.locked } : s);
       } catch (e) {
-        if (e.status === 401) apply(null);
+        if (!disposed && e.status === 401) apply(null);
       } finally { busy = false; }
     };
     window.addEventListener('focus', sync);
     document.addEventListener('visibilitychange', sync);
-    return () => { window.removeEventListener('focus', sync); document.removeEventListener('visibilitychange', sync); };
+    return () => { disposed = true; window.removeEventListener('focus', sync); document.removeEventListener('visibilitychange', sync); };
   }, [userId, apply]);
 
   const login = useCallback(async (email, password) => {

@@ -104,3 +104,48 @@ test('file errors still trigger session events and never return an error documen
  await assert.rejects(getFile('/payroll/periods/1/export.csv'),{status:423,code:'screen_locked'});
  assert.deepEqual(events,['locked']);
 });
+
+function sequence(responses) {
+ globalThis.fetch=async(url,init)=>{
+  calls.push({url,init});const r=responses.shift();assert.ok(r,'unexpected extra request');
+  if(r instanceof Error)throw r;
+  return {status:r[0],ok:r[0]>=200&&r[0]<300,json:async()=>r[1]};
+ };
+}
+const csrfFailure=[403,{error:{code:'csrf',message:'Invalid or missing CSRF token'}}];
+test('login recovers a missing or stale CSRF token from the current browser session',async()=>{
+ for(const stale of [null,'old-tab-token']){
+  calls=[];setCsrfToken(stale);
+  sequence([csrfFailure,[200,{user:{id:2},csrfToken:'current-cookie-token'}],[200,{user:{id:3},csrfToken:'new-login-token'}]]);
+  const body={email:'employee@example.test',password:'password'};
+  const result=await post('/auth/login',body);
+  assert.equal(result.user.id,3);
+  assert.deepEqual(calls.map(c=>c.url),['/api/auth/login','/api/auth/me','/api/auth/login']);
+  assert.equal(calls[2].init.headers['X-CSRF-Token'],'current-cookie-token');
+  assert.equal(calls[2].init.body,JSON.stringify(body));
+ }
+});
+test('login clears a stale token if the old session expires during recovery',async()=>{
+ setCsrfToken('expired-token');
+ sequence([csrfFailure,[401,{error:{code:'unauthenticated'}}],[200,{user:{id:3}}]]);
+ assert.equal((await post('/auth/login',{email:'employee@example.test',password:'password'})).user.id,3);
+ assert.equal(calls[2].init.headers['X-CSRF-Token'],undefined);
+});
+test('logout can refresh its session token, avoiding a stranded browser cookie',async()=>{
+ sequence([csrfFailure,[200,{csrfToken:'fresh'}],[204]]);
+ assert.equal(await post('/auth/logout'),null);
+ assert.equal(calls[2].init.headers['X-CSRF-Token'],'fresh');
+});
+test('auth CSRF recovery retries at most once and stops if refresh cannot reach the server',async()=>{
+ sequence([csrfFailure,[200,{csrfToken:'fresh'}],csrfFailure]);
+ await assert.rejects(post('/auth/login',{}),{status:403,code:'csrf'});assert.equal(calls.length,3);
+ calls=[];sequence([csrfFailure,new TypeError('offline')]);
+ await assert.rejects(post('/auth/login',{}),{status:0,code:'network'});assert.equal(calls.length,2);
+});
+test('CSRF origin errors and payroll/settlement writes are never automatically replayed',async()=>{
+ for(const path of ['/payroll/periods','/settlements/1/payments','/auth/password']){
+  calls=[];sequence([csrfFailure]);await assert.rejects(post(path,{}),{code:'csrf'});assert.equal(calls.length,1);
+ }
+ calls=[];sequence([[403,{error:{code:'csrf_origin',message:'Request origin is not allowed'}}]]);
+ await assert.rejects(post('/auth/login',{}),{code:'csrf_origin'});assert.equal(calls.length,1);
+});
