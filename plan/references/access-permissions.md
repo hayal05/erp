@@ -35,3 +35,24 @@ payroll.approve and payroll.pay must not share one broad payroll write guard.
 
 The planned audit bar and change log remain Task 8; integration testing remains Task 9.
 No migrations or frontend changes are required for this foundation commit.
+
+## Task 2 — persisted grants and session loading
+
+Migration 010 stores access_grants separately from users.role and employee records.
+Each grant has its own lifecycle: one active grant per user/role, immutable original
+facts, a recorded reason and actor for revocation, and a new row when reissued.
+Database triggers retain history and append grant/revocation events to audit_logs.
+Existing legacy hr accounts receive an explicit Admin grant because they already
+had unrestricted access. No employee is promoted by migration. New installations'
+seed administrator also receives an explicit Admin grant.
+
+loadSession reads active grants in its existing session query on every request;
+login, /auth/me and password-change responses expose accessRoles and effective
+permissions consistently. Grants are never taken from client role fields. Thus a
+permission-guarded request sees revocation without waiting for login or cookie expiry.
+User deactivation and password-change gates still apply independently.
+
+Production endpoints still use their legacy role guards until Tasks 5–6. This task
+does not yet expose grant/revoke APIs, workspace switching or Access Management.
+Task 3 must use the authenticated Admin as actor; Task 7 adds the last-active-Admin
+and other account safeguards before access issuance is complete.
