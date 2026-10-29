@@ -33,6 +33,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     onSessionEvent((kind) => {
       if (kind === 'unauthenticated') apply(null);
+      else if (kind === 'password_change_required') setState(s => ({ ...s, user: s.user ? { ...s.user, mustChangePassword: true } : null }));
       else if (kind === 'locked') setState((s) => ({ ...s, locked: true }));
     });
     return () => onSessionEvent(null);
@@ -49,7 +50,7 @@ export function AuthProvider({ children }) {
       busy = true;
       try {
         const data = await get('/auth/me');
-        setState((s) => (s.user && s.locked !== !!data.locked ? { ...s, locked: !!data.locked } : s));
+        setState((s) => (s.user && (s.locked !== !!data.locked || s.user.mustChangePassword !== data.user?.mustChangePassword) ? { ...s, user: data.user, locked: !!data.locked } : s));
       } catch (e) {
         if (e.status === 401) apply(null);
       } finally { busy = false; }
@@ -65,6 +66,10 @@ export function AuthProvider({ children }) {
     return data.user;
   }, [apply]);
 
+  const changePassword = useCallback(async (body) => {
+    apply(await post('/auth/password', body));
+  }, [apply]);
+
   const logout = useCallback(async () => {
     try { await post('/auth/logout'); } catch { /* clear local state even if the call fails */ }
     apply(null);
@@ -74,8 +79,8 @@ export function AuthProvider({ children }) {
   const setLocked = useCallback((locked) => setState((s) => ({ ...s, locked: !!locked })), []);
 
   const value = useMemo(
-    () => ({ ...state, login, logout, setLocked, reload: () => load() }),
-    [state, login, logout, setLocked, load],
+    () => ({ ...state, login, logout, changePassword, setLocked, reload: () => load() }),
+    [state, login, logout, changePassword, setLocked, load],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -110,7 +110,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
         <Field as="select" label="Employment type" options={EMPLOYMENT_TYPES} {...bind('employmentType')} />
         <Field as="select" label="Schedule (shift)" options={shifts.map((s) => ({ value: s.id, label: `${s.name} (${s.startTime}–${s.endTime})` }))} {...bind('shiftId')} />
         {mode === 'create' && (
-          <Field label="Initial password" type="password" autoComplete="new-password" hint={`At least ${MIN_PASSWORD} characters. Share it with the employee privately.`} {...bind('password')} />
+          <Field label="Temporary password" type="password" autoComplete="new-password" hint={`At least ${MIN_PASSWORD} characters. Share it privately. The employee must change it after signing in.`} {...bind('password')} />
         )}
       </form>
     </Modal>

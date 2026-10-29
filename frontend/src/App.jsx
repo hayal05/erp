@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './api/auth.jsx';
 import { homePath, redirectTarget } from './api/paths.js';
+import ChangePassword from './pages/ChangePassword.jsx';
 import Login from './pages/Login.jsx';
 import HrLayout from './components/HrLayout.jsx';
 import Employees from './pages/Employees.jsx';
@@ -42,6 +43,7 @@ function RequireRole({ role, children }) {
   if (status !== 'ready') return <Splash />;
   // The scanned QR token (URL fragment) rides along in router state so it survives the login screen.
   if (!user) return <Navigate to="/login" replace state={loginRedirectState(location)} />;
+  if (user.role === 'employee' && user.mustChangePassword) return <ChangePassword forced />;
   if (user.role !== role) return <Navigate to={homePath(user)} replace />;
   return children;
 }
@@ -87,6 +89,7 @@ export default function App() {
         </Route>
         <Route path="/portal" element={<RequireRole role="employee"><PortalLayout /></RequireRole>}>
           <Route index element={<PortalHome />} />
+          <Route path="change-password" element={<ChangePassword />} />
           <Route path="profile" element={<Profile />} />
           <Route path="scan" element={<Scan />} />
           <Route path="attendance" element={<History />} />

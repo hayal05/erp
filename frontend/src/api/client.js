@@ -58,7 +58,8 @@ export async function api(path, { method = 'GET', body, query, signal, responseT
 
   const err = data?.error ?? {};
   const apiErr = new ApiError(res.status, err.code ?? 'error', err.message ?? `Request failed (${res.status})`, err.details);
-  if (apiErr.code === 'unauthenticated') listener('unauthenticated');
+  if (apiErr.code === 'password_change_required') listener('password_change_required');
+  else if (apiErr.code === 'unauthenticated') listener('unauthenticated');
   else if (apiErr.code === 'screen_locked') listener('locked');
   throw apiErr;
 }

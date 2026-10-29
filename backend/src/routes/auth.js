@@ -1,3 +1,4 @@
+import changePasswordRoutes from './changePassword.js';
 import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
@@ -13,9 +14,11 @@ export const loginLimits = {
   ip: createLimiter({ windowMs: FIFTEEN_MIN, max: 20 }),
 };
 
-const publicUser = (u) => ({ id: Number(u.id), email: u.email, fullName: u.full_name, role: u.role });
+const publicUser = (u) => ({ id: Number(u.id), email: u.email, fullName: u.full_name, role: u.role, mustChangePassword: !!u.must_change_password });
 const router = Router();
 router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+
+router.use('/password', changePasswordRoutes);
 
 router.post('/login', wrap(async (req, res) => {
   const { email, password } = req.body ?? {};
@@ -35,7 +38,7 @@ router.post('/login', wrap(async (req, res) => {
   }
 
   const { rows: [user] } = await query(
-    'SELECT id, email, full_name, role, password_hash, is_active FROM users WHERE lower(email) = $1', [normalized]);
+    'SELECT id, email, full_name, role, password_hash, is_active, must_change_password FROM users WHERE lower(email) = $1', [normalized]);
   // Always runs a bcrypt comparison (dummy when the account is unknown) so timing is uniform.
   const ok = await verifyPassword(password, user?.password_hash);
   if (!user || !ok || !user.is_active) {

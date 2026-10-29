@@ -90,7 +90,7 @@ router.post('/', validate(employeeCreate), wrap(async (req, res) => {
       shiftId = first.id;
     }
     const { rows: [user] } = await db.query(
-      `INSERT INTO users (email, full_name, password_hash, role) VALUES ($1, $2, $3, 'employee') RETURNING id`,
+      `INSERT INTO users (email, full_name, password_hash, role, must_change_password) VALUES ($1, $2, $3, 'employee', true) RETURNING id`,
       [b.email, b.fullName, hash]);
     const { rows: [emp] } = await db.query(
       `INSERT INTO employees (employee_code, user_id, phone, department_id, position_id, job_title, start_date, employment_type, shift_id)
