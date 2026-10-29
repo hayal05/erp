@@ -1,3 +1,4 @@
+import AuditBar from '../components/AuditBar.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus } from 'lucide-react';
@@ -126,6 +127,7 @@ function Detail({ id }) {
         empty={search ? 'No positions match this search' : 'No positions yet. Add the first one.'} />
       <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPage={setPage} disabled={state.loading} />
 
+      <AuditBar type="department" id={id} />
       {dialog && (
         <PositionDialog key={dialog.position?.id ?? 'new'} departmentId={id} position={dialog.position}
           onClose={() => setDialog(null)} onSaved={() => { setDialog(null); refresh(); }} />

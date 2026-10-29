@@ -8,6 +8,7 @@ import { csrfProtection } from './middleware/csrf.js';
 import { passwordChangeGate } from './middleware/passwordChange.js';
 import { lockGate } from './middleware/lock.js';
 import announcementRoutes from './routes/announcements.js';
+import auditHistoryRoutes from './routes/auditHistory.js';
 import accessManagementRoutes from './routes/accessManagement.js';
 import authRoutes from './routes/auth.js';
 import profileRoutes from './routes/profile.js';
@@ -60,6 +61,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use(lockGate); // a locked tablet session can only reach the allowlist (middleware/lock.js)
 
   app.use('/api/announcements', announcementRoutes);
+  app.use('/api/audit-history', auditHistoryRoutes);
   app.use('/api/access-management', accessManagementRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/profile', profileRoutes);
