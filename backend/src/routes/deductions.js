@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { audit, diffFields } from '../services/audit.js';
@@ -15,7 +15,8 @@ import { parseDeductionCreate, parseDeductionUpdate, deductionListQuery } from '
 // engine hookup are 4.8b. Amounts are whole minor units. Items are settings for FUTURE payrolls: an approved payroll keeps its own
 // copy of the breakdown (payroll_entry_items has no foreign key here), so editing or deleting an item never alters history.
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('deductions.read'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('deductions.manage')(req,res,next));
 
 const findItem = async (db, id, { lock = false } = {}) => {
   const { rows: [r] } = await db.query(`SELECT * FROM deduction_items WHERE id = $1${lock ? ' FOR UPDATE' : ''}`, [id]);

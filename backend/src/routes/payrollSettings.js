@@ -2,7 +2,7 @@ import { attendancePolicy, parseAttendancePolicy } from '../services/payrollAtte
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { audit, diffFields } from '../services/audit.js';
 import { HttpError } from '../middleware/error.js';
@@ -16,7 +16,8 @@ import { validateBrackets, OTHER_TAX_BASES } from '../services/payrollEngine.js'
 // Payroll settings for HR (spec 12-16), mounted at /api/payroll-settings. Task 4.5: income tax brackets; 4.6: pension rates and bases.
 // Task 4.7: other taxes. Changes here only affect DRAFT payrolls: approval snapshots them (migration 004).
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('payroll_settings.read'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('payroll_settings.manage')(req,res,next));
 
 // bigint/numeric come back from pg as strings; the API speaks Numbers (minor units are far below 2^53, see money.js).
 export const toBracket = (r) => ({ id: Number(r.id), fromMinor: Number(r.from_minor), toMinor: r.to_minor === null ? null : Number(r.to_minor),

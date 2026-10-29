@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
-import { requireRole } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { createLimiter } from '../middleware/rateLimit.js';
 import { verifyPassword } from '../services/password.js';
@@ -24,7 +24,7 @@ export const tokenLimit = createLimiter({ windowMs: 60_000, max: 30 });
 
 const router = Router();
 // Router-level guard lets locked sessions in; middleware/lock.js narrows them to the allowlist.
-router.use(noStore, requireRole('hr', { allowLocked: true }));
+router.use(noStore, requirePermission('attendance.qr', { allowLocked: true }));
 
 router.post('/tokens', wrap(async (req, res) => {
   const key = req.session.id;

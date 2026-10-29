@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { v } from '../middleware/validate.js';
@@ -16,9 +16,9 @@ import { pageSchema, pageOffset } from '../services/sql.js';
 import { loadSettings, loadBrackets, loadOtherTaxes } from './payrollSettings.js';
 import { regenerateDraft, generateDraft, parsePeriodMonth, toPeriod, toEntry } from '../services/payrollDraft.js';
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('payroll.read'));
 // Creation and generation are one operation: no empty or partly generated period survives a failure.
-router.post('/periods', wrap(async (req, res) => {
+router.post('/periods', requirePermission('payroll.prepare'), wrap(async (req, res) => {
   const month = parsePeriodMonth(req.body?.month);
   const result = await withTransaction(async (db) => {
     // One MVCC snapshot for profiles, employee status and settings. Conflicting one-time consumption aborts with 409.
@@ -33,7 +33,7 @@ router.post('/periods', wrap(async (req, res) => {
   });
   res.status(201).json(result);
 }));
-router.post('/periods/:id/regenerate', validate(idParams, 'params'), wrap(async (req, res) => {
+router.post('/periods/:id/regenerate', requirePermission('payroll.prepare'), validate(idParams, 'params'), wrap(async (req, res) => {
   const result = await withTransaction(async (db) => {
     await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
     const settings = await loadSettings(db, { lock: true });
@@ -80,7 +80,7 @@ router.get('/periods/:id/entries/:entryId', validate({ ...idParams, entryId: v.i
   });
   res.json(detail);
 }));
-router.patch('/periods/:id/entries/:entryId', validate({ ...idParams, entryId: v.int({ required: true, min: 1 }) }, 'params'), wrap(async (req, res) => {
+router.patch('/periods/:id/entries/:entryId', requirePermission('payroll.prepare'), validate({ ...idParams, entryId: v.int({ required: true, min: 1 }) }, 'params'), wrap(async (req, res) => {
   const { value: changes, errors } = parseEntryEdit(req.body);
   if (errors) throw validationError(errors);
   const result = await withTransaction(async (db) => {
@@ -94,7 +94,7 @@ router.patch('/periods/:id/entries/:entryId', validate({ ...idParams, entryId: v
   });
   res.json(result);
 }));
-router.post('/periods/:id/approve', validate(idParams, 'params'), wrap(async (req, res) => {
+router.post('/periods/:id/approve', requirePermission('payroll.approve'), validate(idParams, 'params'), wrap(async (req, res) => {
   const result = await withTransaction(async (db) => {
     await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
     const settings = await loadSettings(db, { lock: true });
@@ -106,7 +106,7 @@ router.post('/periods/:id/approve', validate(idParams, 'params'), wrap(async (re
   });
   res.json(result);
 }));
-router.post('/periods/:id/pay', validate(idParams, 'params'), wrap(async (req, res) => {
+router.post('/periods/:id/pay', requirePermission('payroll.pay'), validate(idParams, 'params'), wrap(async (req, res) => {
   const { value, errors } = parsePayment(req.body);
   if (errors) throw validationError(errors);
   const result = await withTransaction((db) => markPeriodPaid(db, { periodId: req.params.id, actorId: req.user.id, paidOn: value.paidOn })).catch((err) => {

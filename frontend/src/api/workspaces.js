@@ -1,5 +1,6 @@
 // Presentation checks mirror server-provided capabilities; the API remains authoritative.
 export function allowed(user,permission){
+ if(typeof permission!=='string')return false;
  if(!['hr','employee'].includes(user?.role))return false;
  if(Array.isArray(user?.permissions))return user.permissions.includes(permission);
  return user?.role==='hr'&&!permission.startsWith('self.'); // older session response during rollout

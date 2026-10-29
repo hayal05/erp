@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { audit, diffFields } from '../services/audit.js';
@@ -11,7 +11,8 @@ import { idParams, shiftCreate, shiftListQuery, shiftUpdate } from '../services/
 
 // Shifts are the work schedules (MVP: same-day only, ISO weekdays 1 = Monday .. 7 = Sunday).
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('organization.manage'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 
 const SELECT = `SELECT s.id, s.name, to_char(s.start_time, 'HH24:MI') AS start_time, to_char(s.end_time, 'HH24:MI') AS end_time,
   s.grace_minutes, s.work_days, (SELECT count(*)::int FROM employees e WHERE e.shift_id = s.id) AS employee_count FROM shifts s`;

@@ -91,3 +91,19 @@ gets an access-unavailable message instead of a redirect loop.
 
 This is navigation only. Backend HR/Finance operation conversion remains Tasks 5–6;
 newly granted employee accounts cannot bypass legacy server guards before that work.
+
+## Task 5 — HR operations
+
+HR-domain routers now enforce capabilities rather than the legacy hr identity.
+Reads and writes are separated for employees, attendance, leave, salary profiles,
+payroll settings and deduction items. Payroll generation, regeneration and draft
+entry edits require payroll.prepare; approval and payment require their respective
+Finance/Admin permissions. HR settings/deductions are read-only in the UI and API;
+HR can still select an employee to inspect deductions. Company costs are hidden
+from HR payroll navigation, and approval/payment actions are not offered to HR.
+
+HR-granted employees can issue, lock and unlock the QR tablet using their own
+password. QR validation requires the issuer's current active HR/Admin grant, so
+revoking the grant invalidates previously issued codes. HR-granted employee users
+can manage draft announcements; ordinary employees and Finance see active notices only.
+Finance-specific cost/settlement endpoint conversion remains Task 6.

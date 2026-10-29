@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { audit, diffFields } from '../services/audit.js';
@@ -33,7 +33,8 @@ function positionBody(req, res, next) {
 
 // ---- /api/departments/:id/positions
 export const departmentPositions = Router({ mergeParams: true });
-departmentPositions.use(noStore, requireHr);
+departmentPositions.use(noStore, requirePermission('organization.manage'));
+departmentPositions.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 
 departmentPositions.get('/', validate(idParams, 'params'), validate(positionListQuery, 'query'), wrap(async (req, res) => {
   const { id } = req.params;
@@ -66,7 +67,8 @@ departmentPositions.post('/', validate(idParams, 'params'), positionBody, wrap(a
 
 // ---- /api/positions
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('organization.manage'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 
 // Full replacement of the editable fields (name + the five salary fields). The department never changes here.
 router.patch('/:id', validate(idParams, 'params'), positionBody, wrap(async (req, res) => {

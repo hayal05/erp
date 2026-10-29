@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { config } from '../config.js';
 import { HttpError, wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { audit, diffFields } from '../services/audit.js';
@@ -20,7 +20,8 @@ import { photos } from '../services/cloudinary.js';
 export const recordDeps = { photos, fillGaps: (q) => fillGapsFor(q) }; // swappable in tests, like scanDeps (tests that count rows turn the gap fill off)
 
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('attendance.read'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('attendance.manage')(req,res,next));
 
 // $1 is always the company timezone: times are shown as wall-clock HH:MM there, never in the browser's zone.
 const FROM = `FROM attendance_records a
@@ -146,7 +147,7 @@ router.patch('/:id', validate(idParams, 'params'), validate(attendanceCorrection
 
 // GET /:id/photos/check_in|check_out -> { url, expiresAt }: a signed, time-limited (5 min) link for HR to view one selfie.
 // Never cached (noStore) and never stored. Each view is audited (who looked at whose selfie), without the photo id.
-router.get('/:id/photos/:kind', validate(photoParams, 'params'), wrap(async (req, res) => {
+router.get('/:id/photos/:kind', requirePermission('attendance.manage'), validate(photoParams, 'params'), wrap(async (req, res) => {
   const { id, kind } = req.params;
   const column = kind === 'check_in' ? 'check_in_photo_id' : 'check_out_photo_id';
   const { rows: [r] } = await query(`SELECT employee_id, ${column} AS photo_id FROM attendance_records WHERE id = $1`, [id]);

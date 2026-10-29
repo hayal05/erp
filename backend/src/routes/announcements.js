@@ -1,7 +1,8 @@
+import { hasPermission } from '../services/permissions.js';
 import { Router } from 'express';
 import { withTransaction } from '../db/pool.js';
 import { config } from '../config.js';
-import { requireRole, requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { HttpError, wrap } from '../middleware/error.js';
 import { validate, v } from '../middleware/validate.js';
@@ -10,7 +11,7 @@ import { idParams } from '../services/hrSchemas.js';
 import { companyDate } from '../services/attendance.js';
 import { audit } from '../services/audit.js';
 const router = Router();
-router.use(noStore, requireRole(['hr','employee']));
+router.use(noStore, requirePermission('announcements.read'));
 const statuses = ['draft','published','archived'];
 const schema = { title: v.string({ required: true, min: 1, max: 160 }), body: v.string({ required: true, min: 1, max: 5000 }),
   status: v.enum({ required: true, values: statuses }), expiresOn: v.date({ nullable: true }) };
@@ -24,7 +25,7 @@ const ensureExpiry = b => {
 };
 router.get('/', validate({ ...pageSchema, status: v.enum({ values: statuses }) }, 'query'), wrap(async (req,res) => {
   // Employee query parameters can never widen visibility to drafts, archived or expired notices.
-  const employee = req.user.role === 'employee';
+  const employee = !hasPermission(req.user,'announcements.manage');
   const where = employee ? "WHERE status='published' AND (expires_on IS NULL OR expires_on >= (now() AT TIME ZONE $1)::date)"
     : req.query.status ? 'WHERE status=$2' : '';
   const base = [config.company.timezone, ...(!employee && req.query.status ? [req.query.status] : [])];
@@ -39,7 +40,7 @@ router.get('/', validate({ ...pageSchema, status: v.enum({ values: statuses }) }
   });
   res.json(result);
 }));
-router.post('/', requireHr, validate(schema), wrap(async (req,res) => {
+router.post('/', requirePermission('announcements.manage'), validate(schema), wrap(async (req,res) => {
   const b=req.body; ensureExpiry(b);
   const saved=await withTransaction(async db => {
     const {rows:[r]}=await db.query(`INSERT INTO announcements(title,body,status,expires_on,published_at,created_by_user_id)
@@ -50,7 +51,7 @@ router.post('/', requireHr, validate(schema), wrap(async (req,res) => {
   });
   res.status(201).json(output(saved));
 }));
-router.put('/:id', requireHr, validate(idParams,'params'), validate({...schema,version:v.int({required:true,min:1})}), wrap(async(req,res)=>{
+router.put('/:id', requirePermission('announcements.manage'), validate(idParams,'params'), validate({...schema,version:v.int({required:true,min:1})}), wrap(async(req,res)=>{
   const b=req.body; ensureExpiry(b);
   const saved=await withTransaction(async db=>{
     const {rows:[before]}=await db.query('SELECT * FROM announcements WHERE id=$1 FOR UPDATE',[req.params.id]);

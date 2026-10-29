@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { audit, diffFields } from '../services/audit.js';
@@ -15,7 +15,8 @@ import { employeeCreate, employeeListQuery, employeeUpdate, idParams, reasonBody
 // Employees are never hard-deleted (attendance, leave and payroll history point at them):
 // there is deliberately no DELETE route. Deactivate instead; that also blocks their login.
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('employees.read'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('employees.manage')(req,res,next));
 
 const FROM = `FROM employees e
   JOIN users u ON u.id = e.user_id

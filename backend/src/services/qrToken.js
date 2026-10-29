@@ -51,7 +51,7 @@ export async function checkQrToken(db, token, { lock = false } = {}) {
     `SELECT t.id, t.issued_by_session_id,
             t.used_at IS NOT NULL AS used,
             t.expires_at <= now() AS expired,
-            (s.id IS NOT NULL AND s.expires_at > now() AND u.is_active AND u.role = 'hr') AS issuer_ok
+            (s.id IS NOT NULL AND s.expires_at > now() AND u.is_active AND EXISTS (SELECT 1 FROM access_grants ag WHERE ag.user_id=u.id AND ag.access_role IN ('hr','admin') AND ag.revoked_at IS NULL)) AS issuer_ok
        FROM attendance_tokens t
        LEFT JOIN sessions s ON s.id = t.issued_by_session_id
        LEFT JOIN users u ON u.id = s.user_id
