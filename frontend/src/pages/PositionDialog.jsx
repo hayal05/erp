@@ -5,7 +5,7 @@ import Field from '../components/Field.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { patch, post } from '../api/client.js';
 import { saveErrorView } from './departmentView.js';
-import { EMPTY_POSITION, POSITION_NAME_MAX, buildPosition, editNotice, monthlyTotal, positionChanged, positionForm, positionServerFields, validatePosition } from './positionForm.js';
+import { EMPTY_POSITION, POSITION_NAME_MAX, buildPosition, monthlyTotal, positionChanged, positionForm, positionServerFields, validatePosition } from './positionForm.js';
 
 // Add (position = null) or edit one position of a department. Mount with a `key` so the form resets each time it opens.
 export default function PositionDialog({ departmentId, position, onClose, onSaved }) {
@@ -55,9 +55,9 @@ export default function PositionDialog({ departmentId, position, onClose, onSave
           <label><input type="checkbox" checked={form.allowanceTaxable} onChange={check('allowanceTaxable')} /> Allowance is taxable</label>
           <label><input type="checkbox" checked={form.allowancePensionable} onChange={check('allowancePensionable')} /> Allowance is pensionable</label>
           <label><input type="checkbox" checked={form.pensionApplies} onChange={check('pensionApplies')} /> Pension applies to employees in this position</label>
-          <small className="muted">Allowance flags apply when company settings include allowances in the tax or pension base.</small>
+          <small className="muted">Allowance flags require matching payroll base settings.</small>
           {total && <p aria-live="polite">Basic plus allowance: <strong>{total}</strong></p>}
-          <p className="muted">{editNotice(position)}</p>
+          <p className="muted">Existing salaries stay unchanged. Renaming updates job titles.</p>
         </div>
       </form>
     </Modal>

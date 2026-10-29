@@ -51,7 +51,7 @@ function PensionForm({ saved, onSaved }) {
         <Field label="Company contribution (%)" inputMode="decimal" value={form.companyPensionRate} onChange={set('companyPensionRate')} error={errors.companyPensionRate} />
       </div>
       <Field as="select" label="Pension is calculated on" value={form.pensionBase} options={PENSION_BASE_OPTIONS} onChange={set('pensionBase')} error={errors.pensionBase} />
-      <p className="muted">Applies to drafts generated from now on. Approved payroll keeps the values it was approved with.</p>
+      <p className="muted">Recalculate drafts to apply changes.</p>
       <div className="row end">
         <Button disabled={!dirty || busy} onClick={() => { setForm(calcForm(saved)); setAttempted(false); setServerErrors({}); }}>Discard changes</Button>
         <Button variant="primary" type="submit" busy={busy} disabled={!dirty}>Save pension settings</Button>

@@ -115,7 +115,7 @@ function Detail({ id }) {
       </div>
 
       <h2>Positions and salary</h2>
-      <p className="muted">Each position has a default monthly salary. New employees, and employees moved to the position when you choose to apply it, start with this salary; it can still be changed for one person afterwards. Editing a position never changes employees who already have it.</p>
+      <p className="muted">Position changes do not update existing employee salaries.</p>
 
       <div className="toolbar">
         <Field label="Search" type="search" placeholder="Position name" value={searchText} maxLength={100}

@@ -30,11 +30,10 @@ export default function SalaryProfileDialog({ employee, onClose }) {
     {error && <p className="form-error" role="alert">{error}</p>}
     {!form ? error ? <Button onClick={() => setRetry((n) => n + 1)}>Retry</Button> : <p role="status">Loading salary…</p> :
       <form id="salary-profile" className="stack" onSubmit={submit} noValidate>
-        <p>Monthly salary. Approved payroll history keeps its saved amounts.</p>
         {['basic', 'allowance'].map((key) => <Field key={key} label={key === 'basic' ? 'Basic salary' : 'Allowance'} inputMode="decimal" value={form[key]} error={fields[key]} disabled={busy} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />)}
         {[['allowanceTaxable', 'Allowance is taxable'], ['allowancePensionable', 'Allowance is pensionable'], ['pensionApplies', 'Pension applies to this employee']].map(([key, label]) =>
           <label key={key}><input type="checkbox" checked={form[key]} disabled={busy} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
-        <small className="muted">Allowance flags apply when company settings include allowances in the tax or pension base.</small>
+        <small className="muted">Allowance flags require matching payroll base settings.</small>
       </form>}
   </Modal>;
 }

@@ -85,14 +85,14 @@ export default function DeductionsTab() {
       {!employeeId ? <p className="muted">Choose an employee to see and manage their deductions.</p> : (
         <>
           <Table caption="Deductions" columns={columns} rows={list.data?.items ?? []} loading={list.loading} error={list.error} onRetry={list.reload} empty="No deductions for this employee" />
-          <p className="muted">One-time items are taken in the next payroll draft only. Every-month items are taken in every payroll until paused or deleted. Approved and paid payroll is never changed.</p>
+          <p className="muted">One-time: next draft. Monthly: repeats until paused or deleted.</p>
         </>
       )}
 
       {dialog && <DeductionDialog key={dialog.item?.id ?? 'new'} item={dialog.item} employeeId={Number(employeeId)} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); list.reload(); }} onConflict={() => { setDialog(null); list.reload(); }} />}
       <Modal open={!!removing} title="Delete this deduction?" onClose={() => !removing?.busy && setRemoving(null)}
         footer={<><Button onClick={() => setRemoving(null)} disabled={removing?.busy}>Keep it</Button><Button variant="danger" busy={removing?.busy} onClick={remove}>Delete deduction</Button></>}>
-        <p>{removing?.item.name} ({removing && formatMoney(removing.item.amountMinor)}) will no longer be taken in new payroll drafts. To stop it temporarily, use Pause instead.</p>
+        <p>{removing?.item.name} ({removing && formatMoney(removing.item.amountMinor)}) will be removed from future drafts.</p>
       </Modal>
     </div>
   );

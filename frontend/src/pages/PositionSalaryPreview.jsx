@@ -21,14 +21,14 @@ export default function PositionSalaryPreview({ plan, profile, busy, onApplyChan
   if (plan.kind === 'none') return null;
 
   if (plan.kind === 'cleared') {
-    return <p className="muted full">Removing the position keeps the employee's current salary and job title.</p>;
+    return <p className="muted full">Current salary and title will be kept.</p>;
   }
 
   if (plan.kind === 'preview') {
     return (
       <div className="stack full" aria-live="polite">
         <Package title="Salary from position" data={plan.next} id="salary-preview" />
-        <small className="muted">This salary is saved with the new employee. It can be changed afterwards for this person only, with the Salary button.</small>
+        <small className="muted">Applied on save. Edit later under Salary.</small>
       </div>
     );
   }
@@ -44,14 +44,14 @@ export default function PositionSalaryPreview({ plan, profile, busy, onApplyChan
         {plan.current && <Package title="Current salary" data={plan.current} id="salary-current" />}
         <Package title="New position salary" data={plan.next} id="salary-next" />
       </div>
-      {plan.same && <p className="muted">The new position has the same salary as the current one.</p>}
+      {plan.same && <p className="muted">Salary is unchanged.</p>}
       <label>
         <input type="checkbox" checked={plan.apply} disabled={busy} onChange={(e) => onApplyChange(e.target.checked)} /> Apply new position salary
       </label>
       <small className="muted">
         {plan.apply
-          ? 'The salary will be replaced when you save. Draft payrolls use it; approved payrolls keep their saved amounts.'
-          : 'The current salary stays as it is. Use this for exceptional cases; you can still change it later with the Salary button.'}
+          ? 'Replaces the employee salary on save.'
+          : 'Keeps the current employee salary.'}
       </small>
     </div>
   );

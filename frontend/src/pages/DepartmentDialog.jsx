@@ -48,7 +48,7 @@ export default function DepartmentDialog({ department, onClose, onSaved }) {
         {error && <div className="form-error" role="alert">{error}</div>}
         <Field label="Name" maxLength={NAME_MAX} autoComplete="off" value={form.name} error={fields.name}
           onChange={(e) => { setForm({ name: e.target.value }); setFields({}); }} />
-        {!department && <p className="muted">After adding the department, open it to set up its positions and their salaries.</p>}
+        {!department && <p className="muted">Open the department to add positions.</p>}
       </form>
     </Modal>
   );

@@ -52,12 +52,12 @@ export default function OtherTaxesTab() {
         <Button variant="primary" disabled={!data} onClick={() => setDialog({ tax: null })}><Plus size={16} aria-hidden="true" /> Add tax</Button>
       </div>
       <Table caption="Other taxes" columns={columns} rows={data?.items ?? []} loading={loading} error={error} onRetry={reload} empty="No other taxes set up" />
-      <p className="muted">Changes apply to drafts generated from now on. Approved payroll keeps the values it was approved with.</p>
+      <p className="muted">Recalculate drafts to apply changes.</p>
 
       {dialog && data && <OtherTaxDialog key={dialog.tax?.id ?? 'new'} tax={dialog.tax} bases={data.bases} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); reload(); }} />}
       <Modal open={!!removing} title="Delete this tax?" onClose={() => !removing?.busy && setRemoving(null)}
         footer={<><Button onClick={() => setRemoving(null)} disabled={removing?.busy}>Keep it</Button><Button variant="danger" busy={removing?.busy} onClick={remove}>Delete tax</Button></>}>
-        <p>{removing?.tax.name} will no longer be taken in new payroll drafts. Approved and paid payroll is not changed. To stop it temporarily, use Pause instead.</p>
+        <p>{removing?.tax.name} will be removed from future drafts.</p>
       </Modal>
     </div>
   );

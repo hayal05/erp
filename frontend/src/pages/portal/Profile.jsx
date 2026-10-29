@@ -40,16 +40,16 @@ export default function Profile() {
   return <section className="stack">
     <h1>My profile</h1>
     <div className="card stack"><h2>{profile.fullName}</h2><dl className="profile-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not provided'}</dd></div>)}</dl>
-      <p className="muted">Contact HR to update your name, contact information or employment details.</p></div>
+      <p className="muted">Contact HR to update these details.</p></div>
     <div className="card stack"><div className="row between"><h2>Work experience</h2>{!editing && <Button onClick={() => { setSummary(profile.experienceSummary); setSaveError(''); setEditing(true); }}>Edit experience</Button>}</div>
       {editing ? <form className="stack" onSubmit={save}>
         <Field as="textarea" label="Experience summary" value={summary} maxLength={5000} rows={6} disabled={busy} onChange={e => setSummary(e.target.value)} />
-        <small className="muted">Add previous employers, roles, dates and relevant experience. {summary.length}/5000 characters. This is your own summary.</small>
+        <small className="muted">Previous employers, roles and dates. {summary.length}/5000</small>
         {saveError && <p role="alert" className="form-error">{saveError}</p>}
         <div className="row"><Button disabled={busy} onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" variant="primary" busy={busy}>Save experience</Button></div>
       </form> : <p className="profile-summary">{profile.experienceSummary || 'No experience summary added yet.'}</p>}
     </div>
-    <div className="card stack"><h2>Position history</h2><p className="muted">Assignments are recorded from this feature’s introduction onward. The starting record shows the assignment on file when tracking began; its date is not the original appointment date.</p>
+    <div className="card stack"><h2>Position history</h2><p className="muted">History starts when tracking began. Starting-record dates are not appointment dates.</p>
       <Table caption="Your position history" columns={[
         { key: 'recordedOn', header: 'Recorded', render: r => formatWorkDate(r.recordedOn) },
         { key: 'department', header: 'Department', render: r => r.department || 'Not assigned' },

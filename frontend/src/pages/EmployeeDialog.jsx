@@ -50,9 +50,9 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
   const departmentChosen = Boolean(form.departmentId);
   const positionHint = !departmentChosen ? 'Choose a department first.'
     : positions.status === 'error' ? `Could not load positions: ${positions.error}`
-    : positions.status === 'ready' && positions.total === 0 ? 'This department has no positions yet. Add them under Departments.'
+    : positions.status === 'ready' && positions.total === 0 ? 'Add positions under Departments.'
     : positions.total > POSITION_LIMIT ? `Showing the first ${POSITION_LIMIT} of ${positions.total} positions.`
-    : 'Choosing a position sets the job title and the salary.';
+    : 'Position sets the title and salary.';
 
   async function submit(e) {
     e.preventDefault();
@@ -101,7 +101,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
           onChange={(e) => { setForm((f) => ({ ...f, positionId: e.target.value, applyPositionSalary: true })); setFields((x) => ({ ...x, positionId: undefined })); }} />
         {form.positionId === '' && employee?.jobTitle && (
           <Field className="full" label="Current job title" value={employee.jobTitle} readOnly
-            hint="Kept as it is. Choosing a position replaces it with the position name." />
+            hint="Replaced when a position is selected." />
         )}
         <PositionSalaryPreview plan={plan} profile={profile} busy={busy}
           onApplyChange={(apply) => setForm((f) => ({ ...f, applyPositionSalary: apply }))}
@@ -110,7 +110,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
         <Field as="select" label="Employment type" options={EMPLOYMENT_TYPES} {...bind('employmentType')} />
         <Field as="select" label="Schedule (shift)" options={shifts.map((s) => ({ value: s.id, label: `${s.name} (${s.startTime}–${s.endTime})` }))} {...bind('shiftId')} />
         {mode === 'create' && (
-          <Field label="Temporary password" type="password" autoComplete="new-password" hint={`At least ${MIN_PASSWORD} characters. Share it privately. The employee must change it after signing in.`} {...bind('password')} />
+          <Field label="Temporary password" type="password" autoComplete="new-password" hint={`At least ${MIN_PASSWORD} characters. Change required at first sign-in.`} {...bind('password')} />
         )}
       </form>
     </Modal>
