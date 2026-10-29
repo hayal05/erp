@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
+import WorkspaceSwitcher from './WorkspaceSwitcher.jsx';
+import {canOpenPath,workspacePath,workspaceArea,isAdmin} from '../api/workspaces.js';
 import { useAuth } from '../api/auth.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import { HR_NAV, QR_PATH, ROLE_LABEL, formatClock, initials, layoutMode } from './hrNav.js';
@@ -49,18 +51,19 @@ export default function HrLayout() {
         <span className="spacer" />
         <time className="clock muted" dateTime={now.toISOString()}>{formatClock(now)}</time>
         <ThemeToggle />
+        <WorkspaceSwitcher />
         <div className="user-chip">
           <span className="avatar" aria-hidden="true">{initials(user.fullName)}</span>
-          <span className="user-text"><strong>{user.fullName}</strong><small className="muted">{ROLE_LABEL[user.role]}</small></span>
+          <span className="user-text"><strong>{user.fullName}</strong><small className="muted">{workspaceArea(pathname)==='finance'?'Finance':isAdmin(user)?'Admin':'HR'}</small></span>
         </div>
       </header>
 
       <aside id="hr-nav" className={`sidebar${menuOpen ? ' open' : ''}`}>
         <nav aria-label="Main">
-          {HR_NAV.filter(item => !item.permission || user.permissions?.includes(item.permission)).map((item) => {
+          {HR_NAV.filter(item => canOpenPath(user,workspacePath(item.to,pathname))).map((item) => {
             const Icon = ICONS[item.key];
             return (
-              <NavLink key={item.key} to={item.to} end={item.end} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+              <NavLink key={item.key} to={workspacePath(item.to,pathname)} end={item.end} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
                 <Icon size={18} aria-hidden="true" /><span>{item.label}</span>
               </NavLink>
             );

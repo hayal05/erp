@@ -74,3 +74,20 @@ database on subsequent requests through Task 2's session loader.
 The current legacy administrator can open the page. Employees given additional
 access receive their separate workspace switcher in Task 4; feature endpoint
 permissions remain part of Tasks 5–6. The full audit bottom bar remains Task 8.
+
+## Task 4 — workspace navigation
+
+Employees still land in My employee portal. Granted staff can switch to /hr and/or
+/finance; the existing non-employee administrator retains the Admin workspace at /hr.
+Workspace choices come from current session permissions, not local storage or a
+client-selected role. The employee switcher lives in the account dropdown to fit
+small screens; management workspaces show it in the top bar.
+
+Page guards and menus enforce workspace capability checks, including deep-link
+restoration after login. Finance payroll links retain the /finance prefix. Revoked
+permissions received through the existing focus/session sync remove workspace
+choices and redirect unauthorized pages; a non-employee account with no workspace
+gets an access-unavailable message instead of a redirect loop.
+
+This is navigation only. Backend HR/Finance operation conversion remains Tasks 5–6;
+newly granted employee accounts cannot bypass legacy server guards before that work.

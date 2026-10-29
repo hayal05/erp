@@ -1,6 +1,7 @@
+import {workspacePath,workspaceArea} from '../api/workspaces.js';
 import AttendanceDeductionSettings from './AttendanceDeductionSettings.jsx';
 import { useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import DeductionsTab from './DeductionsTab.jsx';
 import IncomeTaxTab from './IncomeTaxTab.jsx';
 import OtherTaxesTab from './OtherTaxesTab.jsx';
@@ -10,6 +11,7 @@ import { PAYROLL_TABS, tabForKey, tabFromParam } from './payrollSettingsView.js'
 // Payroll settings (spec 12): Income Tax, Pension, Other Taxes, Other Deductions. This is the shell: tabs, loading and error states.
 // All four tabs are real components now. The server enforces everything; HR only (locked tablet gets 423).
 export default function PayrollSettings() {
+  const {pathname}=useLocation();
   const [params, setParams] = useSearchParams();
   const active = tabFromParam(params.get('tab'));
   const refs = useRef({});
@@ -25,7 +27,7 @@ export default function PayrollSettings() {
   return (
     <section className="stack">
       <div>
-        <p className="muted"><Link to="/hr/settings">← Settings</Link></p>
+        <p className="muted"><Link to={workspaceArea(pathname)==='finance'?'/finance/payroll':'/hr/settings'}>{workspaceArea(pathname)==='finance'?'← Payroll':'← Settings'}</Link></p>
         <h1>Payroll settings</h1>
       </div>
       <div className="tabs" role="tablist" aria-label="Payroll settings" onKeyDown={onKey}>
