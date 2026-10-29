@@ -55,3 +55,22 @@ Phase 5.2 owns the full test sweep, failure fixes and log-secret review. Phase 5
 - Embedded suite: 11 SQL/HTTP cases passed against the unmodified schema.
 
 These results do not convert the pending native #9 race tests or live provider/device checks into passes.
+
+
+## Phase 6 test map (Departments, Positions, default salary)
+
+These are new tests for the owner-requested Phase 6; they are not among the 17 original requirements. All database files skip without `TEST_DATABASE_URL` and are picked up automatically by `test:db-embedded`; none of them is in the 12 excluded multi-connection cases.
+
+| Rule | Where |
+|---|---|
+| Positions table: defaults, unique name per department (any case), money limits, department/position consistency (composite key + CHECK) | `schema.test.js` (migration 005 block, 7 cases) |
+| Position validation shares the salary-profile rules; one function writes salary profiles | `positionSchema.test.js`, `salaryProfileService.test.js` |
+| Positions API: HR only, CRUD, duplicates, full-body edit, audit, delete guard | `positionsApi.test.js` |
+| Department `positionCount`, detail route, delete blocked by positions (message order) | `orgstructure.test.js` |
+| Employee schema/422/400 mapping and `loadAssignablePosition` (pure) | `positionAssign.test.js` |
+| Package copied on create; apply / decline on position change; manual edit stays personal; later position edit leaves people alone; department-change rules; mismatch 422; job title owned by the position; clearing keeps salary; employee role denied; rollback leaves no half-created employee; approved payroll unchanged and next draft uses the new salary | `positions.test.js` (15 cases) |
+| Frontend: department name rules, delete explanation (positions before employees), error mapping, address id check | `frontend/tests/departmentView.test.js` (8) |
+| Frontend: position form validation, exact money (type, store, show, type again), full-body payload, change detection, server-field mapping, rows, totals, delete and edit notices | `frontend/tests/positionForm.test.js` (12) |
+| Frontend: employee create/patch payloads with `positionId` and `applyPositionSalary`, department change drops or restores the position, salary plan (preview, change, same, cleared), save-error mapping, and a drift guard that every key the browser sends appears in the server schemas | `frontend/tests/employeeForm.test.js` |
+| Frontend: sidebar is the 8 items in order, Departments active on the detail route, locked tablet reaches only `/hr/qr` | `frontend/tests/hrNav.test.js` |
+| Still manual: whole flow on a fresh database and on the deployed Render URL from a phone | task 6.12 |

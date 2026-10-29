@@ -10,4 +10,4 @@ export const dbSkip = !url ? 'TEST_DATABASE_URL not set'
 if (!dbSkip) process.env.DATABASE_URL = url;
 
 export const TRUNCATE_ALL =
-  'TRUNCATE audit_logs, payroll_entry_items, payroll_entries, deduction_items, payroll_periods, salary_profiles, other_taxes, income_tax_brackets, holidays, leave_requests, leave_balances, attendance_tokens, attendance_records, sessions, employees, users, departments, shifts RESTART IDENTITY CASCADE';
+  'TRUNCATE audit_logs, payroll_entry_items, payroll_entries, deduction_items, payroll_periods, salary_profiles, positions, other_taxes, income_tax_brackets, holidays, leave_requests, leave_balances, attendance_tokens, attendance_records, sessions, employees, users, departments, shifts RESTART IDENTITY CASCADE';

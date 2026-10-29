@@ -8,6 +8,7 @@ export const idParams = { id: v.int({ required: true, min: 1 }) };
 export const reasonBody = { reason: v.string({ max: 500 }) };
 
 const EMPLOYMENT_TYPES = ['full_time', 'part_time', 'contract', 'intern'];
+export const JOB_TITLE_MAX = 100; // positions (services/positions.js) use the same limit: the position name becomes the job title
 
 const employeeFields = (create) => ({
   employeeCode: v.string({ required: create, max: 40, pattern: /^[A-Za-z0-9][A-Za-z0-9._/-]*$/,
@@ -16,7 +17,8 @@ const employeeFields = (create) => ({
   email: v.email({ required: create }),
   phone: v.string({ nullable: true, max: 30, pattern: /^[0-9+()\-.\s]+$/, patternMessage: 'Digits and + ( ) - . only' }),
   departmentId: v.int({ nullable: true, min: 1 }),
-  jobTitle: v.string({ nullable: true, max: 100 }),
+  jobTitle: v.string({ nullable: true, max: JOB_TITLE_MAX }), // ignored while the employee holds a position: the position name is the title
+  positionId: v.int({ nullable: true, min: 1 }), // must belong to departmentId (task 6.5); null clears it
   startDate: v.date({ required: create }),
   employmentType: v.enum({ values: EMPLOYMENT_TYPES, ...(create ? { default: 'full_time' } : {}) }),
   shiftId: v.int({ min: 1 }), // omitted on create = the first shift
@@ -24,7 +26,9 @@ const employeeFields = (create) => ({
 
 // The password is never trimmed; strength is checked in the route with services/password.js.
 export const employeeCreate = { ...employeeFields(true), password: v.string({ required: true, trim: false, max: 256 }) };
-export const employeeUpdate = employeeFields(false);
+// applyPositionSalary: only meaningful together with a positionId; true copies that position's salary package onto the
+// employee, false or omitted keeps the current salary. Never accepted on create (a position always applies there).
+export const employeeUpdate = { ...employeeFields(false), applyPositionSalary: v.boolean() };
 export const employeeListQuery = {
   ...pageSchema,
   search: v.string({ max: 100 }),
@@ -35,6 +39,7 @@ export const employeeListQuery = {
 
 export const departmentBody = { name: v.string({ required: true, max: 100 }) };
 export const departmentListQuery = { ...pageSchema, search: v.string({ max: 100 }) };
+export const positionListQuery = { ...pageSchema, search: v.string({ max: 100 }) };
 
 const shiftFields = (create) => ({
   name: v.string({ required: create, max: 100 }),

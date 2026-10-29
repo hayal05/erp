@@ -39,6 +39,7 @@ test('departments and shifts are HR-only: 401 anonymous, 403 employees', { skip 
     assert.equal((await request(app).get(base)).status, 401, base);
     assert.equal((await emp.get(base)).status, 403, base);
     assert.equal((await emp.post(base).send({ name: 'Sneaky', startTime: '09:00', endTime: '10:00' })).status, 403, base);
+    assert.equal((await emp.get(`${base}/1`)).status, 403, base);
     assert.equal((await emp.patch(`${base}/1`).send({ name: 'Sneaky' })).status, 403, base);
     assert.equal((await emp.delete(`${base}/1`)).status, 403, base);
   }
@@ -47,7 +48,7 @@ test('departments and shifts are HR-only: 401 anonymous, 403 employees', { skip 
 test('departments: create, list with employee counts, rename, search, paginate', { skip }, async () => {
   const created = await hr.post('/api/departments').send({ name: '  Finance  ' });
   assert.equal(created.status, 201);
-  assert.deepEqual(created.body, { id: created.body.id, name: 'Finance', employeeCount: 0 });
+  assert.deepEqual(created.body, { id: created.body.id, name: 'Finance', employeeCount: 0, positionCount: 0 });
   assert.equal((await audit('department.create', created.body.id)).length, 1);
 
   for (const name of ['Sales East', 'Sales West', 'Sales North']) await hr.post('/api/departments').send({ name });
@@ -91,6 +92,58 @@ test('departments: an unused one can be deleted, one with employees (even inacti
   assert.equal((await hr.delete(`/api/departments/${free.id}`)).status, 204);
   assert.equal((await audit('department.delete', free.id)).length, 1);
   assert.equal((await hr.delete(`/api/departments/${free.id}`)).status, 404);
+});
+
+test('departments: list and detail carry positionCount; detail 404s and rejects bad ids (task 6.4)', { skip }, async () => {
+  const dept = (await hr.post('/api/departments').send({ name: 'Counted' })).body;
+  const other = (await hr.post('/api/departments').send({ name: 'Counted Elsewhere' })).body;
+  assert.equal(dept.positionCount, 0);
+  for (const name of ['Clerk', 'Lead']) assert.equal((await hr.post(`/api/departments/${dept.id}/positions`).send({ name, basicMinor: 100000, allowanceMinor: 0 })).status, 201);
+  await hr.post(`/api/departments/${other.id}/positions`).send({ name: 'Clerk', basicMinor: 100000, allowanceMinor: 0 });
+  await hire(dept.id);
+
+  const detail = await hr.get(`/api/departments/${dept.id}`);
+  assert.equal(detail.status, 200);
+  assert.deepEqual(detail.body, { id: dept.id, name: 'Counted', employeeCount: 1, positionCount: 2 });
+  assert.match(detail.headers['cache-control'], /no-store/);
+  const row = (await hr.get('/api/departments?search=counted')).body.items.find((d) => d.id === dept.id);
+  assert.deepEqual([row.employeeCount, row.positionCount], [1, 2]);
+  assert.equal((await hr.get(`/api/departments/${other.id}`)).body.positionCount, 1); // positions of another department are not counted
+  const renamed = await hr.patch(`/api/departments/${dept.id}`).send({ name: 'Counted Dept' });
+  assert.deepEqual([renamed.body.employeeCount, renamed.body.positionCount], [1, 2]); // write responses carry the counts too
+
+  assert.equal((await hr.get('/api/departments/999999')).status, 404);
+  assert.equal((await hr.get('/api/departments/abc')).status, 400);
+  assert.equal((await request(app).get(`/api/departments/${dept.id}`)).status, 401);
+});
+
+test('departments: delete is refused while positions exist, with its own message, and works once they are gone (task 6.4)', { skip }, async () => {
+  const dept = (await hr.post('/api/departments').send({ name: 'Has Positions' })).body;
+  const pos = (await hr.post(`/api/departments/${dept.id}/positions`).send({ name: 'Analyst', basicMinor: 200000, allowanceMinor: 0 })).body;
+
+  const blocked = await hr.delete(`/api/departments/${dept.id}`);
+  assert.deepEqual([blocked.status, errorCode(blocked)], [409, 'in_use']);
+  assert.match(blocked.body.error.message, /positions/i);
+  assert.equal((await audit('department.delete', dept.id)).length, 0);
+  assert.equal((await hr.get(`/api/departments/${dept.id}`)).body.positionCount, 1); // nothing was removed
+
+  assert.equal((await hr.delete(`/api/positions/${pos.id}`)).status, 204);
+  assert.equal((await hr.delete(`/api/departments/${dept.id}`)).status, 204);
+  assert.equal((await audit('department.delete', dept.id)).length, 1);
+});
+
+test('departments: with both positions and employees, the positions message wins; employees still block afterwards (task 6.4)', { skip }, async () => {
+  const dept = (await hr.post('/api/departments').send({ name: 'Both' })).body;
+  const pos = (await hr.post(`/api/departments/${dept.id}/positions`).send({ name: 'Rep', basicMinor: 100000, allowanceMinor: 0 })).body;
+  await hire(dept.id);
+  const first = await hr.delete(`/api/departments/${dept.id}`);
+  assert.equal(first.status, 409);
+  assert.match(first.body.error.message, /positions/i);
+
+  await hr.delete(`/api/positions/${pos.id}`);
+  const second = await hr.delete(`/api/departments/${dept.id}`);
+  assert.equal(second.status, 409);
+  assert.match(second.body.error.message, /employees/i);
 });
 
 test('shifts: create with defaults, list ordered by start time, patch, audit', { skip }, async () => {

@@ -74,3 +74,8 @@ What it costs: more to read, more to maintain, a larger review surface for a "ab
 3. **Trim selectively**, for example overlapping test files or optional page states. The saving would be a few hundred lines, not thousands, and this report does not identify safe candidates; that needs a deliberate review.
 
 Whichever is chosen, rerun the count script (or real cloc) after any change and update this file.
+
+
+## Update after Phase 6 (2026-10-29, task 6.13)
+
+Recounted with `plan/references/count-loc.py` (same definitions as above; still not cloc): **16,145 code lines in 229 files** (JS 12,303, JSX 3,020, SQL 397, CSS 290, JSON 74, YAML 42, HTML 19). Production code **7,978** (backend 3,206, frontend 3,941 + CSS 290, SQL 397, config 144); tests **8,167** (backend 6,922, frontend 1,245). Against the 5.8 figures that is +782 production and +1,020 tests (+1,802 total); the per-area table and caveats are in `plan/loc-budget.md`. **Verdict unchanged:** the 9,000 ceiling is exceeded when tests count (16,145), and the decision requested in section "Decision needed from the owner" is still open. Production code alone is 978 under the ceiling. Run real cloc (command above) to confirm the official figure.

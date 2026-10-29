@@ -330,3 +330,75 @@ test('a draft period can be deleted with its entries; one-time deductions it con
   assert.deepEqual([(await query('SELECT count(*)::int AS n FROM payroll_entries')).rows[0].n, (await query('SELECT count(*)::int AS n FROM payroll_entry_items')).rows[0].n], [0, 0]);
   assert.equal((await query('SELECT applied_period_id FROM deduction_items WHERE id = $1', [item])).rows[0].applied_period_id, null);
 });
+
+// ---- Migration 005 (task 6.1): positions and employees.position_id
+const addDept = async (name) => Number((await query('INSERT INTO departments (name) VALUES ($1) RETURNING id', [name])).rows[0].id);
+const addPosition = async (departmentId, name, over = {}) => {
+  const p = { basic: 500000, allowance: 100000, ...over };
+  return Number((await query(
+    'INSERT INTO positions (department_id, name, basic_minor, allowance_minor) VALUES ($1, $2, $3, $4) RETURNING id',
+    [departmentId, name, p.basic, p.allowance])).rows[0].id);
+};
+
+test('positions: defaults mirror salary_profiles (zero money, all flags true) and updated_at moves on change', { skip }, async () => {
+  const d = await addDept('Defaults Dept');
+  const { rows: [p] } = await query(`INSERT INTO positions (department_id, name) VALUES ($1, 'Cashier') RETURNING *`, [d]);
+  assert.deepEqual([Number(p.basic_minor), Number(p.allowance_minor), p.allowance_taxable, p.allowance_pensionable, p.pension_applies], [0, 0, true, true, true]);
+  await query(`SELECT pg_sleep(0.01)`);
+  const { rows: [after] } = await query(`UPDATE positions SET basic_minor = 1 WHERE id = $1 RETURNING updated_at > created_at AS moved`, [p.id]);
+  assert.equal(after.moved, true);
+});
+
+test('positions: name unique per department (case-insensitive), reusable across departments, never blank', { skip }, async () => {
+  const [a, b] = [await addDept('Unique A'), await addDept('Unique B')];
+  await addPosition(a, 'Manager');
+  await rejects(`INSERT INTO positions (department_id, name) VALUES ($1, 'manager')`, [a], /positions_name_key/);
+  await addPosition(b, 'Manager'); // another department may use the same name
+  await rejects(`INSERT INTO positions (department_id, name) VALUES ($1, '   ')`, [a], /positions_name_check/);
+});
+
+test('positions: money uses the same limits as salary profiles', { skip }, async () => {
+  const d = await addDept('Money Dept');
+  await rejects(`INSERT INTO positions (department_id, name, basic_minor) VALUES ($1, 'Neg basic', -1)`, [d], /positions_basic_minor_check/);
+  await rejects(`INSERT INTO positions (department_id, name, allowance_minor) VALUES ($1, 'Neg allowance', -1)`, [d], /positions_allowance_minor_check/);
+  await rejects(`INSERT INTO positions (department_id, name, basic_minor) VALUES ($1, 'Too big', 10000000000000)`, [d], /positions_basic_minor_check/);
+  await addPosition(d, 'Max', { basic: 9999999999999, allowance: 9999999999999 });
+});
+
+test('positions: a department that has positions cannot be deleted; an empty one can', { skip }, async () => {
+  const [full, empty] = [await addDept('Has positions'), await addDept('No positions')];
+  await addPosition(full, 'Clerk');
+  await rejects('DELETE FROM departments WHERE id = $1', [full], /foreign key|restrict/i);
+  await query('DELETE FROM departments WHERE id = $1', [empty]);
+});
+
+test('employees.position_id: optional, same-department only, and a position in use cannot be deleted', { skip }, async () => {
+  const [sales, ops] = [await addDept('Sales 005'), await addDept('Ops 005')];
+  const [seller, planner] = [await addPosition(sales, 'Seller'), await addPosition(ops, 'Planner')];
+  const emp = await mkEmployee('POS-001');
+  assert.equal((await query('SELECT position_id FROM employees WHERE id = $1', [emp])).rows[0].position_id, null); // existing behaviour
+
+  const assign = (dept, pos) => query('UPDATE employees SET department_id = $2, position_id = $3 WHERE id = $1', [emp, dept, pos]);
+  await assign(sales, seller); // own department: fine
+  await rejects('UPDATE employees SET position_id = $2 WHERE id = $1', [emp, planner], /employees_position_department_fkey/); // other department
+  await rejects('UPDATE employees SET department_id = $2 WHERE id = $1', [emp, ops], /employees_position_department_fkey/); // moving department with a stale position
+  await assign(ops, null); // clearing the position while moving is the supported path
+  await assign(ops, planner);
+  await rejects('UPDATE employees SET department_id = NULL WHERE id = $1', [emp], /employees_position_needs_department|employees_position_department_fkey/);
+  await rejects('DELETE FROM positions WHERE id = $1', [planner], /foreign key|restrict/i); // in use
+  await assign(ops, null);
+  await query('DELETE FROM positions WHERE id = $1', [planner]); // unused now
+});
+
+test('employees.position_id: a position with no department is refused', { skip }, async () => {
+  const d = await addDept('Orphan check');
+  const pos = await addPosition(d, 'Lead');
+  const emp = await mkEmployee('POS-002');
+  await rejects('UPDATE employees SET position_id = $2 WHERE id = $1', [emp, pos], /employees_position_needs_department/);
+});
+
+test('005 does not touch payroll: salary_profiles and payroll_entries keep their shape', { skip }, async () => {
+  const { rows } = await query(`SELECT table_name, column_name FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name IN ('salary_profiles', 'payroll_entries') AND column_name LIKE '%position%'`);
+  assert.deepEqual(rows, []);
+});

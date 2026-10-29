@@ -8,8 +8,8 @@ Everything needed to build the MVP, in one folder.
 0. `project status.md` — current progress, decisions and open questions. Updated every session.
 1. `references/spec-digest.md` — requirements by section number (§). Tasks cite these.
 2. `references/ui-notes.md` — layout reference.
-3. `schedule.md` — 21-day plan with checkboxes.
-4. `tasks/phase-1…5-*.md` — every small task, with the spec sections to read, the files to open/create, and a "done when" check.
+3. `schedule.md` — 21-day plan with checkboxes, plus Phase 6 (Days 22-24: Departments, Positions, default salary).
+4. `tasks/phase-1…6-*.md` — every small task, with the spec sections to read, the files to open/create, and a "done when" check.
 5. `loc-budget.md` — LOC estimates (target 7,000, ceiling 9,000).
 
 ## How to use a task

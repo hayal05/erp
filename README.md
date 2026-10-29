@@ -159,6 +159,29 @@ Details and the full per-service variable matrix: `plan/references/render-config
 
 ---
 
+### 4.5 Deploying a release that adds a migration (migration 005, Departments and positions)
+
+Migration `005_positions.sql` is **additive**: it adds a `positions` table and one nullable column, `employees.position_id`. It does not rewrite or delete any existing row, and no payroll table is touched. Even so, it changes a live database, so:
+
+1. **Take a backup first:** a Neon branch of the production database (check Neon's current documentation for how) and/or a `pg_dump` as in section 7.1. This is the way back if anything surprises you; do not skip it.
+2. **Record the approved payroll totals before the deploy** (direct Neon URL):
+
+   ```bash
+   psql "<neon direct url>" -At -F ' | ' -c "
+     SELECT to_char(p.period_month, 'YYYY-MM'), p.status, count(*), sum(e.gross_minor), sum(e.net_minor)
+     FROM payroll_periods p JOIN payroll_entries e ON e.period_id = p.id
+     WHERE p.status IN ('approved', 'paid')
+     GROUP BY p.period_month, p.status ORDER BY p.period_month;" > payroll-before.txt
+   ```
+
+3. **Deploy once** from the Render dashboard. The start command applies `005` automatically before the server starts; if the migration fails the service does not start (and the previous deploy keeps running).
+4. **Run the same query again** into `payroll-after.txt` and compare: `diff payroll-before.txt payroll-after.txt` must print nothing. (Approved periods are also protected by database triggers; this is a second, independent check.) Check that `SELECT filename FROM schema_migrations ORDER BY 1;` lists five files.
+5. Open Departments in the app and add a department and a position as a smoke test.
+
+The schema change is backwards compatible, so an older version of the app should keep running on the new schema (it ignores the new table and column); this was not tested. Not verified here: the migration on Neon itself (it was applied and re-applied on a local PostgreSQL 16 server, including onto a database that already held employees and a salary profile).
+
+---
+
 ## 5. UptimeRobot (keep the free service awake)
 
 A free Render web service sleeps after a period without traffic, and the first request after that is slow. Since the web app is served by this same service, a sleeping service also means a slow first page load, so the keep-alive matters more than in a split deployment. A monitor that pings `/health` regularly avoids this, and also alerts you if the API is down. `/health` does not touch the database, so frequent pings are cheap.
@@ -177,12 +200,24 @@ Check Render's current free-tier rules before relying on this, as they change. I
 natra-erp/
 ├── backend/        Express API: src/{routes,services,middleware,db}, tests/, scripts/
 ├── frontend/       React app: src/{components,pages,api}, tests/
-├── database/migrations/   001 core · 002 attendance · 003 leave · 004 payroll
+├── database/migrations/   001 core · 002 attendance · 003 leave · 004 payroll · 005 positions
 ├── plan/           task list, decisions, session notes, test evidence
 ├── loc-report.md   actual size of the code base and how it was counted
 ├── render.yaml     Render Blueprint (one service: API + built frontend)
 └── .env.example    every setting, documented
 ```
+
+### 6.1 Departments, positions and default salaries (HR guide)
+
+HR sidebar: **Departments**, right after Employees. Add a department there, then open it to manage its **positions**.
+
+- **A position** is a job inside one department with a default monthly salary: basic salary, one allowance (with "taxable" and "pensionable" flags) and a pension flag. These are the same five fields as an employee's salary, so the package copies across unchanged.
+- **New employee:** choose the department, then a position. The form shows the salary the position gives; saving the employee also saves that salary, in one step (if either fails, neither is saved). The job title becomes the position name. With no position, nothing changes from before: no salary is created until HR sets one with the **Salary** button.
+- **Changing an employee's position:** the form shows the **current salary beside the new position's salary** and a checkbox, **Apply new position salary**, checked by default. Unchecking it keeps the current salary (for exceptional cases). Removing a position keeps the salary and the last job title.
+- **A position is a template, copied when it is assigned.** Editing a position's salary never changes employees who already have it, and a salary edited by hand for one employee (Salary button) is that person's exception only. Renaming a position does update the job title of the employees on it (their salaries are untouched).
+- **Existing employees are not moved automatically.** Assign positions by hand, one by one; until then they keep their free-text job title and their salary.
+- **Payroll:** a salary change affects **draft** payrolls only. Approved and paid payrolls keep their saved amounts; payroll calculation itself is unchanged.
+- **Guards:** a position held by any employee (active or not) cannot be deleted; a department with positions or employees cannot be deleted; a position must belong to the employee's department. Every change is written to the audit log (`position.*`, `department.*`, and the salary change with the position it came from).
 
 ## 7. Operations guide
 
@@ -218,7 +253,7 @@ psql "<new direct url>" -c "SELECT count(*) FROM employees;" \
                         -c "SELECT filename FROM schema_migrations ORDER BY 1;"
 ```
 
-The last query should list the four migration files (`001_core.sql` to `004_payroll.sql`). Then set `DATABASE_URL` (pooled) and `MIGRATION_DATABASE_URL` (direct) in Render to the new database and redeploy the API. The start command runs the migrator first; because the dump includes the applied-migration records with their checksums, it should report nothing to apply. The dump also contains the extension the leave tables need (`btree_gist`); if the target refuses it, tell your database host.
+The last query should list the five migration files (`001_core.sql` to `005_positions.sql`). Then set `DATABASE_URL` (pooled) and `MIGRATION_DATABASE_URL` (direct) in Render to the new database and redeploy the API. The start command runs the migrator first; because the dump includes the applied-migration records with their checksums, it should report nothing to apply. The dump also contains the extension the leave tables need (`btree_gist`); if the target refuses it, tell your database host.
 
 Things to know after a restore:
 
@@ -316,6 +351,7 @@ Honest summary of what has and has not been proven (details in `plan/project sta
 - Automated tests pass, including the database suites on a real PostgreSQL server. They do not prove a live Render/Neon/Cloudinary setup.
 - **Not yet verified:** a real deployment on Render, real Cloudinary privacy (run the smoke script above), cookies across the deployed hosts, and the tablet + phone camera flow on real devices (task 5.9).
 - Money is stored in integer minor units (1 ETB = 100). No tax brackets, pension rates or deductions are pre-filled; the values you enter are yours to set.
-- Size: 14,343 lines of code including 7,147 of tests (production code alone 7,196), against a budget of 9,000: over budget when tests count. See `loc-report.md`.
+- Size: 16,145 lines of code including 8,167 of tests (production code alone 7,978), against a budget of 9,000: over budget when tests count. Counted with `plan/references/count-loc.py`, not with cloc. See `loc-report.md`.
+- **Departments, positions and default salaries (Phase 6):** the database, API and tests for tasks 6.1 to 6.3 were run against a real PostgreSQL server. Tasks 6.4 to 6.11 (department and employee API changes, their database tests, and the Departments, department detail and employee form pages) were written in an environment with no PostgreSQL and no installable packages: **their tests and the frontend build have not been run, and the new pages have never been opened in a browser.** The whole-flow check on a fresh database and on a phone (task 6.12) is still to do. Run section 2's commands and click through the new pages before relying on them.
 - MVP shifts are same-day only (a shift cannot cross midnight).
 - Backups, selfie retention/deletion, the manual attendance fallback and the same-day-shift limit are documented in section 7. Those procedures are written from the code and standard tooling; none was run against a real Neon/Cloudinary account.

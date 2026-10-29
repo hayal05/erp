@@ -4,6 +4,8 @@ import { homePath, redirectTarget } from './api/paths.js';
 import Login from './pages/Login.jsx';
 import HrLayout from './components/HrLayout.jsx';
 import Employees from './pages/Employees.jsx';
+import Departments from './pages/Departments.jsx';
+import DepartmentDetail from './pages/DepartmentDetail.jsx';
 import Attendance from './pages/Attendance.jsx';
 import HrLeave from './pages/Leave.jsx';
 import Settings from './pages/Settings.jsx';
@@ -68,6 +70,8 @@ export default function App() {
         <Route path="/hr" element={<RequireRole role="hr"><HrLayout /></RequireRole>}>
           <Route index element={<Dashboard />} />
           <Route path="employees" element={<Employees />} />
+          <Route path="departments" element={<Departments />} />
+          <Route path="departments/:id" element={<DepartmentDetail />} />
           <Route path="attendance" element={<Attendance />} />
           <Route path="qr" element={<QrAttendance />} />
           <Route path="leave" element={<HrLeave />} />

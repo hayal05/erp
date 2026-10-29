@@ -8,15 +8,18 @@ import { audit } from '../services/audit.js';
 import { likePattern, pageOffset, pageResult } from '../services/sql.js';
 import { isFkViolation, translateDbError } from '../services/dbErrors.js';
 import { departmentBody, departmentListQuery, idParams } from '../services/hrSchemas.js';
+import { departmentPositions } from './positions.js';
 
 const router = Router();
 router.use(noStore, requireHr);
+router.use('/:id/positions', departmentPositions); // list + create positions of one department (task 6.3)
 
-const toDepartment = (r) => ({ id: Number(r.id), name: r.name, employeeCount: r.employee_count });
+const toDepartment = (r) => ({ id: Number(r.id), name: r.name, employeeCount: r.employee_count, positionCount: r.position_count });
+// One column list for the list, the detail and every write response, so they always carry the same counts (task 6.4).
+const SELECT = `SELECT d.id, d.name, (SELECT count(*)::int FROM employees e WHERE e.department_id = d.id) AS employee_count,
+  (SELECT count(*)::int FROM positions p WHERE p.department_id = d.id) AS position_count FROM departments d`;
 async function findDepartment(db, id) {
-  const { rows: [r] } = await db.query(
-    `SELECT d.id, d.name, (SELECT count(*)::int FROM employees e WHERE e.department_id = d.id) AS employee_count
-       FROM departments d WHERE d.id = $1`, [id]);
+  const { rows: [r] } = await db.query(`${SELECT} WHERE d.id = $1`, [id]);
   return r ? toDepartment(r) : null;
 }
 const notFound = () => new HttpError(404, 'Department not found', 'not_found');
@@ -26,12 +29,18 @@ router.get('/', validate(departmentListQuery, 'query'), wrap(async (req, res) =>
   const params = q.search ? [likePattern(q.search)] : [];
   const where = q.search ? `WHERE d.name ILIKE $1 ESCAPE '\\'` : '';
   const [{ rows }, { rows: [{ n: total }] }] = await Promise.all([
-    query(`SELECT d.id, d.name, (SELECT count(*)::int FROM employees e WHERE e.department_id = d.id) AS employee_count
-             FROM departments d ${where} ORDER BY lower(d.name), d.id
+    query(`${SELECT} ${where} ORDER BY lower(d.name), d.id
             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [...params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n FROM departments d ${where}`, params),
   ]);
   res.json(pageResult(rows.map(toDepartment), q, total));
+}));
+
+// Detail: the department page (task 6.9) needs the name and counts of one department.
+router.get('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
+  const found = await findDepartment({ query }, req.params.id);
+  if (!found) throw notFound();
+  res.json(found);
 }));
 
 router.post('/', validate(departmentBody), wrap(async (req, res) => {
@@ -58,13 +67,17 @@ router.patch('/:id', validate(idParams, 'params'), validate(departmentBody), wra
   res.json(updated);
 }));
 
-// Departments hold no history of their own, so an unused one can be removed; the foreign key
-// (ON DELETE RESTRICT) refuses while any employee, active or not, still belongs to it.
+// Departments hold no history of their own, so an unused one can be removed. Positions are checked first, so the message
+// names the real blocker; the foreign key (ON DELETE RESTRICT) then refuses while any employee, active or not, still belongs to it.
+// The department row is locked FOR UPDATE here and creating a position takes FOR SHARE on it, so a position cannot appear mid-delete.
 router.delete('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
   const { id } = req.params;
   await withTransaction(async (db) => {
     const { rows: [cur] } = await db.query('SELECT name FROM departments WHERE id = $1 FOR UPDATE', [id]);
     if (!cur) throw notFound();
+    if ((await db.query('SELECT 1 FROM positions WHERE department_id = $1 LIMIT 1', [id])).rowCount) {
+      throw new HttpError(409, 'Department still has positions. Delete its positions first.', 'in_use');
+    }
     try {
       await db.query('DELETE FROM departments WHERE id = $1', [id]);
     } catch (err) {

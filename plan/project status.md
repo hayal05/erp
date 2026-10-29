@@ -1,3 +1,161 @@
+# Latest session — task 6.13 docs and LOC recount (2026-10-29)
+
+**6.13 docs done; 6.12 skipped because it cannot run here** (it needs the whole stack and a browser, then a phone on the deployed URL). **README:** new section 6.1 (HR guide to Departments, positions and default salaries), new section 4.5 (deploying migration 005: backup first, record approved/paid payroll totals before, deploy once, same query after and `diff` must be empty, five migrations, smoke test), migration lists updated to five, and the status section says plainly that 6.4 to 6.11 are unrun and 6.12 is not done. **LOC (count-loc.py, not cloc):** 16,145 total = 7,978 production + 8,167 tests; Phase 6 added +782 production and +1,020 tests (about 2.6x its ~700 estimate); written up in `plan/loc-budget.md` and `loc-report.md`; the ceiling is still exceeded when tests count and the owner decision from 5.8 is still open. No application code changed this session.
+
+**Still yours (needs a real environment):** (1) run the backend suite with `TEST_DATABASE_URL=...` (expected 576), `npm --prefix frontend test` (153) and `npm --prefix frontend run build`; (2) click through `/hr/departments`, a department page and the employee form (checklists in the 6.8, 6.9 and 6.10 entries); (3) tick 6.4 to 6.11; (4) 6.12 whole-flow check, then on the deployed URL from a phone; (5) real `cloc` if you want the official figure; (6) the deploy steps in README 4.5. Phase 5.9 (end-to-end device check) is still open and should come before deploying Phase 6.
+
+Next: nothing left to build in Phase 6 that can be done without a running stack. When you re-upload after the verification run, send the failures (if any) and the next session fixes them; otherwise the next step is 6.12, then 5.9.
+
+---
+
+# Latest session — task 6.11 frontend tests reviewed and extended (2026-10-29)
+
+**6.11 done in code.** Reviewed the frontend tests written in 6.7 to 6.10 against the done-when and closed three gaps: the employee dialog's server-error mapping is now the pure, tested `employeeSaveError` (the dialog calls it; behavior unchanged); two money-conversion tests in `positionForm.test.js` (exact minor units, round trip, ceiling, readable errors); and a drift guard in `employeeForm.test.js` that fails if a key the browser sends is missing from the server schemas. Mutation-checked (three deliberate breakages each failed the intended tests). Frontend **153 pass / 0 fail**. All 121 original tests pass except two changed on purpose with stated reasons (`hrNav` pinned list in 6.7, `employeeForm` patch payload in 6.10). The Phase 6 test map in `references/required-tests.md` lists the frontend files. No backend, migration or CSS change.
+
+**Not verified:** build and browser rendering (no installable packages here); `EmployeeDialog.jsx` was syntax-checked after the small refactor. **Verification debt, now 6.4 to 6.11:** `TEST_DATABASE_URL=... npm --prefix backend test` (expected 576), `npm --prefix frontend test` (153), `npm --prefix frontend run build`, the click-through checklists in the 6.8, 6.9 and 6.10 entries, then tick 6.4 to 6.11 in `schedule.md` and the phase file.
+
+Next: 6.12 whole-flow check. **This cannot be done from the build sandbox**: it needs the full stack running (PostgreSQL, built frontend, a browser) and then the deployed Render URL on a phone, so it needs your machine or a session with working `npm ci`. Then 6.13 (README, LOC recount, Neon backup note), which can be written without the stack. Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.10 code written (2026-10-29)
+
+**6.10 done in code:** the employee dialog now has Department and **Position** (instead of the free-text job title). New employee: choosing a position shows a read-only salary preview and sends only `positionId`. Existing employee: changing the position shows **Current salary** beside **New position salary** with the **"Apply new position salary"** checkbox (checked by default) and sends `positionId` plus `applyPositionSalary`; clearing sends `positionId: null`; changing department empties the position (switching back restores it). Files: `EmployeeDialog.jsx`, new `PositionSalaryPreview.jsx`, `employeeForm.js`, `positionForm.js`, `styles.css`, tests in `employeeForm.test.js`. Frontend tests **147 pass** (139 + 8). One existing test assertion was changed on purpose (`jobTitle` is no longer patched; the position owns it), stated in the phase file. No backend change.
+
+**Decisions to confirm (details in the 6.10 entry):** the legacy free-text title can no longer be edited or cleared here; no "reset to position salary" button for an unchanged position (the server can do it); the form says so when old and new salary are identical.
+
+**Not verified:** build and browser rendering (no installable packages here). **Verification debt, now 6.4 to 6.10:** `TEST_DATABASE_URL=... npm --prefix backend test` (expected 576), `npm --prefix frontend test` (147), `npm --prefix frontend run build`, click-through checklists in the 6.8, 6.9 and 6.10 entries, then tick 6.4 to 6.10.
+
+Next: 6.11 frontend tests (most of them already exist from 6.8 to 6.10: `departmentView.test.js`, `positionForm.test.js`, `employeeForm.test.js`, `hrNav.test.js`; 6.11 is a review for gaps against its done-when, then ticks), then 6.12 the whole-flow check, which needs a running stack. Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.9 code written (2026-10-29)
+
+**6.9 done in code:** the department detail page exists. New files in `frontend/src/pages/`: `DepartmentDetail.jsx` (header with counts, search, Positions and salary table, Add / Edit / Delete, pager, states), `PositionDialog.jsx` (add and edit one position), `positionForm.js` (pure: validation, full-body builder reusing the salary-profile money rules, change detection, server-field mapping, row formatting, exact monthly total, delete and edit notices) and `tests/positionForm.test.js` (10 tests); `departmentView.js` gained `departmentIdFromParam` and `App.jsx` routes `/hr/departments/:id` to the page. Frontend tests **139 pass** (129 + 10). No backend, migration or CSS change; it uses the 6.3 positions API and the 6.4 department detail as they are.
+
+**Behavior worth knowing:** the page says in plain words that editing a position never changes people already on it, and the dialog warns that renaming updates their job title (6.3 behavior). Delete of a held position is blocked with an explanation (server rule `in_use`). The basic-salary field starts empty on purpose.
+
+**Not verified:** `npm --prefix frontend run build` and any browser rendering (no installable packages here); JSX syntax-checked with `tsc` only. **Verification debt, now 6.4 to 6.9:** `TEST_DATABASE_URL=... npm --prefix backend test` (expected 576), `npm --prefix frontend test` (139), `npm --prefix frontend run build`, then click through `/hr/departments` and a department page against the live API (checklists in the 6.8 and 6.9 entries); then tick 6.4 to 6.9 in `schedule.md` and the phase file.
+
+Next: 6.10 employee form: Department, Position, read-only salary preview, and the "Apply new position salary" checkbox on a position change (`EmployeeDialog.jsx`, `employeeForm.js`, `Employees.jsx`; sends `positionId` and `applyPositionSalary` as built in 6.5). Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.8 code written (2026-10-29)
+
+**6.8 done in code:** `/hr/departments` is now a real page. New files: `frontend/src/pages/Departments.jsx` (search, table of departments with Positions and Employees counts, Add department, Rename, Delete, pager, loading/error/empty states), `DepartmentDialog.jsx` (add and rename in one dialog), `departmentView.js` (pure: validation, trimmed body, change detection, plural labels, delete explanation, error mapping) and `tests/departmentView.test.js` (7 tests). `App.jsx` swaps the placeholder for the page; the department detail route stays a placeholder for 6.9. Frontend tests **129 pass** (122 + 7). No backend, migration or CSS change; it uses the 6.4 API as it is (list with `positionCount`, create, patch, delete).
+
+**Behavior worth knowing:** delete is explained before it is tried (positions block first, then employees, matching the server's order); when blocked the dialog offers only Close; if the server refuses anyway its message appears inside the dialog and the list reloads. A rename to the same name says "Nothing was changed." Duplicate names show under the field (409 from the server).
+
+**Not verified:** `npm --prefix frontend run build` and any browser rendering (this sandbox cannot install packages); the three JSX files and `App.jsx` were only syntax-checked with `tsc`. **Verification debt, now 6.4 to 6.8:** with PostgreSQL and packages available, run `TEST_DATABASE_URL=... npm --prefix backend test` (expected 576 pass), `npm --prefix frontend test` (129) and `npm --prefix frontend run build`; open `/hr/departments` against the live API (checklist in the 6.8 entry of the phase file); then tick 6.4 to 6.8 in `schedule.md` and the phase file.
+
+Next: 6.9 department detail with the Positions and salary table (`pages/DepartmentDetail.jsx`, `PositionDialog.jsx`, `positionForm.js`; uses `GET /api/departments/:id` and the 6.3 positions API). Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.7 code written (2026-10-29)
+
+**6.7 done in code:** the HR sidebar has **Departments** right after Employees (8 items), routes `/hr/departments` and `/hr/departments/:id` exist as placeholders, icon added, spec §4 digest updated. Frontend tests **122 pass** (121 + 1 new; the pinned nav list was updated on purpose). A locked tablet is still redirected to `/hr/qr` from both new paths (tested in `hrNav.test.js`); no server change.
+
+**Not verified:** `npm --prefix frontend run build` (this sandbox cannot install packages), so `App.jsx` and `HrLayout.jsx` edits have not been compiled; they are small (one import, one icon entry, two routes).
+
+**Verification debt, now 6.4 to 6.7:** with PostgreSQL and packages available, run `TEST_DATABASE_URL=... npm --prefix backend test` (expected 576 pass), `npm --prefix frontend test` (122) and `npm --prefix frontend run build`; then tick 6.4 to 6.7 in `schedule.md` and the phase file. Note: `tests/positions.test.js` (6.6) was already in the project folder when this session started and was reviewed against the 6.4/6.5 behavior, not rewritten.
+
+Next: 6.8 Departments page with Add department (`pages/Departments.jsx`, `DepartmentDialog.jsx`, `departmentView.js`). Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.6 tests written, nothing in 6.4-6.6 verified yet (2026-10-29)
+
+**6.6 written:** `backend/tests/positions.test.js`, 15 database cases covering the cross-feature rules listed in the 6.6 entry of `tasks/phase-6-departments-positions.md` (package copy on create, apply vs decline on position change, personal manual edits, position edits never reaching employees, department-change rules, 422 mismatch, job title ownership, rollback via a temporary failing trigger, approved payroll byte-identical, next draft uses the new salary). Phase 6 test map added to `references/required-tests.md`. No product code changed this session.
+
+**Verification debt, in one place:** 6.4, 6.5 and 6.6 are all unverified because this sandbox has no PostgreSQL and cannot install packages (tried `npm ci` and `npm ci --offline`). Run `TEST_DATABASE_URL=... npm --prefix backend test` once; expected 576 pass (553 + 3 + 5 + 15). If something fails, check first whether it is a test slip (the file has never executed), then whether it is real. When green, tick 6.4, 6.5 and 6.6 in `schedule.md` and the phase file. Frontend suite is untouched (121).
+
+Next: 6.7 sidebar item and routes (frontend: `hrNav.js`, `App.jsx`, `hrNav.test.js`, spec §4 to 8 items). Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.5 code written, verification pending (2026-10-29)
+
+**6.5 implemented; not yet verified against a database** (same sandbox limits as 6.4: no PostgreSQL, `npm ci` cannot download). Employee create now accepts `positionId`: the position's name becomes the job title and its salary package becomes the new employee's salary profile in the same transaction. Employee update accepts `positionId` and `applyPositionSalary`: the salary is replaced only when the flag is true; clearing a position keeps the salary; changing department without a position in the new one clears the position in the same UPDATE. Employee responses carry `positionId` and `positionName`. Payroll code, migrations and the frontend are untouched. Decisions made while building are listed in the 6.5 entry of `tasks/phase-6-departments-positions.md` (422 vs 400, job title owned by the position, apply-without-position is 422, re-apply to reset).
+
+**Tests:** 5 new pure tests in `tests/positionAssign.test.js` (schema, `loadAssignablePosition` with a fake db, 422 backstops); with the existing pure suites 28/28 pass. The database cases (package copied on create, apply vs decline on change, rollback, approved payroll unchanged, employee role denied) are task 6.6.
+
+**Outstanding verification, in order:** run `TEST_DATABASE_URL=... npm --prefix backend test` once; expect 556 from 6.4 plus the 5 new pure tests; then tick 6.4 and 6.5. Changes to existing tests: none needed for 6.5 (employee shapes are only extended).
+
+Next: 6.6 backend tests (`tests/positions.test.js`), which is also where 6.4/6.5 get exercised on a real database. Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.4 code written, verification pending (2026-10-29)
+
+**6.4 implemented in `backend/src/routes/departments.js`; not yet verified.** List, detail and all write responses of departments now include `positionCount`. A detail route `GET /api/departments/:id` was added (it did not exist; the 6.9 department page needs it). Deleting a department with positions is refused with 409 `in_use` and its own message, checked before the employee foreign key so the message names the real blocker. The 6.3 carry-over about the wrong "still has employees" wording is resolved.
+
+**Tests written:** 3 new in `tests/orgstructure.test.js`, the HR-only walk extended to the new route, and one existing shape assertion updated on purpose (`positionCount: 0`).
+
+**NOT run:** this sandbox has no PostgreSQL and `npm ci` cannot download packages (network off), so only `node --check` was possible. **First thing next session:** `TEST_DATABASE_URL=... npm --prefix backend test` (or at least `orgstructure.test.js` and `positionsApi.test.js`), then tick 6.4 in `schedule.md` and `phase-6`. Expected: 553 + 3 = 556 pass.
+
+Next: 6.5 employee create and update apply the position package (carry-over from 6.1: moving an employee to another department must clear or replace the position in the same statement). Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.3 completed (2026-10-29)
+
+**6.3 done.** Positions API in `backend/src/routes/positions.js`: list and create under a department (`/api/departments/:id/positions`), edit and delete by id (`/api/positions/:id`). HR only (anonymous 401, employee 403, locked tablet 423), audited (`position.create/update/delete`), duplicate names 409 per department ignoring case, edit takes the full body and cannot move a position to another department, an unchanged edit writes and audits nothing, delete is refused with 409 `in_use` while any employee holds the position. Creating locks the department row so a concurrent department delete cannot leave an orphan.
+
+**One decision added while building:** renaming a position updates the `job_title` of the employees on it (they got the name copied at assignment, so it would otherwise go stale on payslips and exports). Their salary profiles are not touched; the test checks the whole row including `updated_at`. The audit row records how many titles moved.
+
+**Verified (native PostgreSQL 16):** 8 new API tests in `positionsApi.test.js`; full backend suite **553 pass / 0 fail / 0 skipped** (was 545); production smoke and root build pass. Frontend untouched.
+
+**Known and deliberate:** the department delete handler still words every foreign-key refusal as "still has employees"; fixing that message and adding `positionCount` is task 6.4, next.
+
+Next: 6.4 department API additions. 10 Phase 6 tasks remain: 6.4-6.13. Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.2 completed (2026-10-29)
+
+**6.2 done.** One function now writes salary profiles: `saveSalaryProfile` in `backend/src/services/salaryProfiles.js` (employee row lock, 404 for a missing employee, unchanged saves write and audit nothing, create/update audit with an optional `source` marker). The Salary dialog's PUT route calls it, and tasks 6.5 (employee create / position change) will call the same function, so the two paths cannot drift apart. The five salary fields and their limits live once in `SALARY_SCHEMA`; salary profiles and the new `parsePosition` (in `backend/src/services/positions.js`) both use it. Position names are limited to the job-title length through one shared constant (`JOB_TITLE_MAX`), because the server writes the position name into `employees.job_title`.
+
+**Behavior unchanged:** the existing salary-profile route and tests pass without modification; the route lost 22 lines and gained 5. No migration, no payroll code touched.
+
+**Verified (native PostgreSQL 16):** 13 new tests (7 unit, 6 database); full backend suite **545 pass / 0 fail / 0 skipped** (was 532); root build passes. Frontend untouched (121 pass at 6.1).
+
+Next: 6.3 positions API (`GET/POST /api/departments/:id/positions`, `PATCH/DELETE /api/positions/:id`). 11 Phase 6 tasks remain: 6.3-6.13. Phase 5.9 is still open.
+
+---
+
+# Latest session — task 6.1 completed (2026-10-29)
+
+**6.1 done.** `database/migrations/005_positions.sql` adds the `positions` table (department, name, basic, one allowance with taxable/pensionable flags, pension flag; same limits as `salary_profiles`; unique name per department ignoring case; RESTRICT to departments) and a nullable `employees.position_id`. Extra safety beyond the task text: a composite foreign key `(department_id, position_id)` makes the database refuse a position from another department, with a CHECK closing the "position but no department" gap. Payroll tables are not touched. `backend/tests/helpers.js` cleanup list now includes `positions`.
+
+**Verified on a native PostgreSQL 16 server (apt, port 5433):** 7 new tests in `schema.test.js` (defaults, name uniqueness and blanks, money limits, department delete guard, same-department rule, position-in-use delete guard, payroll untouched); migration applied to a database already at 004 with real employees, a department and a salary profile: existing data unchanged, both employees have no position, second run applies nothing, 5 migrations recorded; full backend suite **532 pass / 0 fail / 0 skipped** (was 517 plus 8 single-service tests plus these 7); frontend 121 pass. Not verified: Neon itself (take a Neon branch or backup before the first deploy that carries 005).
+
+**Carry-over notes for later tasks** (also in the 6.1 entry): the department delete handler currently reports every foreign-key refusal as "still has employees", so 6.4 must check positions first; moving an employee to another department while keeping the old position is refused by the database, so 6.5 must clear or replace the position in the same update.
+
+Next: 6.2 (position validation and one shared function that writes salary profiles). 12 Phase 6 tasks remain: 6.2-6.13. Phase 5.9 is still open.
+
+---
+
+# Latest session — Phase 6 planned and scope confirmed (2026-10-29)
+
+**Owner request:** a dedicated **Departments** sidebar item with an **Add department** button; inside a department, a **positions and salary table**; when a department and position are chosen for a new employee, the salary is taken from the position by default and stays editable per employee afterwards.
+
+**Owner answers:** (1) no automatic move of existing employees onto positions, the owner does it manually; (2) when an employee's position changes, the new position's salary applies by default but remains editable after saving for exceptional cases; (3) **one allowance** (several were considered, then dropped, so payroll code is untouched).
+
+**Done this session (planning only, no application code changed beyond the earlier single-service merge):** added `tasks/phase-6-departments-positions.md` (13 tasks, 6.1-6.13, Days 22-24, 10 design decisions, risks), Phase 6 block in `schedule.md`, ~700 LOC estimate in `loc-budget.md`, plan README pointer.
+
+**Findings that shaped the plan:** departments have an API but no page; employees only have a free-text `job_title`; salary profiles are not created on employee creation; the sidebar is pinned to 7 items by `hrNav.test.js` and spec §4, so this change deliberately makes it 8.
+
+**Key decisions:** `positions` carries the same five salary columns as `salary_profiles`, so a package copies straight across; creating an employee copies the position's salary in the same transaction; on a position change the form shows current versus new salary with an "Apply new position salary" checkbox checked by default, audited before and after; editing a position never changes existing employees; one shared service function writes salary profiles (used by the salary route and the employee routes).
+
+**Confirmed by owner:** editing a position's salary leaves existing employees unchanged, and a manual salary edit is an exception for that one person only. No open questions remain for Phase 6.
+
+Not started: 6.1-6.13. Phase 5.9 (end-to-end device check on the deployed single service) is still open and should be done before Phase 6 is built. Take a Neon backup/branch before deploying migration 005.
+
+---
+
 # Latest session — task 5.8 written, ceiling exceeded (2026-10-28)
 
 `loc-report.md` added at the repo root. **Result: 14,343 code lines (by language JS 10,922, JSX 2,587, SQL 375, CSS 284, YAML/JSON/HTML 175; by area production 7,196 incl. 184 config, tests 7,147) = 59% over the 9,000 ceiling when counted the way loc-budget.md defines it (tests included). Tests are 7,147 of that; production code alone is 7,196 (3% over the 7,000 target, within the ceiling).** The 5.8 done-when ("within 9,000") is therefore NOT met and is reported as such, not redefined. cloc is not installable here (no network), so the count comes from the new `plan/references/count-loc.py` (cloc's blank/comment/code definitions); run real cloc to confirm. Per-phase actuals cannot be reconstructed (no version control, only totals logged). Three options for the owner are in the report; recommended: restate the budget as production-code-only with tests tracked separately. No application code changed.

@@ -335,3 +335,11 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .dashboard-number { font-size: clamp(1.5rem,2.5vw,2.1rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 @media (max-width: 1100px) { .dashboard-small-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 700px) { .dashboard-main-stats { grid-template-columns: minmax(0,1fr); } }
+
+/* Employee form: salary of a position, alone (new employee) or beside the current salary (position change) — task 6.10 */
+.salary-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 700px) { .salary-compare { grid-template-columns: minmax(0, 1fr); } }
+.salary-pkg { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 8px; }
+.salary-pkg dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; }
+.salary-pkg dt { color: var(--muted); }
+.salary-pkg dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }

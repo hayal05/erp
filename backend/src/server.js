@@ -9,6 +9,7 @@ import { lockGate } from './middleware/lock.js';
 import authRoutes from './routes/auth.js';
 import employeeRoutes from './routes/employees.js';
 import departmentRoutes from './routes/departments.js';
+import positionRoutes from './routes/positions.js';
 import shiftRoutes from './routes/shifts.js';
 import qrRoutes from './routes/qr.js';
 import attendanceRoutes from './routes/attendance.js';
@@ -54,6 +55,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use('/api/auth', authRoutes);
   app.use('/api/employees', employeeRoutes);
   app.use('/api/departments', departmentRoutes);
+  app.use('/api/positions', positionRoutes); // edit/delete by id; list+create live under /api/departments/:id/positions (6.3)
   app.use('/api/shifts', shiftRoutes);
   app.use('/api/qr', qrRoutes);
   app.use('/api/attendance', attendanceRoutes);

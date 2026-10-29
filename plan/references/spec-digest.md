@@ -6,7 +6,7 @@
 
 **§3 Roles** HR: manage employees, departments, schedules, salaries, attendance, selfie review, corrections (with reasons), leave, tax/pension/deduction config, payroll generate/approve/pay, payslips/reports, QR page lock/unlock, settings. Employee: login, profile, scan QR + selfie, attendance history, leave requests/balances, own approved payslips. Employees never see others' data.
 
-**§4 HR interface** Left sidebar: Dashboard, Employees, Attendance, QR Attendance, Leave, Payroll, Settings. Responsive.
+**§4 HR interface** Left sidebar: Dashboard, Employees, **Departments**, Attendance, QR Attendance, Leave, Payroll, Settings. Responsive. *(Departments added by the owner's Phase 6 request, 2026-10-29; the original spec listed seven items.)*
 
 **§5 Tablet architecture** No kiosk app/role/account. HR logs in on tablet → QR Attendance → Lock QR Screen. Lock is per authenticated session; other devices unaffected.
 
