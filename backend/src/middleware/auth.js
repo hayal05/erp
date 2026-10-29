@@ -1,3 +1,4 @@
+import { PERMISSIONS, hasPermission } from '../services/permissions.js';
 import { HttpError } from './error.js';
 
 // Marks a middleware as an access guard so tests can prove every router (except login) has one.
@@ -22,3 +23,15 @@ export function requireRole(roles, { allowLocked = false } = {}) {
 
 export const requireHr = requireRole('hr');
 export const requireEmployee = requireRole('employee');
+
+// New permission guard. Existing role guards remain during the staged migration (Tasks 2–6).
+// accessRoles must be loaded from the database, never copied from query/body/header input.
+export function requirePermission(permission, { allowLocked = false } = {}) {
+  if (!PERMISSIONS.includes(permission)) throw new Error(`Unknown permission: ${permission}`);
+  return guard((req, res, next) => {
+    if (!req.user) return next(new HttpError(401, 'Not signed in', 'unauthenticated'));
+    if (!hasPermission(req.user, permission)) return next(new HttpError(403, 'You do not have access to this resource', 'forbidden'));
+    if (req.session?.locked && !allowLocked) return next(new HttpError(423, 'This screen is locked', 'screen_locked'));
+    next();
+  });
+}
