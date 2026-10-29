@@ -23,6 +23,7 @@ import settingsRoutes from './routes/settings.js';
 import payrollSettingsRoutes from './routes/payrollSettings.js';
 import dashboardRoutes from './routes/dashboard.js';
 import payslipRoutes from './routes/payslips.js';
+import settlementRoutes from './routes/settlements.js';
 import payrollCostRoutes from './routes/payrollCosts.js';
 import payrollRoutes from './routes/payroll.js';
 import salaryProfileRoutes from './routes/salaryProfiles.js';
@@ -72,6 +73,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use('/api/payroll-settings', payrollSettingsRoutes); // brackets (4.5), pension + bases (4.6); other taxes follow
   app.use('/api/deductions', deductionRoutes);
   app.use('/api/salary-profiles', salaryProfileRoutes);
+  app.use('/api/settlements', settlementRoutes);
   app.use('/api/payroll-costs', payrollCostRoutes);
   app.use('/api/payroll', payrollRoutes);
   app.use('/api/payslips', payslipRoutes);

@@ -12,6 +12,7 @@ import Attendance from './pages/Attendance.jsx';
 import HrLeave from './pages/Leave.jsx';
 import Settings from './pages/Settings.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Settlements from './pages/Settlements.jsx';
 import Payroll from './pages/Payroll.jsx';
 import CompanyCosts from './pages/CompanyCosts.jsx';
 import PayrollSettings from './pages/PayrollSettings.jsx';
@@ -82,6 +83,7 @@ export default function App() {
           <Route path="qr" element={<QrAttendance />} />
           <Route path="leave" element={<HrLeave />} />
           <Route path="payroll" element={<Payroll />} />
+          <Route path="settlements" element={<Settlements />} />
           <Route path="payroll/company-costs" element={<CompanyCosts />} />
           <Route path="settings" element={<Settings />} />
           <Route path="settings/payroll" element={<PayrollSettings />} />

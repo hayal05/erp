@@ -10,6 +10,7 @@ export const HR_NAV = [
   { key: 'qr', label: 'QR Attendance', to: '/hr/qr' },
   { key: 'leave', label: 'Leave', to: '/hr/leave' },
   { key: 'payroll', label: 'Payroll', to: '/hr/payroll' },
+  { key: 'settlements', label: 'Settlements', to: '/hr/settlements' },
   { key: 'announcements', label: 'Announcements', to: '/hr/announcements' },
   { key: 'settings', label: 'Settings', to: '/hr/settings' },
 ];
