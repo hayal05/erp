@@ -24,7 +24,7 @@ before(async()=>{
  const shift=(await q("INSERT INTO shifts(name,start_time,end_time,work_days) VALUES('Day','09:00','17:00','{1,2,3,4,5}') RETURNING id")).rows[0].id;
  for(const[email,role,code,basic]of[['hr@settlements.test','hr',null,0],['employee@settlements.test','employee','E1',250000],['other@settlements.test','employee','E2',100000]]){
   const u=(await q('INSERT INTO users(email,full_name,password_hash,role) VALUES($1,$1,$2,$3) RETURNING id',[email,await hashPassword('password-123'),role])).rows[0].id;
-  if(role==='hr')hrId=u;
+  if(role==='hr'){hrId=u;await q("INSERT INTO access_grants(user_id,access_role) VALUES($1,'admin')",[u]);}
   if(code){const e=(await q("INSERT INTO employees(employee_code,user_id,start_date,shift_id) VALUES($1,$2,'2025-01-01',$3) RETURNING id",[code,u,shift])).rows[0].id;
    await q('INSERT INTO salary_profiles(employee_id,basic_minor,allowance_minor) VALUES($1,$2,10000)',[e,basic]);}
  }

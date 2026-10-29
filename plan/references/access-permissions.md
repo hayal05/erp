@@ -107,3 +107,21 @@ password. QR validation requires the issuer's current active HR/Admin grant, so
 revoking the grant invalidates previously issued codes. HR-granted employee users
 can manage draft announcements; ordinary employees and Finance see active notices only.
 Finance-specific cost/settlement endpoint conversion remains Task 6.
+
+## Task 6 — Finance operations
+
+Company costs and all settlement operations now require their Finance capabilities;
+the overview dashboard requires Admin access because it combines management domains.
+Finance uses the Task 5 per-operation payroll/settings/deduction guards to review,
+approve and mark payroll paid, manage calculation settings and deduction items, and
+record remittances. Finance cannot prepare/regenerate/edit drafts or alter HR facts.
+
+Changing calculation inputs leaves approval blocked until HR regenerates/recalculates
+and the table is reviewed again. Draft payroll text now explains the HR/Finance handoff
+instead of incorrectly describing a Finance-visible draft as permanently locked.
+Approved/paid snapshots and settlement balance/ledger protections remain unchanged.
+
+Cross-role integration covers a Finance-only employee account, the HR-to-Finance
+handoff, changed-input approval rejection, costs, partial/full settlement recording,
+deduction CRUD, denial of HR mutations and immediate financial-access revocation.
+Task 7 still covers account safeguards; Task 8 the audit bar; Task 9 broad integration.

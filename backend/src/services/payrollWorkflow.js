@@ -8,7 +8,7 @@ export const snapshotItem = (r) => ({ kind: r.kind, label: r.label, rate: r.rate
 const canonicalItems = (items) => items.map((i) => JSON.stringify({ kind: i.kind, label: i.label, rate: i.rate ?? null, baseMinor: i.baseMinor ?? null, amountMinor: i.amountMinor, sourceId: i.sourceId ?? null })).sort();
 export function assertEntryCurrent(entry, items, computed) {
   const stale = ENTRY_FIELDS.some((k) => entry[k] !== computed[k]) || JSON.stringify(canonicalItems(items)) !== JSON.stringify(canonicalItems(computed.items));
-  if (stale) throw new HttpError(409, 'Payroll settings changed. Recalculate this draft entry and review its totals before approving.', 'stale_payroll', { entryId: entry.id });
+  if (stale) throw new HttpError(409, 'Payroll inputs changed. Ask HR to regenerate or recalculate this draft and review its totals before approving.', 'stale_payroll', { entryId: entry.id });
 }
 // The caller supplies one repeatable-read transaction and configuration loaded under the settings lock.
 // Approval never changes reviewed amounts: stale entries must be recalculated explicitly before retrying.
