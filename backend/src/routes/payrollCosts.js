@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { withTransaction } from '../db/pool.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { wrap, HttpError } from '../middleware/error.js';
 import { validate } from '../middleware/validate.js';
 import { pageSchema, pageOffset, pageResult } from '../services/sql.js';
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('company_costs.read'));
 const amount = value => {
   const n = Number(value);
   if (!Number.isSafeInteger(n)) throw new HttpError(500, 'Company cost total exceeds the supported amount range', 'amount_range');

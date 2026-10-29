@@ -137,3 +137,42 @@ test('HR grants enable HR operations and draft preparation but cannot approve, p
  assert.equal((await staff.get('/api/employees')).status,403);
  assert.equal((await staff.get('/api/auth/me')).body.user.role,'employee');
 });
+
+test('Finance reviews and settles HR payroll without editing HR records or preparing drafts',async()=>{
+ const {signIn}=await import('./hrClient.js');
+ await q("INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,'finance',$2)",[employeeId,rootId]);
+ const finance=await signIn(app,{email:'emp@access.test',password:'password-123'});
+ assert.deepEqual((await finance.get('/api/auth/me')).body.user.accessRoles,['finance']);
+ const period=(await q("SELECT id FROM payroll_periods WHERE period_month='2026-07-01'")).rows[0].id;
+ const entries=await finance.get(`/api/payroll/periods/${period}/entries`);assert.equal(entries.status,200);const entry=entries.body.items[0];
+ for(const path of ['/api/employees','/api/attendance-records','/api/payroll-settings/calculation','/api/payroll-settings/other-taxes'])assert.equal((await finance.get(path)).status,200,path);
+ assert.equal((await finance.get(`/api/salary-profiles/${entry.employeeId}`)).status,200);
+ for(const [path,body]of [['/api/employees',{}],['/api/departments',{}],['/api/shifts',{}],['/api/qr/tokens',{}],['/api/announcements',{}],['/api/payroll/periods',{month:'2026-08'}],[`/api/payroll/periods/${period}/regenerate`,{}],['/api/leave-admin/balances',{}]])assert.equal((await finance.post(path).send(body)).status,403,path);
+ assert.equal((await finance.patch(`/api/payroll/periods/${period}/entries/${entry.id}`).send({basicMinor:1})).status,403);
+ assert.equal((await finance.patch(`/api/employees/${entry.employeeId}`).send({phone:'0999999999'})).status,403);
+ assert.equal((await finance.put(`/api/salary-profiles/${entry.employeeId}`).send({})).status,403);
+ assert.equal((await finance.patch('/api/attendance-records/1').send({})).status,403);
+ assert.equal((await finance.get('/api/access-management/employees')).status,403);
+ assert.equal((await finance.get('/api/dashboard')).status,403);
+ let r=await finance.patch('/api/payroll-settings/calculation').send({companyPensionRate:11});assert.equal(r.status,200,JSON.stringify(r.body));
+ assert.equal((await finance.post(`/api/payroll/periods/${period}/approve`).send({})).status,409); // changed inputs require HR regeneration
+ const admin=await signIn(app,{email:'root@access.test',password:'password-123'});
+ assert.equal((await admin.post(`/api/payroll/periods/${period}/regenerate`).send({})).status,200);
+ r=await finance.post(`/api/payroll/periods/${period}/approve`).send({});assert.equal(r.status,200,JSON.stringify(r.body));
+ assert.equal((await finance.post(`/api/payroll/periods/${period}/pay`).send({paidOn:'2026-07-31'})).status,200);
+ r=await finance.get('/api/payroll-costs');assert.equal(r.status,200);assert.ok(r.body.items.some(x=>x.id===Number(period)));
+ r=await finance.get(`/api/settlements/${period}`);assert.equal(r.status,200,JSON.stringify(r.body));const balance=r.body;
+ const {randomUUID}=await import('node:crypto');
+ r=await finance.post(`/api/settlements/${period}/payments`).send({kind:'income_tax',amountMinor:balance.incomeTaxBalanceMinor,paymentDate:balance.today,reference:'FINANCE-PAID',notes:'',requestId:randomUUID()});assert.equal(r.status,201,JSON.stringify(r.body));
+ assert.equal((await finance.get(`/api/settlements/${period}`)).body.incomeTaxBalanceMinor,0);
+ const id=entry.employeeId;
+ r=await finance.post('/api/deductions').send({employeeId:id,kind:'advance',name:'Finance advance',amountMinor:1000,recurring:false,enabled:true});assert.equal(r.status,201,JSON.stringify(r.body));
+ assert.equal((await finance.patch(`/api/deductions/${r.body.id}`).send({amountMinor:1200})).status,200);
+ assert.equal((await finance.delete(`/api/deductions/${r.body.id}`)).status,204);
+ const saved=(await finance.get(`/api/payroll/periods/${period}/entries`)).body.items;
+ await q("UPDATE access_grants SET revoked_at=now(),revoked_by_user_id=$2,revoke_reason='Finance removed' WHERE user_id=$1 AND access_role='finance' AND revoked_at IS NULL",[employeeId,rootId]);
+ assert.equal((await finance.get('/api/payroll-costs')).status,403);assert.equal((await finance.get('/api/settlements')).status,403);
+ assert.equal((await finance.get(`/api/payroll/periods/${period}/entries`)).status,403);
+ assert.deepEqual((await admin.get(`/api/payroll/periods/${period}/entries`)).body.items,saved);
+ assert.equal((await finance.get('/api/auth/me')).body.user.role,'employee');
+});
