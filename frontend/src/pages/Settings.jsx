@@ -81,7 +81,7 @@ function Holidays() {
           <Button onClick={() => setRemoving(null)} disabled={removing?.busy}>Keep it</Button>
           <Button variant="danger" busy={removing?.busy} onClick={remove}>Delete holiday</Button>
         </>}>
-        <p>{removing?.holiday.name}, {removing && formatWorkDate(removing.holiday.date)}. It will count as a normal working day for new leave requests. Requests already made keep their day count.</p>
+        <p>{removing?.holiday.name}, {removing && formatWorkDate(removing.holiday.date)}. Future leave requests will treat it as a working day.</p>
       </Modal>
     </div>
   );
@@ -122,7 +122,7 @@ function Schedules() {
       </div>
       <Table caption="Working schedules" columns={columns} rows={list.items.map(shiftRow)} loading={state.loading} error={state.error} onRetry={refresh}
         empty="No schedules yet. Add one before adding employees." />
-      <p className="muted">Each employee follows one schedule. Its work days decide which days count in a leave request; its hours and grace period decide who is late.</p>
+      <p className="muted">Schedules set working days, hours and lateness.</p>
 
       {dialog && <ShiftDialog key={dialog.shift?.id ?? 'new'} shift={dialog.shift} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); refresh(); }} />}
     </div>

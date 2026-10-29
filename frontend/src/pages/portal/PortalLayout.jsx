@@ -70,7 +70,7 @@ export function PortalHome() {
       <AnnouncementFeed />
       <div className="card stack">
         <strong>Check in or out</strong>
-        <p className="muted">Scan the QR code on the office tablet with your phone camera. You will be asked to take a selfie.</p>
+        <p className="muted">Scan the office QR code, then take a selfie.</p>
       </div>
     </section>
   );

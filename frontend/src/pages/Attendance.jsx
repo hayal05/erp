@@ -44,7 +44,6 @@ function PhotoViewer({ view, onClose }) {
         {state.status === 'error' && (
           <div className="form-error" role="alert">{state.message} <Button size="sm" onClick={() => setAttempt((n) => n + 1)}>Try again</Button></div>
         )}
-        <p className="muted">Photos are for HR review only. This view is recorded in the audit log.</p>
       </div>
     </Modal>
   );

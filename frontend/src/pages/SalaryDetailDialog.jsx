@@ -19,7 +19,7 @@ export function SalaryDetails({ data }) {
   const amount = { key: 'amountMinor', header: 'Amount', align: 'num', render: (r) => money(r.amountMinor) };
   return <div className="stack salary-detail">
     <div className="row between"><p>{e.employeeCode} · {period.month} · {period.currencyCode}</p><Badge tone={period.status === 'draft' ? 'warn' : 'ok'}>{period.status === 'draft' ? 'Draft' : period.status === 'approved' ? 'Approved' : 'Paid'}</Badge></div>
-    <p className="muted">{period.status === 'draft' ? 'Saved draft amounts. Recalculate the entry to apply changed settings or attendance.' : 'Saved payroll amounts and breakdown from this locked period.'}</p>
+    <p className="muted">{period.status === 'draft' ? 'Recalculate this draft to apply changes.' : 'Locked payroll amounts.'}</p>
     {!b.matches && <p className="form-error" role="alert">The saved breakdown does not match the salary totals. Review this payroll before proceeding.</p>}
     <dl className="salary-detail-summary">{summary.map(([label,value]) => <div key={label}><dt>{label}</dt><dd className={label === 'Net salary' && value < 0 ? 'salary-negative' : undefined}>{money(value)}</dd></div>)}</dl>
     <h3>Other tax breakdown</h3>
@@ -30,6 +30,6 @@ export function SalaryDetails({ data }) {
     <p className="salary-detail-total">Other deductions total <strong>{money(b.deductionTotal)}</strong></p>
     <h3>Employer cost</h3>
     <dl className="salary-detail-summary"><div><dt>Gross salary</dt><dd>{money(e.grossMinor)}</dd></div><div><dt>Employer pension ({e.employerPensionRate}%)</dt><dd>{money(e.employerPensionMinor)}</dd></div><div><dt>Total employer cost</dt><dd>{money(e.employerCostMinor)}</dd></div></dl>
-    <p className="muted">Employer pension is paid by the company and does not reduce the employee’s net salary.</p>
+    <p className="muted">Employer pension does not reduce net pay.</p>
   </div>;
 }

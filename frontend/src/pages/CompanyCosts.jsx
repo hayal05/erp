@@ -20,7 +20,7 @@ export default function CompanyCosts() {
     aria-label={`View ${kind === 'salary' ? 'salary paid' : 'company pension'} details for ${r.month}`}>{formatMoney(kind === 'salary' ? r.salaryPaidMinor : r.companyPensionMinor)}</button>;
   return <section className="card stack" aria-labelledby="company-costs-title">
     <div className="row between"><h1 id="company-costs-title">Company costs</h1><Link to="/hr/payroll">Back to payroll</Link></div>
-    <p className="muted">Paid payrolls by payroll month. Salary paid is net pay after employee deductions. Select a total to see every employee. Employer pension is recorded payroll cost; it does not confirm remittance to the pension authority.</p>
+    <p className="muted">Paid payrolls only. Select a total for employee details.</p>
     <Table caption="Monthly company payroll costs" columns={[
       { key: 'month', header: 'Payroll month' }, { key: 'paidOn', header: 'Paid on' }, { key: 'currency', header: 'Currency' },
       { key: 'employeeCount', header: 'Employees', align: 'num' },
@@ -52,7 +52,7 @@ function CostDetails({ period, kind, onClose }) {
       <p><strong>Monthly total: {formatMoney(salary ? period.salaryPaidMinor : period.companyPensionMinor)} {period.currency}</strong></p>
       <Table caption={salary ? 'Employee salary payments' : 'Employer pension contributions'} columns={columns} rows={state.items} loading={state.loading} error={state.error} onRetry={() => setRetry(n => n + 1)} empty="No employee entries" />
       <Pager page={page} pageSize={DETAIL_SIZE} total={state.total} onPage={setPage} disabled={state.loading} />
-      {salary && <p className="muted">Gross salary total: {formatMoney(period.grossMinor)} {period.currency}. Gross salary plus employer pension: {formatMoney(period.employerCostMinor)} {period.currency}.</p>}
+      {salary && <p className="muted">Gross salary: {formatMoney(period.grossMinor)} {period.currency}. Total employer cost: {formatMoney(period.employerCostMinor)} {period.currency}.</p>}
     </div>
   </Modal>;
 }

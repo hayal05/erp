@@ -54,7 +54,7 @@ function TaxBase({ settings, onSaved }) {
           onChange={(e) => { setValue(e.target.value); setError(''); }} />
         <Button variant="primary" busy={busy} disabled={value === settings.taxBase} onClick={save}>Save tax base</Button>
       </div>
-      <p className="muted">Applies to drafts generated from now on. Approved payroll keeps the values it was approved with.</p>
+      <p className="muted">Recalculate drafts to apply changes.</p>
     </div>
   );
 }

@@ -144,7 +144,7 @@ export default function Scan() {
         <h1>Scan to check in</h1>
         <div className="card stack">
           <QrCode size={28} aria-hidden="true" />
-          <p>Scan the QR code on the office tablet with your phone camera. This page opens with your code attached.</p>
+          <p>Scan the office attendance QR code.</p>
         </div>
       </section>
     );
@@ -155,7 +155,7 @@ export default function Scan() {
       <div className="card stack">
         {step === 'idle' || step === 'starting' ? (
           <>
-            <p>Take a quick selfie to confirm your attendance. The camera opens only when you tap the button, and the photo is only sent when you confirm it.</p>
+            <p>Take a selfie, then confirm to submit.</p>
             <Button variant="primary" busy={step === 'starting'} onClick={startCamera}><Camera size={18} aria-hidden="true" /> Open camera</Button>
           </>
         ) : null}

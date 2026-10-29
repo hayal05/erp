@@ -63,7 +63,7 @@ export default function Payroll() {
     </div>
     {state.period?.status === 'paid' && <p className="muted" role="status">Paid on {state.period.paidOn}. This payroll is locked.</p>}
     {state.period && <div className="row between"><div className="row"><h2>Salary sheet · {state.period.month}</h2><Badge tone={editable ? 'warn' : 'ok'}>{state.period.status === 'draft' ? 'Draft' : state.period.status === 'approved' ? 'Approved' : 'Paid'}</Badge></div><span className="muted">Amounts in {state.period.configSnapshot?.settings?.currencyCode ?? 'ETB'}</span></div>}
-    {state.period && <p className="muted">{editable ? 'Select a basic salary or allowance amount to edit this payroll. The server recalculates the totals.' : 'This payroll is locked. Its saved amounts are read-only.'} Select an employee name to view the breakdown. Scroll horizontally to view all nine columns.</p>}
+    {state.period && <p className="muted">{editable ? 'Select salary or allowance to edit.' : 'Payroll locked.'} Select a name for details.</p>}
     <Table caption="Salary sheet" columns={columns} rows={state.entries} loading={state.loading} error={state.error} onRetry={refresh}
       empty={state.period ? 'No salary entries in this period.' : `No payroll for ${shownMonth}. Generate a draft to view the salary sheet.`} />
     {state.period && <Pager page={page} pageSize={PAGE_SIZE} total={state.total} onPage={setPage} disabled={state.loading} />}
@@ -88,10 +88,10 @@ function SalaryEditDialog({ period, entry, field, onClose, onSaved, onConflict }
   }
   return <Modal open title={`Edit salary — ${entry.employeeName}`} onClose={() => !busy && onClose()} footer={<><Button onClick={onClose} disabled={busy}>Cancel</Button><Button variant="primary" form="salary-entry-edit" type="submit" busy={busy}>Save and recalculate</Button></>}>
     <form id="salary-entry-edit" className="stack" onSubmit={submit} noValidate>
-      <p>{entry.employeeCode} · {period.month}. Changes apply to this payroll entry.</p>
+      <p>{entry.employeeCode} · {period.month}. This payroll only.</p>
       {error && <p className="form-error" role="alert">{error}</p>}
       {['basicMinor','allowanceMinor'].map((key) => <Field key={key} label={key === 'basicMinor' ? 'Basic salary' : 'Allowance'} inputMode="decimal" autoFocus={field === key} value={form[key]} disabled={busy} error={errors[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />)}
-      <p className="muted">Tax, employee pension, deductions and net salary are calculated by the server. The employee’s saved salary profile stays unchanged.</p>
+      <p className="muted">Totals recalculate on save. Salary profile stays unchanged.</p>
     </form>
   </Modal>;
 }

@@ -31,9 +31,9 @@ export default function PayrollWorkflowDialog({ action, month, period, total, on
     {conflict ? <Button variant="primary" onClick={onReload}>Reload payroll</Button> : <Button variant="primary" type="submit" form="payroll-workflow" busy={busy}>{titles[action]}</Button>}
   </>}>
     <form id="payroll-workflow" className="stack" onSubmit={submit} noValidate>
-      {action === 'generate' && <p>Create a draft for all active employees using their saved salary profiles and current payroll settings. Review the amounts before approval.</p>}
-      {action === 'approve' && <p>Approve all {total} employee entries in this payroll. Approval saves a snapshot and locks salary amounts and deductions. Review the entire salary sheet before approving.</p>}
-      {action === 'pay' && <><p>Record that this approved payroll has been paid outside the app. This records the date and your user account; it does not transfer money.</p><Field label="Payment date" type="date" min="1000-01-01" max="9999-12-31" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} disabled={busy} error={dateError} /></>}
+      {action === 'generate' && <p>Generate payroll for all active employees?</p>}
+      {action === 'approve' && <p>Approve {total} entries? Salary amounts and deductions will be locked.</p>}
+      {action === 'pay' && <><p>Mark this payroll paid? This records payment; no money is transferred.</p><Field label="Payment date" type="date" min="1000-01-01" max="9999-12-31" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} disabled={busy} error={dateError} /></>}
       {error && <p className="form-error" role="alert">{error}</p>}
     </form>
   </Modal>;

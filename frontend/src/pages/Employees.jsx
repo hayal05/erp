@@ -117,7 +117,7 @@ export default function Employees() {
         </>}>
         {confirm && (
           <div className="stack">
-            <p>{confirm.employee.fullName} will be signed out and will not be able to log in. Their records are kept, and you can activate them again later.</p>
+            <p>{confirm.employee.fullName} will be signed out and blocked from login. Records are kept.</p>
             <Field as="textarea" label="Reason (optional)" maxLength={500} value={confirm.reason} onChange={(e) => setConfirm((c) => ({ ...c, reason: e.target.value }))} />
           </div>
         )}

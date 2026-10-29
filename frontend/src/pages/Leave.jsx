@@ -143,12 +143,12 @@ function Entitlements({ employees }) {
         <Field as="select" label="Employee" placeholder="Choose an employee…" value={employeeId} onChange={(e) => { setEmployeeId(e.target.value); setYear(null); }} options={employees.map(empOption)} />
         {years.length > 0 && <Field as="select" label="Year" value={year ?? data.year} onChange={(e) => setYear(Number(e.target.value))} options={years} />}
       </div>
-      {!employeeId ? <p className="muted">Choose an employee to see and change their leave entitlements.</p> : (
+      {!employeeId ? <p className="muted">Choose an employee.</p> : (
         <Table caption={`Leave balances of ${employee?.fullName ?? 'employee'}`} columns={columns} rowKey="leaveTypeId" rows={data.items}
           loading={state.loading} error={state.error} onRetry={refresh} empty="No leave types" />
       )}
-      {employeeId && data.items.some((b) => !b.hasBalance) && <p className="muted">Unpaid leave has no yearly limit, so it has no entitlement to change.</p>}
-      {data.items.some((b) => b.hasBalance) && <p className="muted">Days are whole working days. Used means approved leave; pending requests are held against the balance until they are decided.</p>}
+      {employeeId && data.items.some((b) => !b.hasBalance) && <p className="muted">Unpaid leave has no annual limit.</p>}
+      {data.items.some((b) => b.hasBalance) && <p className="muted">Working days only. Pending requests reserve the balance.</p>}
 
       {editing && <EntitlementDialog key={`${employeeId}-${editing.leaveTypeId}-${data.year}`} employee={employee} balance={editing} year={data.year}
         onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} />}

@@ -22,9 +22,9 @@ function PolicyForm({ saved, onSaved }) {
   }
   return <form className="stack" onSubmit={save}>
     <h3>Attendance deductions</h3>
-    <p className="muted">Deduction = basic salary × missed working days ÷ scheduled working days in the month. Holidays are excluded. Paid leave and days before employment starts are excluded. Absence counts only after the working day ends; approved unpaid leave includes scheduled days later in the month.</p>
+    <p className="muted">Deduction = basic salary × missed days ÷ scheduled working days.</p>
     {keys.map(([key, label]) => <label key={key}><input type="checkbox" checked={form[key]} disabled={busy} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
-    <p className="muted">Both options start off. Changes apply when generating or recalculating drafts. Approved payroll keeps its saved amounts. The combined deduction is rounded once, with unpaid leave allocated first.</p>
+    <p className="muted">Recalculate drafts to apply changes. Approved payroll stays unchanged.</p>
     <div className="row end"><Button disabled={!dirty || busy} onClick={() => setForm(saved)}>Discard changes</Button><Button variant="primary" type="submit" busy={busy} disabled={!dirty}>Save attendance settings</Button></div>
   </form>;
 }

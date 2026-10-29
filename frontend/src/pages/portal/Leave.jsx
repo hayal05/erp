@@ -116,7 +116,7 @@ export default function Leave() {
           <Field label="To" type="date" value={form.endDate} onChange={set('endDate')} error={errors.fields.endDate} />
         </div>
         <Field as="textarea" rows={3} label="Reason" value={form.reason} onChange={set('reason')} maxLength={500} error={errors.fields.reason}
-          hint="Days off and company holidays are not counted. HR will approve or reject your request." />
+          hint="Working days only. HR approval required." />
         <Button type="submit" variant="primary" busy={busy}>Send request</Button>
       </form>
 

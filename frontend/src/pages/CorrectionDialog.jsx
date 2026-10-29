@@ -47,17 +47,16 @@ export default function CorrectionDialog({ record, onClose, onSaved }) {
       </>}>
       <form id="correction-form" className="form-grid" onSubmit={submit} noValidate>
         <p className="full muted">
-          <strong>{record.fullName}</strong> ({record.employeeCode}) · {formatWorkDate(record.workDate)}. Times are in the company time zone.
-          Selfies are not changed. Every correction is logged with your name and the reason.
+          <strong>{record.fullName}</strong> ({record.employeeCode}) · {formatWorkDate(record.workDate)}. Company time. Corrections are logged.
         </p>
         {error && <div className="form-error full" role="alert">{error}</div>}
         <Field as="select" label="Status" options={STATUS_OPTIONS} {...bind('status')} />
         {form.status === 'late'
           ? <Field label="Minutes late" inputMode="numeric" maxLength={4} autoComplete="off"
-            hint="Leave as is, or blank to calculate from the shift." {...bind('lateMinutes')} />
+            hint="Blank = calculate from shift." {...bind('lateMinutes')} />
           : <div />}
         <Field label="Check-in time" type="time" {...bind('checkInTime')} />
-        <Field label="Check-out time" type="time" hint="Clear it if the person never checked out." {...bind('checkOutTime')} />
+        <Field label="Check-out time" type="time" hint="Clear if no check-out." {...bind('checkOutTime')} />
         <Field as="textarea" className="full" label="Reason for the correction (required)" maxLength={500} rows={3} {...bind('reason')} />
       </form>
     </Modal>

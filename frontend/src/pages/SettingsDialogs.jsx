@@ -44,7 +44,7 @@ export function HolidayDialog({ holiday, year, onClose, onSaved }) {
         {s.error && <div className="form-error" role="alert">{s.error}</div>}
         <Field label="Date" type="date" value={s.form.date} onChange={s.set('date')} error={s.fields.date} />
         <Field label="Name" maxLength={100} autoComplete="off" value={s.form.name} onChange={s.set('name')} error={s.fields.name} />
-        <p className="muted">Holidays are not counted as leave days. Leave requests that were already made keep the day count they had.</p>
+        <p className="muted">Holidays are excluded from new leave requests.</p>
       </form>
     </Modal>
   );
@@ -67,7 +67,7 @@ export function ShiftDialog({ shift, onClose, onSaved }) {
         <Field label="Start time" type="time" value={s.form.startTime} onChange={s.set('startTime')} error={s.fields.startTime} />
         <Field label="End time" type="time" value={s.form.endTime} onChange={s.set('endTime')} error={s.fields.endTime} />
         <Field label="Grace period (minutes)" inputMode="numeric" maxLength={3} autoComplete="off" value={s.form.graceMinutes} onChange={s.set('graceMinutes')}
-          error={s.fields.graceMinutes} hint="Check-ins up to this many minutes after the start are not late." />
+          error={s.fields.graceMinutes} hint="Allowed minutes after shift start." />
         <fieldset className="full weekdays" aria-describedby={s.fields.workDays ? 'weekdays-err' : undefined}>
           <legend>Work days</legend>
           {WEEKDAYS.map(([n, label]) => (
@@ -75,7 +75,7 @@ export function ShiftDialog({ shift, onClose, onSaved }) {
           ))}
           {s.fields.workDays && <small id="weekdays-err" className="field-error">{s.fields.workDays}</small>}
         </fieldset>
-        <p className="full muted">Days not ticked are days off. Leave requests count only the ticked days, minus holidays. Shifts end on the same day they start.</p>
+        <p className="full muted">Select working days. Overnight shifts are not supported.</p>
       </form>
     </Modal>
   );
