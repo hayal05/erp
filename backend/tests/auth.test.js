@@ -33,10 +33,10 @@ after(async () => { if (!skip) await query(TRUNCATE_ALL); await pool.end(); });
 test('login succeeds, sets an HttpOnly cookie, returns the CSRF token and no secrets', { skip }, async () => {
   const res = await login(HR);
   assert.equal(res.status, 200);
-  assert.deepEqual(res.body.user, { id: res.body.user.id, email: HR.email, fullName: 'Hana HR', role: 'hr' });
+  assert.deepEqual(res.body.user, { id: res.body.user.id, email: HR.email, fullName: 'Hana HR', role: 'hr', mustChangePassword: false });
   assert.equal(res.body.locked, false);
   assert.ok(res.body.csrfToken.length >= 40);
-  assert.doesNotMatch(JSON.stringify(res.body), /password|hash/i);
+  assert.doesNotMatch(JSON.stringify(res.body), /password_hash|passwordHash|"(?:password|hash)"\s*:/i);
   assert.match(res.headers['set-cookie'][0], new RegExp(`^${COOKIE_NAME}=.*HttpOnly`, 'i'));
   assert.match(res.headers['cache-control'], /no-store/);
   assert.ok((await query(`SELECT last_login_at FROM users WHERE email = $1`, [HR.email])).rows[0].last_login_at);
@@ -106,7 +106,7 @@ test('/me returns the signed-in user, lock state and CSRF token; anonymous gets 
   assert.equal(me.body.user.email, HR.email);
   assert.equal(me.body.csrfToken, body.csrfToken);
   assert.equal(me.body.locked, false);
-  assert.doesNotMatch(JSON.stringify(me.body), /password|hash/i);
+  assert.doesNotMatch(JSON.stringify(me.body), /password_hash|passwordHash|"(?:password|hash)"\s*:/i);
 });
 
 test('logout needs the CSRF token, then ends the session', { skip }, async () => {
@@ -162,6 +162,11 @@ async function createTwoEmployees() {
     const creds = { email: `staff${n}@natra.test`, password: 'staff-password-123' };
     const res = await hr.post('/api/employees').send({ employeeCode: `S${n}`, fullName: `Staff ${n}`, email: creds.email, startDate: '2026-01-05', password: creds.password });
     assert.equal(res.status, 201, JSON.stringify(res.body));
+    const employee = await signIn(app, creds);
+    const privatePassword = `staff-private-password-${n}`;
+    const changed = await employee.post('/api/auth/password').send({ currentPassword: creds.password, newPassword: privatePassword, confirmPassword: privatePassword });
+    assert.equal(changed.status, 200, JSON.stringify(changed.body));
+    creds.password = privatePassword;
     return { creds, record: res.body };
   };
   return { hr, a: await make(1), b: await make(2) };
