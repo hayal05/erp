@@ -52,7 +52,8 @@ function PhotoViewer({ view, onClose }) {
 
 export default function Attendance() {
   const toast = useToast();
-  const [filters, setFilters] = useState(NO_FILTERS); // empty dates = latest records first; "Today" fills both
+  const [view, setView] = useState('today');
+  const [filters, setFilters] = useState(NO_FILTERS);
   const [page, setPage] = useState(1);
   const [data, setData] = useState({ items: [], total: 0, today: '' });
   const [state, setState] = useState({ loading: true, error: '' });
@@ -73,11 +74,11 @@ export default function Attendance() {
   useEffect(() => {
     const ctrl = new AbortController();
     setState((s) => ({ ...s, loading: true, error: '' }));
-    get('/attendance-records', { page, pageSize: PAGE_SIZE, ...filters }, { signal: ctrl.signal })
-      .then((res) => { setData(res); setState({ loading: false, error: '' }); })
+    get('/attendance-records', { page, pageSize: PAGE_SIZE, ...filters, view }, { signal: ctrl.signal })
+      .then((res) => { if (ctrl.signal.aborted) return; setData(res); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') setState({ loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [page, filters, reload]);
+  }, [page, filters, view, reload]);
 
   const setFilter = (k) => (e) => { setFilters((f) => ({ ...f, [k]: e.target.value })); setPage(1); };
   const rangeBad = filters.from && filters.to && filters.from > filters.to;
@@ -117,14 +118,15 @@ export default function Attendance() {
       <div className="row between">
         <h1>Attendance</h1>
         <div className="row">
-          <Button onClick={() => { if (data.today) { setFilters((f) => ({ ...f, from: data.today, to: data.today })); setPage(1); } }} disabled={!data.today}>Today</Button>
+          <Button variant={view === 'today' ? 'primary' : 'default'} aria-pressed={view === 'today'} onClick={() => { setView('today'); setFilters(NO_FILTERS); setPage(1); }}>Today</Button>
+          <Button variant={view === 'archive' ? 'primary' : 'default'} aria-pressed={view === 'archive'} onClick={() => { setView('archive'); setFilters(NO_FILTERS); setPage(1); }}>Archive</Button>
           {filtered && <Button onClick={() => { setFilters(NO_FILTERS); setPage(1); }}>Clear filters</Button>}
         </div>
       </div>
 
       <div className="toolbar toolbar-5">
-        <Field label="From" type="date" value={filters.from} onChange={setFilter('from')} />
-        <Field label="To" type="date" value={filters.to} onChange={setFilter('to')} error={rangeBad ? 'Must be on or after the start date' : undefined} />
+        <Field disabled={view === 'today'} label="From" type="date" value={filters.from} onChange={setFilter('from')} />
+        <Field disabled={view === 'today'} label="To" type="date" value={filters.to} onChange={setFilter('to')} error={rangeBad ? 'Must be on or after the start date' : undefined} />
         <Field as="select" label="Employee" placeholder="All employees" value={filters.employeeId} onChange={setFilter('employeeId')}
           options={lookups.employees.map((e) => ({ value: e.id, label: `${e.fullName} (${e.employeeCode})` }))} />
         <Field as="select" label="Department" placeholder="All departments" value={filters.departmentId} onChange={setFilter('departmentId')}
@@ -132,8 +134,8 @@ export default function Attendance() {
         <Field as="select" label="Status" placeholder="All statuses" value={filters.status} onChange={setFilter('status')} options={STATUS_OPTIONS} />
       </div>
 
-      <Table caption="Attendance records" columns={columns} rows={rangeBad ? [] : data.items} loading={state.loading} error={state.error} onRetry={refresh}
-        empty={filtered ? 'No attendance records match these filters' : 'No attendance has been recorded yet'} />
+      <Table caption={view === 'today' ? "Today's attendance" : 'Attendance archive'} columns={columns} rows={rangeBad ? [] : data.items} loading={state.loading} error={state.error} onRetry={refresh}
+        empty={filtered ? 'No attendance records match these filters' : view === 'today' ? 'No attendance recorded today' : 'No archived attendance records'} />
       <Pager page={page} pageSize={PAGE_SIZE} total={rangeBad ? 0 : data.total} onPage={setPage} disabled={state.loading} />
 
       {photo && <PhotoViewer key={`${photo.record.id}-${photo.kind}`} view={photo} onClose={() => setPhoto(null)} />}
