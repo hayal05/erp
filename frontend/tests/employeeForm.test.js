@@ -44,8 +44,8 @@ test('form from a record without optional values uses empty strings', () => {
   assert.deepEqual([f.phone, f.departmentId, f.positionId, f.jobTitle, f.password], ['', '', '', '', '']);
 });
 
-test('portal nav: 4 unique tabs under /portal, only Home is exact-match', () => {
-  assert.deepEqual(PORTAL_NAV.map((i) => i.label), ['Home', 'Attendance', 'Leave', 'Payslips']);
+test('portal nav: 5 unique tabs under /portal, only Home is exact-match', () => {
+  assert.deepEqual(PORTAL_NAV.map((i) => i.label), ['Home', 'Attendance', 'Leave', 'Profile', 'Payslips']);
   assert.ok(PORTAL_NAV.every((i) => i.to === '/portal' || i.to.startsWith('/portal/')));
   assert.deepEqual(PORTAL_NAV.filter((i) => i.end).map((i) => i.key), ['home']);
   assert.equal(firstName('  Eli Employee '), 'Eli');

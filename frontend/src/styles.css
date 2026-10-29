@@ -201,7 +201,7 @@ a { color: var(--accent); }
   padding-top: calc(10px + env(safe-area-inset-top)); background: var(--bg-sidebar); border-bottom: 1px solid var(--border); }
 .portal-top .spacer { flex: 1; }
 .portal-content { flex: 1; min-width: 0; padding: 16px; outline: 0; padding-bottom: calc(var(--tap) + 40px + env(safe-area-inset-bottom)); }
-.portal-tabs { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+.portal-tabs { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr);
   max-width: 720px; margin: 0 auto; background: var(--bg-sidebar); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
 .portal-tabs .tab { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; min-height: var(--tap); color: var(--muted);
   text-decoration: none; font-size: .75rem; border-top: 3px solid transparent; }
@@ -343,3 +343,8 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .salary-pkg dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; }
 .salary-pkg dt { color: var(--muted); }
 .salary-pkg dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+.profile-summary { white-space: pre-wrap; overflow-wrap: anywhere; }
+.profile-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.profile-facts dt { color: var(--muted); font-size: .875rem; }
+.profile-facts dd { margin: 4px 0 0; overflow-wrap: anywhere; }

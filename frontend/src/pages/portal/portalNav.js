@@ -3,6 +3,7 @@ export const PORTAL_NAV = [
   { key: 'home', label: 'Home', to: '/portal', end: true },
   { key: 'attendance', label: 'Attendance', to: '/portal/attendance' },
   { key: 'leave', label: 'Leave', to: '/portal/leave' },
+  { key: 'profile', label: 'Profile', to: '/portal/profile' },
   { key: 'payslips', label: 'Payslips', to: '/portal/payslips' },
 ];
 
