@@ -16,11 +16,12 @@ protectedApp.get('/approve',requirePermission('payroll.approve'),(req,res)=>res.
 let rootId,employeeId,cookie,employee;
 before(async()=>{
  const dir=new URL('../../database/migrations/',import.meta.url),files=(await fs.readdir(dir)).filter(f=>f.endsWith('.sql')).sort();
- for(const f of files.filter(f=>!f.startsWith('010_')))await db.exec(await fs.readFile(new URL(f,dir),'utf8'));
+ for(const f of files.filter(f=>f<'010_'))await db.exec(await fs.readFile(new URL(f,dir),'utf8'));
  const hash=await hashPassword('password-123');
  rootId=(await q("INSERT INTO users(email,full_name,password_hash,role) VALUES('root@access.test','Root',$1,'hr') RETURNING id",[hash])).rows[0].id;
  employeeId=(await q("INSERT INTO users(email,full_name,password_hash,role) VALUES('emp@access.test','Employee',$1,'employee') RETURNING id",[hash])).rows[0].id;
  await db.exec(await fs.readFile(new URL('010_access_grants.sql',dir),'utf8'));
+ for(const name of files.filter(n=>n>'010_access_grants.sql'))await db.exec(await fs.readFile(new URL(name,dir),'utf8'));
  employee=request.agent(app);const login=await employee.post('/api/auth/login').send({email:'emp@access.test',password:'password-123'});
  assert.equal(login.status,200);cookie=login.headers['set-cookie'].map(x=>x.split(';')[0]).join('; ');
 });

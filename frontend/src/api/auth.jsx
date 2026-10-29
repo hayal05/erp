@@ -32,7 +32,8 @@ export function AuthProvider({ children }) {
   // Session expired mid-use -> back to the login screen. Server says locked -> reflect it in the UI.
   useEffect(() => {
     onSessionEvent((kind) => {
-      if (kind === 'unauthenticated') apply(null);
+      if (kind === 'permissions_changed') { get('/auth/me').then(apply).catch(e=>{if(e.status===401)apply(null);}); }
+      else if (kind === 'unauthenticated') apply(null);
       else if (kind === 'password_change_required') setState(s => ({ ...s, user: s.user ? { ...s.user, mustChangePassword: true } : null }));
       else if (kind === 'locked') setState((s) => ({ ...s, locked: true }));
     });

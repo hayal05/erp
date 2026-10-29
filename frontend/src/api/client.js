@@ -74,6 +74,7 @@ export async function api(path, { method = 'GET', body, query, signal, responseT
   }
   if (apiErr.code === 'password_change_required') listener('password_change_required');
   else if (apiErr.code === 'unauthenticated') listener('unauthenticated');
+  else if (apiErr.code === 'forbidden') listener('permissions_changed');
   else if (apiErr.code === 'screen_locked') listener('locked');
   throw apiErr;
 }

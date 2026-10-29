@@ -1,3 +1,4 @@
+import {protectPrivilegedAccount,accountConflict} from '../services/accountSafeguards.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
@@ -103,7 +104,7 @@ router.post('/', validate(employeeCreate), wrap(async (req, res) => {
         positionId: position?.id ?? null, salaryApplied: Boolean(position) } });
     if (position) await saveSalaryProfile(db, { employeeId: emp.id, actorId: req.user.id, values: positionSalary(position), source: { type: 'position', positionId: position.id } });
     return findEmployee(db, emp.id);
-  }).catch((err) => { throw translateDbError(err); });
+  }).catch((err) => { throw translateDbError(accountConflict(err)); });
   res.status(201).json(created);
 }));
 
@@ -134,6 +135,7 @@ router.patch('/:id', validate(idParams, 'params'), validate(employeeUpdate), wra
   const updated = await withTransaction(async (db) => {
     const { rows: [row] } = await db.query('SELECT user_id, department_id, position_id FROM employees WHERE id = $1 FOR UPDATE', [id]);
     if (!row) throw notFound();
+    if (Object.hasOwn(fields,'email')) await protectPrivilegedAccount(db,req.user,row.user_id);
     const holdsPosition = row.position_id != null;
     const departmentId = Object.hasOwn(fields, 'departmentId') ? fields.departmentId : optId(row.department_id);
 
@@ -173,6 +175,7 @@ const setStatus = (status) => wrap(async (req, res) => {
   const employee = await withTransaction(async (db) => {
     const { rows: [cur] } = await db.query('SELECT user_id, status FROM employees WHERE id = $1 FOR UPDATE', [id]);
     if (!cur) throw notFound();
+    await protectPrivilegedAccount(db,req.user,cur.user_id);
     if (cur.status !== status) {
       await db.query('UPDATE employees SET status = $2 WHERE id = $1', [id, status]);
       await db.query('UPDATE users SET is_active = $2 WHERE id = $1', [cur.user_id, active]);
@@ -181,7 +184,7 @@ const setStatus = (status) => wrap(async (req, res) => {
         entityType: 'employee', entityId: id, reason: req.body.reason ?? null });
     }
     return findEmployee(db, id);
-  });
+  }).catch(err=>{throw accountConflict(err);});
   res.json(employee);
 });
 router.post('/:id/deactivate', validate(idParams, 'params'), validate(reasonBody), setStatus('inactive'));

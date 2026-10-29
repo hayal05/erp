@@ -125,3 +125,23 @@ Cross-role integration covers a Finance-only employee account, the HR-to-Finance
 handoff, changed-input approval rejection, costs, partial/full settlement recording,
 deduction CRUD, denial of HR mutations and immediate financial-access revocation.
 Task 7 still covers account safeguards; Task 8 the audit bar; Task 9 broad integration.
+
+## Task 7 — account safeguards
+
+Migration 011 protects the last usable Admin at both account and grant level.
+Deactivation through users.is_active or employees.status and Admin-grant revocation
+share a serialized lock-row update. Updating its revision also forces conflicting
+repeatable-read transactions to retry rather than using an obsolete Admin count.
+Inactive users/employees do not count as an alternative usable Admin.
+
+HR cannot change login email or activate/deactivate accounts with active privileged
+grants; Admin must perform those actions. HR may still maintain job facts and ordinary
+employee status. Session loading rejects inactive employee records even if a user's
+is_active flag was not synchronized. Existing per-request grants enforce revocation;
+the frontend refreshes session permissions after forbidden responses without replaying
+writes. Account conflicts return actionable 409 responses.
+
+The new database tests exercise direct SQL and HTTP safeguards, privileged-account
+restrictions, inactive-session rejection and an alternative inactive Admin. Real
+multi-connection race tests remain part of broader integration validation; the embedded
+engine runs a single database session. Task 8 remains audit bars and change history.

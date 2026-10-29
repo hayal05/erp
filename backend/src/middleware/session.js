@@ -35,12 +35,13 @@ export async function loadSession(req, res, next) {
               s.expires_at <= now() AS expired,
               EXTRACT(EPOCH FROM (now() - s.last_seen_at)) * 1000 AS idle_ms,
               u.role, u.email, u.full_name, u.is_active, u.must_change_password,
+              EXISTS(SELECT 1 FROM employees e WHERE e.user_id=u.id AND e.status<>'active') AS employee_inactive,
               ARRAY(SELECT g.access_role FROM access_grants g WHERE g.user_id=u.id AND g.revoked_at IS NULL ORDER BY g.access_role) AS access_roles
          FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.id = $1`, [hashToken(token)]);
 
     const idleExpired = r && !r.locked && Number(r.idle_ms) > POLICY[r.role].idleMs;
-    if (!r || !r.is_active || r.expired || idleExpired) {
+    if (!r || !r.is_active || r.employee_inactive || r.expired || idleExpired) {
       if (r) await query('DELETE FROM sessions WHERE id = $1', [r.id]);
       res.clearCookie(COOKIE_NAME, baseCookie);
       return next();
