@@ -1,4 +1,3 @@
-import CompanyCosts from './CompanyCosts.jsx';
 import PayrollExportButton from './PayrollExportButton.jsx';
 import PayrollWorkflowDialog from './PayrollWorkflowDialog.jsx';
 import { localDate, validMonth, workflowAction } from './payrollWorkflowView.js';
@@ -56,7 +55,7 @@ export default function Payroll() {
   const actionLabel = { generate: 'Generate draft', approve: 'Approve payroll', pay: 'Mark paid' };
   const openWorkflow = () => setWorkflow({ action, month: shownMonth, period: state.period, total: state.total });
   return <section className="stack salary-sheet">
-    <div className="row between"><h1>Payroll</h1><Link to="/hr/settings/payroll">Payroll settings</Link></div>
+    <div className="row between"><h1>Payroll</h1><div className="row"><Link className="btn" to="/hr/payroll/company-costs">Company costs</Link><Link to="/hr/settings/payroll">Payroll settings</Link></div></div>
     <div className="row between payroll-controls">
       <Field label="Payroll month" type="month" min="1000-01" max="9999-12" value={shownMonth} onChange={chooseMonth} disabled={!!workflow} />
       <div className="row">{state.period && !state.loading && !state.error && <PayrollExportButton key={state.period.id} period={state.period} disabled={!!workflow} />}
@@ -68,7 +67,6 @@ export default function Payroll() {
     <Table caption="Salary sheet" columns={columns} rows={state.entries} loading={state.loading} error={state.error} onRetry={refresh}
       empty={state.period ? 'No salary entries in this period.' : `No payroll for ${shownMonth}. Generate a draft to view the salary sheet.`} />
     {state.period && <Pager page={page} pageSize={PAGE_SIZE} total={state.total} onPage={setPage} disabled={state.loading} />}
-    <CompanyCosts reload={reload} />
     {workflow && <PayrollWorkflowDialog {...workflow} onClose={() => setWorkflow(null)} onReload={() => { setWorkflow(null); refresh(); }} onSaved={(saved) => { setWorkflow(null); setPage(1); setParams({ month: saved.month }); refresh(); toast.success(saved.status === 'draft' ? 'Draft payroll generated' : saved.status === 'approved' ? 'Payroll approved' : 'Payment recorded'); }} />}
     {details && <SalaryDetailDialog key={`${details.periodId}-${details.entry.id}`} {...details} onClose={() => setDetails(null)} />}
     {editing && <SalaryEditDialog key={`${editing.period.id}-${editing.entry.id}`} {...editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} onConflict={() => { setEditing(null); refresh(); }} />}
