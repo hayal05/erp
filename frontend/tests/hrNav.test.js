@@ -4,7 +4,7 @@ import { HR_NAV, QR_PATH, ROLE_LABEL, isQrPath, layoutMode, initials, formatCloc
 
 test('sidebar includes Settlements and Announcements and keeps Departments right after Employees', () => {
   assert.deepEqual(HR_NAV.map((i) => i.label),
-    ['Dashboard', 'Employees', 'Departments', 'Attendance', 'QR Attendance', 'Leave', 'Payroll', 'Settlements', 'Announcements', 'Settings']);
+    ['Dashboard', 'Employees', 'Departments', 'Attendance', 'QR Attendance', 'Leave', 'Payroll', 'Settlements', 'Announcements', 'Access Management', 'Settings']);
 });
 
 test('Departments points at /hr/departments and is a prefix item, so it stays active on /hr/departments/:id', () => {

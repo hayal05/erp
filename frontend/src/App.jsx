@@ -7,6 +7,7 @@ import HrLayout from './components/HrLayout.jsx';
 import Employees from './pages/Employees.jsx';
 import Departments from './pages/Departments.jsx';
 import DepartmentDetail from './pages/DepartmentDetail.jsx';
+import AccessManagement from './pages/AccessManagement.jsx';
 import Announcements from './pages/Announcements.jsx';
 import Attendance from './pages/Attendance.jsx';
 import HrLeave from './pages/Leave.jsx';
@@ -75,6 +76,7 @@ export default function App() {
         <Route path="/login" element={<LoginRoute />} />
         <Route path="/hr" element={<RequireRole role="hr"><HrLayout /></RequireRole>}>
           <Route index element={<Dashboard />} />
+          <Route path="access-management" element={<AccessManagement />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="employees" element={<Employees />} />
           <Route path="departments" element={<Departments />} />
