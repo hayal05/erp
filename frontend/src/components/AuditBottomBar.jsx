@@ -44,7 +44,7 @@ export default function AuditBottomBar({scope}){
   <div className="audit-bottom-summary">
    <dl className="audit-bottom-facts" aria-busy={busy||undefined}>
     <AuditFact title="Modified by" event={data?.summary.modified} loading={!data&&!error} error={error}/>
-    <AuditFact title="Approved by" event={data?.summary.approved} unapproved loading={!data&&!error} error={error}/>
+    <AuditFact title="Approved by" event={data?.summary.approved} unapproved={!!data?.summary.modified && !data?.summary.approved} loading={!data&&!error} error={error}/>
    </dl>
    <button type="button" className="audit-log-toggle" ref={toggle} title="Change log" aria-label={open?'Close change log':'Open change log'} aria-expanded={open} aria-controls={open?panelId:undefined} onClick={()=>{if(open)close();else setOpen(true);}}><History size={15} aria-hidden="true"/><span className="audit-log-label">Change log</span></button>
   </div>
