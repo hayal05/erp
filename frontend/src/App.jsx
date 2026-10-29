@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './api/auth.jsx';
 import { homePath, redirectTarget } from './api/paths.js';
+import {canUseWorkspace,canOpenPath,isAdmin,workspaceOptions} from './api/workspaces.js';
+import WorkspaceHome from './pages/WorkspaceHome.jsx';
 import ChangePassword from './pages/ChangePassword.jsx';
 import Login from './pages/Login.jsx';
 import HrLayout from './components/HrLayout.jsx';
@@ -40,13 +42,15 @@ function Splash() {
 // UI convenience only: the server enforces roles and the lock on every request (task 1.9).
 // `from` lets the login page send people back to where they were headed (e.g. a scanned QR link).
 function RequireRole({ role, children }) {
-  const { status, user } = useAuth();
+  const { status, user, logout } = useAuth();
   const location = useLocation();
   if (status !== 'ready') return <Splash />;
   // The scanned QR token (URL fragment) rides along in router state so it survives the login screen.
   if (!user) return <Navigate to="/login" replace state={loginRedirectState(location)} />;
   if (user.role === 'employee' && user.mustChangePassword) return <ChangePassword forced />;
-  if (user.role !== role) return <Navigate to={homePath(user)} replace />;
+  if (!workspaceOptions(user).length) return <section><h1>No workspace access</h1><p>Contact your administrator to restore access.</p><button onClick={logout}>Log out</button></section>;
+  if (!(role === 'employee' ? user.role === role : canUseWorkspace(user,role))) return <Navigate to={homePath(user)} replace />;
+  if (role !== 'employee' && !canOpenPath(user,location.pathname)) return <Navigate to={homePath(user)} replace />;
   return children;
 }
 
@@ -68,6 +72,7 @@ function LoginRoute() {
   return <Login />;
 }
 
+function ManagementHome(){const {user}=useAuth();const location=useLocation();return isAdmin(user)&&!location.pathname.startsWith('/finance')?<Dashboard />:<WorkspaceHome />;}
 export default function App() {
   return (
     <AuthProvider>
@@ -75,7 +80,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<LoginRoute />} />
         <Route path="/hr" element={<RequireRole role="hr"><HrLayout /></RequireRole>}>
-          <Route index element={<Dashboard />} />
+          <Route index element={<ManagementHome />} />
           <Route path="access-management" element={<AccessManagement />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="employees" element={<Employees />} />
@@ -90,6 +95,23 @@ export default function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="settings/payroll" element={<PayrollSettings />} />
           <Route path="*" element={<Navigate to="/hr" replace />} />
+        </Route>
+        <Route path="/finance" element={<RequireRole role="finance"><HrLayout /></RequireRole>}>
+          <Route index element={<ManagementHome />} />
+          <Route path="access-management" element={<AccessManagement />} />
+          <Route path="announcements" element={<Announcements />} />
+          <Route path="employees" element={<Employees />} />
+          <Route path="departments" element={<Departments />} />
+          <Route path="departments/:id" element={<DepartmentDetail />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route path="qr" element={<QrAttendance />} />
+          <Route path="leave" element={<HrLeave />} />
+          <Route path="payroll" element={<Payroll />} />
+          <Route path="settlements" element={<Settlements />} />
+          <Route path="payroll/company-costs" element={<CompanyCosts />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="settings/payroll" element={<PayrollSettings />} />
+          <Route path="*" element={<Navigate to="/finance" replace />} />
         </Route>
         <Route path="/portal" element={<RequireRole role="employee"><PortalLayout /></RequireRole>}>
           <Route index element={<PortalHome />} />

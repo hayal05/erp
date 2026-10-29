@@ -1,5 +1,6 @@
+import {workspacePath,workspaceArea} from '../api/workspaces.js';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button.jsx';
 import Modal from '../components/Modal.jsx';
 import Table, { Pager } from '../components/Table.jsx';
@@ -7,6 +8,7 @@ import { get } from '../api/client.js';
 import { formatMoney } from '../api/money.js';
 const SIZE = 12, DETAIL_SIZE = 25;
 export default function CompanyCosts() {
+  const {pathname}=useLocation();
   const [page, setPage] = useState(1), [retry, setRetry] = useState(0), [detail, setDetail] = useState(null);
   const [state, setState] = useState({ items: [], total: 0, loading: true, error: '' });
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function CompanyCosts() {
   const totalButton = (r, kind) => <button type="button" className="salary-cell" onClick={() => setDetail({ period: r, kind })}
     aria-label={`View ${kind === 'salary' ? 'salary paid' : 'company pension'} details for ${r.month}`}>{formatMoney(kind === 'salary' ? r.salaryPaidMinor : r.companyPensionMinor)}</button>;
   return <section className="card stack" aria-labelledby="company-costs-title">
-    <div className="row between"><h1 id="company-costs-title">Company costs</h1><Link to="/hr/payroll">Back to payroll</Link></div>
+    <div className="row between"><h1 id="company-costs-title">Company costs</h1><Link to={workspacePath('/hr/payroll',pathname)}>Back to payroll</Link></div>
     <p className="muted">Paid payrolls only. Select a total for employee details.</p>
     <Table caption="Monthly company payroll costs" columns={[
       { key: 'month', header: 'Payroll month' }, { key: 'paidOn', header: 'Paid on' }, { key: 'currency', header: 'Currency' },

@@ -1,9 +1,10 @@
+import {workspacePath,workspaceArea} from '../api/workspaces.js';
 import PayrollExportButton from './PayrollExportButton.jsx';
 import PayrollWorkflowDialog from './PayrollWorkflowDialog.jsx';
 import { localDate, validMonth, workflowAction } from './payrollWorkflowView.js';
 import SalaryDetailDialog from './SalaryDetailDialog.jsx';
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Pencil } from 'lucide-react';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -15,6 +16,7 @@ import { formatMoney } from '../api/money.js';
 import { SALARY_COLUMNS, canEditSalary, periodIdFromParam, salaryEditForm, salaryEditPayload } from './salarySheetView.js';
 const PAGE_SIZE = 25;
 export default function Payroll() {
+  const {pathname}=useLocation();
   const [params, setParams] = useSearchParams();
   const toast = useToast();
   const requestedMonth = params.get('month');
@@ -55,7 +57,7 @@ export default function Payroll() {
   const actionLabel = { generate: 'Generate draft', approve: 'Approve payroll', pay: 'Mark paid' };
   const openWorkflow = () => setWorkflow({ action, month: shownMonth, period: state.period, total: state.total });
   return <section className="stack salary-sheet">
-    <div className="row between"><h1>Payroll</h1><div className="row"><Link className="btn" to="/hr/payroll/company-costs">Company costs</Link><Link to="/hr/settings/payroll">Payroll settings</Link></div></div>
+    <div className="row between"><h1>Payroll</h1><div className="row"><Link className="btn" to={workspacePath('/hr/payroll/company-costs',pathname)}>Company costs</Link><Link to={workspacePath('/hr/settings/payroll',pathname)}>Payroll settings</Link></div></div>
     <div className="row between payroll-controls">
       <Field label="Payroll month" type="month" min="1000-01" max="9999-12" value={shownMonth} onChange={chooseMonth} disabled={!!workflow} />
       <div className="row">{state.period && !state.loading && !state.error && <PayrollExportButton key={state.period.id} period={state.period} disabled={!!workflow} />}

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { CalendarCheck, CalendarDays, FileText, Home, LogOut, UserRound, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../api/auth.jsx';
+import WorkspaceSwitcher from '../../components/WorkspaceSwitcher.jsx';
 import ThemeToggle from '../../components/ThemeToggle.jsx';
 import { AnnouncementFeed } from '../Announcements.jsx';
 import { PORTAL_NAV, firstName } from './portalNav.js';
@@ -42,6 +43,7 @@ export default function PortalLayout() {
         <details className="portal-account" ref={account}>
           <summary title={user.fullName}><span>{user.fullName}</span><ChevronDown size={16} aria-hidden="true" /></summary>
           <div className="portal-account-options">
+            <WorkspaceSwitcher />
             <Link className="btn" to="/portal/change-password" onClick={() => { account.current.open = false; }}>Change password</Link>
             <button type="button" onClick={() => { account.current.open = false; logout(); }}><LogOut size={18} aria-hidden="true" /> Log out</button>
           </div>
