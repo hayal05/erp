@@ -91,3 +91,24 @@ test('approval activity is restricted to the user or an authorized reviewer of i
  const own=await hr.get('/api/audit-history?area=approvals');assert.equal(own.status,200);assert.ok(own.body.items.some(x=>Number(x.recordId)===submitted.body.requestId));
  const all=await admin.get('/api/audit-history?area=approvals');assert.equal(all.status,200);assert.ok(all.body.items.some(x=>Number(x.recordId)===submitted.body.requestId));
 });
+
+
+test('footer approval belongs to the latest modification, never an older or unrelated record',async()=>{
+ const create=async name=>(await admin.post('/api/departments').send({name})).body.id;
+ const d=await create('Footer first record');
+ await q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES($1,'change.approve','department',$2)",[root,String(d)]);
+ let r=await admin.get('/api/audit-history?area=departments');assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.summary.approved.actor,'Main Admin');
+ const other=await create('Footer second record');
+ r=await admin.get('/api/audit-history?area=departments');assert.equal(r.body.summary.modified.id,String(other));assert.equal(r.body.summary.approved,null);
+ await q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES($1,'change.approve','department',$2)",[root,String(other)]);
+ await admin.patch(`/api/departments/${other}`).send({name:'Modified after approval'});
+ r=await admin.get('/api/audit-history?area=departments');assert.equal(r.body.summary.approved,null);
+ // PostgreSQL timestamps are shared within a transaction: audit ID breaks ties.
+ await db.exec('BEGIN');
+ try{
+  await q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES($1,'department.update','department',$2)",[root,String(other)]);
+  await q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES($1,'change.approve','department',$2)",[root,String(other)]);
+  await db.exec('COMMIT');
+ }catch(e){await db.exec('ROLLBACK');throw e;}
+ r=await admin.get('/api/audit-history?area=departments');assert.equal(r.body.summary.approved.actor,'Main Admin');
+});
