@@ -4,7 +4,7 @@ import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
 import { post } from '../api/client.js';
 import { localDate, paymentDateError } from './payrollWorkflowView.js';
-const titles = { generate: 'Generate draft', approve: 'Approve payroll', pay: 'Mark paid' };
+const titles = { generate: 'Generate draft', regenerate: 'Regenerate payroll', approve: 'Approve payroll', pay: 'Mark paid' };
 export default function PayrollWorkflowDialog({ action, month, period, total, onClose, onSaved, onReload }) {
   const [paidOn, setPaidOn] = useState(localDate), [busy, setBusy] = useState(false), [error, setError] = useState(''), [dateError, setDateError] = useState('');
   const [conflict, setConflict] = useState(false);
@@ -14,7 +14,7 @@ export default function PayrollWorkflowDialog({ action, month, period, total, on
     setDateError(problem); setError(''); if (problem) return;
     setBusy(true);
     try {
-      const path = action === 'generate' ? '/payroll/periods' : `/payroll/periods/${period.id}/${action === 'approve' ? 'approve' : 'pay'}`;
+      const path = action === 'generate' ? '/payroll/periods' : `/payroll/periods/${period.id}/${action === 'regenerate' ? 'regenerate' : action === 'approve' ? 'approve' : 'pay'}`;
       const body = action === 'generate' ? { month } : action === 'pay' ? { paidOn } : {};
       onSaved(await post(path, body));
     } catch (e) {
@@ -32,6 +32,7 @@ export default function PayrollWorkflowDialog({ action, month, period, total, on
   </>}>
     <form id="payroll-workflow" className="stack" onSubmit={submit} noValidate>
       {action === 'generate' && <p>Generate payroll for all active employees?</p>}
+      {action === 'regenerate' && <p>Replace this draft’s salary table using current active employees, saved salary profiles, tax and pension settings, deductions and attendance? Manual salary edits in this draft will be replaced. One-time deductions will be reapplied once. Review the regenerated table before approval.</p>}
       {action === 'approve' && <p>Approve {total} entries? Salary amounts and deductions will be locked.</p>}
       {action === 'pay' && <><p>Mark this payroll paid? This records payment; no money is transferred.</p><Field label="Payment date" type="date" min="1000-01-01" max="9999-12-31" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} disabled={busy} error={dateError} /></>}
       {error && <p className="form-error" role="alert">{error}</p>}

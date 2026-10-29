@@ -16,7 +16,7 @@ export function parsePeriodMonth(value) {
 }
 
 // Caller supplies one transaction and a consistent configuration. Inserts, item consumption and audit commit together.
-export async function generateDraft(db, { month, actorId, settings, brackets, otherTaxes }) {
+export async function generateDraft(db, { month, actorId, settings, brackets, otherTaxes, existingPeriod = null }) {
   const problems = validateBrackets(brackets);
   if (problems.length) throw new HttpError(422, problems.join('; '), 'invalid_brackets');
   const { rows: employees } = await db.query(`SELECT e.id AS employee_id, e.employee_code, u.full_name, sp.id AS profile_id,
@@ -26,7 +26,14 @@ export async function generateDraft(db, { month, actorId, settings, brackets, ot
   if (!employees.length) throw new HttpError(422, 'There are no active employees to pay', 'no_employees');
   const missing = employees.filter((e) => e.profile_id == null);
   if (missing.length) throw new HttpError(422, 'Save salary profiles for all active employees before generating payroll', 'missing_profiles', { employeeIds: missing.map((e) => Number(e.employee_id)) });
-  const { rows: [period] } = await db.query(`INSERT INTO payroll_periods (period_month) VALUES ($1) RETURNING id, to_char(period_month, 'YYYY-MM') AS month, status`, [month]);
+  const period = existingPeriod ?? (await db.query(`INSERT INTO payroll_periods (period_month) VALUES ($1) RETURNING id, to_char(period_month, 'YYYY-MM') AS month, status`, [month])).rows[0];
+  if (existingPeriod) {
+    if (period.status !== 'draft') throw new HttpError(409, 'Only draft payroll can be regenerated', 'conflict');
+    // Free only this draft's allocations, then rebuild through the same generation path.
+    // Any failure restores both the original entries and allocations by transaction rollback.
+    await db.query('UPDATE deduction_items SET applied_period_id=NULL WHERE applied_period_id=$1', [period.id]);
+    await db.query('DELETE FROM payroll_entries WHERE period_id=$1', [period.id]);
+  }
   const periodId = Number(period.id);
   for (const employee of employees) {
     const employeeId = Number(employee.employee_id);
@@ -50,6 +57,13 @@ export async function generateDraft(db, { month, actorId, settings, brackets, ot
     const { rows: once } = ids.length ? await db.query('SELECT id FROM deduction_items WHERE id = ANY($1::bigint[]) AND NOT recurring ORDER BY id', [ids]) : { rows: [] };
     await consumeOneTimeDeductions(db, periodId, once.map((r) => Number(r.id)));
   }
-  await audit(db, { actorId, action: 'payroll.period.generate', entityType: 'payroll_period', entityId: periodId, details: { month: period.month, employeeCount: employees.length } });
+  await audit(db, { actorId, action: existingPeriod ? 'payroll.period.regenerate' : 'payroll.period.generate', entityType: 'payroll_period', entityId: periodId, details: { month: period.month, employeeCount: employees.length } });
   return { ...toPeriod(period), employeeCount: employees.length };
+}
+
+export async function regenerateDraft(db, { periodId, ...inputs }) {
+  const { rows: [period] } = await db.query("SELECT id,status,to_char(period_month,'YYYY-MM') AS month FROM payroll_periods WHERE id=$1 FOR UPDATE", [periodId]);
+  if (!period) throw new HttpError(404, 'Payroll period not found', 'not_found');
+  if (period.status !== 'draft') throw new HttpError(409, 'Approved or paid payroll cannot be regenerated', 'conflict');
+  return generateDraft(db, { ...inputs, month: `${period.month}-01`, existingPeriod: period });
 }

@@ -216,3 +216,61 @@ test('company costs: HR-only paid monthly totals match all saved entries and pre
  assert.equal(detail1.body.total,2);assert.notEqual(detail1.body.items[0].employeeId,detail2.body.items[0].employeeId);
  assert.equal((await hr.get('/api/payroll-costs?page=0')).status,400);
 });
+
+test('regeneration refreshes draft inputs and manual edits while applying one-time deductions exactly once',async()=>{
+ const hr=await signIn(app,HR);
+ const first=(await q("INSERT INTO deduction_items(employee_id,kind,name,amount_minor) VALUES($1,'advance','First',1000) RETURNING id",[empId])).rows[0].id;
+ await q("INSERT INTO deduction_items(employee_id,kind,name,amount_minor,recurring) VALUES($1,'other','Recurring',500,true)",[empId]);
+ const p=await draft(hr,'2026-08');const original=(await entries(hr,p)).find(e=>e.employeeId===empId);
+ assert.equal(original.otherDeductionsMinor,1500);
+ await hr.patch(`${URL}/${p.id}/entries/${original.id}`).send({basicMinor:777777});
+ const elsewhere=(await q("INSERT INTO deduction_items(employee_id,kind,name,amount_minor) VALUES($1,'loan','Elsewhere',2000) RETURNING id",[empId])).rows[0].id;
+ const otherPeriod=await draft(hr,'2026-09');
+ const added=(await q("INSERT INTO deduction_items(employee_id,kind,name,amount_minor) VALUES($1,'penalty','New',3000) RETURNING id",[empId])).rows[0].id;
+ await q('UPDATE salary_profiles SET basic_minor=300000,allowance_taxable=true WHERE employee_id=$1',[empId]);
+ await q("UPDATE payroll_settings SET tax_base='basic_plus_taxable_allowance'");
+ for(let i=0;i<2;i++){
+  const r=await hr.post(`${URL}/${p.id}/regenerate`).send({});assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.id,p.id);assert.equal(r.body.month,'2026-08');assert.equal(r.body.status,'draft');
+  const list=await entries(hr,p);assert.equal(list.length,2);const e=list.find(e=>e.employeeId===empId);
+  assert.equal(e.basicMinor,300000);assert.equal(e.taxableIncomeMinor,310000);assert.equal(e.otherDeductionsMinor,4500);
+  const {rows}=await q('SELECT id,applied_period_id FROM deduction_items WHERE id=ANY($1::bigint[]) ORDER BY id',[[first,elsewhere,added]]);
+  assert.deepEqual(rows.map(r=>Number(r.applied_period_id)),[p.id,otherPeriod.id,p.id]);
+ }
+ assert.equal((await q("SELECT count(*)::int AS n FROM audit_logs WHERE action='payroll.period.regenerate'")).rows[0].n,2);
+ assert.equal((await hr.get(`${URL}/${p.id}/entries/${original.id}`)).status,404);
+});
+test('regeneration uses current active employees and current attendance without changing approved or paid payrolls',async()=>{
+ const hr=await signIn(app,HR),emp=await signIn(app,EMP),p=await draft(hr,'2026-01');
+ const original=await entries(hr,p);
+ await q("UPDATE employees SET status='inactive' WHERE id=$1",[otherId]);
+ try {
+  assert.equal((await hr.post(`${URL}/${p.id}/regenerate`).send({})).status,200);
+  assert.deepEqual((await entries(hr,p)).map(e=>e.employeeId),[empId]);
+ }finally{await q("UPDATE employees SET status='active' WHERE id=$1",[otherId]);}
+ await q("UPDATE payroll_settings SET absence_deduction_enabled=true");
+ const r=await hr.post(`${URL}/${p.id}/regenerate`).send({});assert.equal(r.status,200,JSON.stringify(r.body));
+ const refreshed=await entries(hr,p);assert.equal(refreshed.length,2);assert.ok(refreshed.find(e=>e.employeeId===empId).otherDeductionsMinor>original.find(e=>e.employeeId===empId).otherDeductionsMinor);
+ assert.equal((await request(app).post(`${URL}/${p.id}/regenerate`).send({})).status,401);
+ assert.equal((await emp.post(`${URL}/${p.id}/regenerate`).send({})).status,403);
+ assert.equal((await hr.post(`${URL}/999999/regenerate`).send({})).status,404);
+ assert.equal((await hr.post(`${URL}/${p.id}/approve`).send({})).status,200);
+ const approved=await entries(hr,p);
+ assert.equal((await hr.post(`${URL}/${p.id}/regenerate`).send({})).status,409);assert.deepEqual(await entries(hr,p),approved);
+ assert.equal((await hr.post(`${URL}/${p.id}/pay`).send({paidOn:'2026-01-31'})).status,200);
+ assert.equal((await hr.post(`${URL}/${p.id}/regenerate`).send({})).status,409);assert.deepEqual(await entries(hr,p),approved);
+});
+test('failed regeneration rolls back original draft entries and deduction allocations together',async()=>{
+ const hr=await signIn(app,HR);
+ const once=(await q("INSERT INTO deduction_items(employee_id,kind,name,amount_minor) VALUES($1,'advance','Once',1000) RETURNING id",[empId])).rows[0].id;
+ const p=await draft(hr),before=await entries(hr,p);
+ await db.exec(`CREATE FUNCTION fail_regeneration_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+  IF NEW.action='payroll.period.regenerate' THEN RAISE EXCEPTION 'injected regeneration failure'; END IF; RETURN NEW; END $$;
+  CREATE TRIGGER test_regeneration_failure BEFORE INSERT ON audit_logs FOR EACH ROW EXECUTE FUNCTION fail_regeneration_audit();`);
+ try{assert.equal((await hr.post(`${URL}/${p.id}/regenerate`).send({})).status,500);}
+ finally{await db.exec('DROP TRIGGER test_regeneration_failure ON audit_logs;DROP FUNCTION fail_regeneration_audit()');}
+ assert.deepEqual(await entries(hr,p),before);
+ assert.equal(Number((await q('SELECT applied_period_id FROM deduction_items WHERE id=$1',[once])).rows[0].applied_period_id),p.id);
+ await q('DELETE FROM salary_profiles WHERE employee_id=$1',[empId]);
+ assert.equal((await hr.post(`${URL}/${p.id}/regenerate`).send({})).status,422);assert.deepEqual(await entries(hr,p),before);
+ assert.equal((await q("SELECT count(*)::int AS n FROM audit_logs WHERE action='payroll.period.regenerate'")).rows[0].n,0);
+});

@@ -14,7 +14,7 @@ import { parseEntryEdit, editDraftEntry } from '../services/payrollEdit.js';
 import { idParams } from '../services/hrSchemas.js';
 import { pageSchema, pageOffset } from '../services/sql.js';
 import { loadSettings, loadBrackets, loadOtherTaxes } from './payrollSettings.js';
-import { generateDraft, parsePeriodMonth, toPeriod, toEntry } from '../services/payrollDraft.js';
+import { regenerateDraft, generateDraft, parsePeriodMonth, toPeriod, toEntry } from '../services/payrollDraft.js';
 const router = Router();
 router.use(noStore, requireHr);
 // Creation and generation are one operation: no empty or partly generated period survives a failure.
@@ -32,6 +32,18 @@ router.post('/periods', wrap(async (req, res) => {
     throw err;
   });
   res.status(201).json(result);
+}));
+router.post('/periods/:id/regenerate', validate(idParams, 'params'), wrap(async (req, res) => {
+  const result = await withTransaction(async (db) => {
+    await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    const settings = await loadSettings(db, { lock: true });
+    const brackets = await loadBrackets(db), otherTaxes = await loadOtherTaxes(db);
+    return regenerateDraft(db, { periodId: req.params.id, actorId: req.user.id, settings, brackets, otherTaxes });
+  }).catch((err) => {
+    if (err.code === '40001' || err.code === '40P01') throw new HttpError(409, 'Payroll inputs changed during regeneration. Reload and try again.', 'conflict');
+    throw err;
+  });
+  res.json(result);
 }));
 router.get('/periods', validate({ ...pageSchema, month: v.string({ pattern: /^[1-9]\d{3}-(0[1-9]|1[0-2])$/, patternMessage: 'Use YYYY-MM' }) }, 'query'), wrap(async (req, res) => {
   const { page, pageSize } = req.query, offset = pageOffset(req.query);
