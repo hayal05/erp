@@ -222,9 +222,10 @@ remaining broad Task 9 integration are not represented as completed by these che
 ## Dedicated audit bottom bar
 
 The management shell now includes a persistent footer below Admin, HR and Finance
-pages. It displays the current section's latest modifying and approving actor/date,
-including the record reference, with an expandable paginated change log and manual
-refresh. Section labels make clear that these are latest events across that section;
+pages. It displays the current section's latest modifying actor/date and the matching
+approval, with an expandable paginated change log. Sidebar section clicks reload
+the footer, including clicks on the already active section. These are latest events
+across that section;
 individual record audit cards remain available in their dialogs/detail views.
 
 The footer reserves its measured height so it does not cover page controls or the
@@ -240,3 +241,17 @@ credentials are excluded. Workspace summaries exclude proposal-only events so a
 pending proposal is not reported as a modification of a live business record.
 
 No migration, worker, polling or additional environment configuration is required.
+
+
+### Compact audit footer
+
+The collapsed footer has exactly two rows: Modified by (actor/date) and Approved by
+(actor/date), with a Not authorised tag when the latest modification has no matching
+later approval. An older approval or an approval of another record is not reused.
+Summary selection breaks equal transaction timestamps using the audit event ID.
+
+The compact change-log control sits to the right of both rows and uses an accessible
+icon button on phones. Titles, record references, descriptions and the Refresh button
+are removed from the collapsed bar. The expanded log retains the detail table and
+pagination. Clicking any management sidebar function reloads its audit data and
+resets log pagination, including re-clicking the current function; no polling is added.

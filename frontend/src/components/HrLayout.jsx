@@ -27,6 +27,12 @@ export default function HrLayout() {
   const { user, locked, logout } = useAuth();
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [auditVisit, setAuditVisit] = useState(0);
+  const visitSection = event => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    setAuditVisit(n => n + 1); // Refresh even when the active sidebar section is clicked again.
+    setMenuOpen(false);
+  };
   const now = useClock();
 
   useEffect(() => { setMenuOpen(false); }, [pathname]); // close the phone drawer after navigating
@@ -66,7 +72,7 @@ export default function HrLayout() {
           {HR_NAV.filter(item => canOpenPath(user,workspacePath(item.to,pathname))).map((item) => {
             const Icon = ICONS[item.key];
             return (
-              <NavLink key={item.key} to={workspacePath(item.to,pathname)} end={item.end} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+              <NavLink key={item.key} to={workspacePath(item.to,pathname)} end={item.end} onClick={visitSection} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
                 <Icon size={18} aria-hidden="true" /><span>{item.label}</span>
               </NavLink>
             );
@@ -77,7 +83,7 @@ export default function HrLayout() {
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
       <main id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet /></main>
-      <AuditBottomBar key={pathname} scope={auditScope(pathname)} />
+      <AuditBottomBar key={`${pathname}:${auditVisit}`} scope={auditScope(pathname)} />
     </div>
   );
 }

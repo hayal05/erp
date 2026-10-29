@@ -1,14 +1,16 @@
 import {useEffect,useId,useRef,useState} from 'react';
+import {History} from 'lucide-react';
 import {get} from '../api/client.js';
 import {useAuth} from '../api/auth.jsx';
 import {auditLabel} from '../api/auditScope.js';
 import {formatMoney} from '../api/money.js';
 import Button from './Button.jsx';
 import Table,{Pager} from './Table.jsx';
-const stamp=value=>value?new Date(value).toLocaleString():'Not recorded';
+const stamp=value=>value?new Intl.DateTimeFormat(undefined,{year:'2-digit',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value)):'—';
 const value=(field,v)=>v==null?'—':field.endsWith('Minor')&&typeof v==='number'?formatMoney(v):Array.isArray(v)?v.join(', '):String(v);
-function AuditFact({title,event}){
- return <div><dt>{title} by / on</dt><dd>{event?<><strong>{event.actor||'System / not recorded'}</strong><span>{stamp(event.at)}</span><small>{auditLabel(event.type)}{event.id?` #${event.id}`:''}</small></>:'Not recorded'}</dd></div>;
+function AuditFact({title,event,unapproved=false,loading,error}){
+ const text=event?`${event.actor||'System / not recorded'} · ${stamp(event.at)}`:'';
+ return <div><dt>{title}:</dt><dd title={error||text||undefined}>{error?<span role="alert">Unavailable</span>:loading?'…':event?<><span className="audit-actor">{event.actor||'System / not recorded'}</span><span aria-hidden="true">·</span><time dateTime={event.at}>{stamp(event.at)}</time></>:unapproved?<span className="audit-not-authorised">Not authorised</span>:'—'}</dd></div>;
 }
 export default function AuditBottomBar({scope}){
  const {user}=useAuth();
@@ -32,7 +34,6 @@ export default function AuditBottomBar({scope}){
  return <footer ref={ref} className="audit-bottom-bar" aria-label="Audit bottom bar" onKeyDown={e=>{if(e.key==='Escape'&&open){e.stopPropagation();close();}}}>
   {open&&<section ref={panel} id={panelId} className="audit-bottom-log stack" tabIndex={-1} aria-label={`${scope.label} change log`}>
    <div className="row between"><h2>{scope.label} change log</h2><Button size="sm" onClick={close}>Close change log</Button></div>
-   <p className="muted">Activity across records in this section. Open a record to see its individual audit information.</p>
    <Table caption={`${scope.label} audit events`} loading={busy} error={error} onRetry={()=>setRetry(n=>n+1)} rows={data?.items??[]} empty="No recorded activity in this section" columns={[
     {key:'actor',header:'By'},{key:'at',header:'On',render:r=>stamp(r.at)},{key:'record',header:'Record',render:r=>`${auditLabel(r.type)}${r.recordId?` #${r.recordId}`:''}`},
     {key:'action',header:'Action',render:r=>auditLabel(r.action)},
@@ -41,9 +42,11 @@ export default function AuditBottomBar({scope}){
    <Pager page={page} pageSize={10} total={data?.total??0} onPage={setPage} disabled={busy}/>
   </section>}
   <div className="audit-bottom-summary">
-   <div className="audit-bottom-title"><strong>Audit</strong><small>{scope.label} · latest activity</small></div>
-   {error?<p role="alert" className="audit-bottom-error">{error}</p>:!data?<p role="status">Loading audit information…</p>:<dl className="audit-bottom-facts"><AuditFact title="Modified" event={data.summary.modified}/><AuditFact title="Approved" event={data.summary.approved}/></dl>}
-   <div className="row"><button type="button" className="btn sm" ref={toggle} aria-expanded={open} aria-controls={open?panelId:undefined} onClick={()=>{if(open)close();else{setOpen(true);setRetry(n=>n+1);}}}>{open?'Hide change log':'View change log'}</button><Button size="sm" disabled={busy} onClick={()=>setRetry(n=>n+1)}>{busy?'Refreshing…':'Refresh'}</Button></div>
+   <dl className="audit-bottom-facts" aria-busy={busy||undefined}>
+    <AuditFact title="Modified by" event={data?.summary.modified} loading={!data&&!error} error={error}/>
+    <AuditFact title="Approved by" event={data?.summary.approved} unapproved loading={!data&&!error} error={error}/>
+   </dl>
+   <button type="button" className="audit-log-toggle" ref={toggle} title="Change log" aria-label={open?'Close change log':'Open change log'} aria-expanded={open} aria-controls={open?panelId:undefined} onClick={()=>{if(open)close();else setOpen(true);}}><History size={15} aria-hidden="true"/><span className="audit-log-label">Change log</span></button>
   </div>
  </footer>;
 }

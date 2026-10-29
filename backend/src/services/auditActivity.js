@@ -36,9 +36,14 @@ export async function loadAuditActivity(db,user,query){
    AND (c.requester_id=$2 OR (c.department=ANY($3::text[]) AND c.permission=ANY($4::text[]))))))`;
  const {rows}=await db.query(`${cte} SELECT * FROM events ORDER BY at DESC,id DESC LIMIT $5 OFFSET $6`,[...args,query.pageSize,pageOffset(query)]);
  const summaryFilter=query.area==='approvals'?'true':"entity_type<>'change_request'";
- const {rows:[metadata]}=await db.query(`${cte} SELECT count(*)::int AS total,
- (SELECT row_to_json(x) FROM (SELECT actor,at,entity_type AS type,entity_id AS id FROM events WHERE ${summaryFilter} AND action !~ '(^|\\.)(approve|pay)$' ORDER BY at DESC,events.id DESC LIMIT 1)x) AS modified,
- (SELECT row_to_json(x) FROM (SELECT actor,at,entity_type AS type,entity_id AS id FROM events WHERE ${summaryFilter} AND action ~ '(^|\\.)approve$' ORDER BY at DESC,events.id DESC LIMIT 1)x) AS approved FROM events`,args);
+ const {rows:[metadata]}=await db.query(`${cte}, latest_modified AS (
+ SELECT * FROM events WHERE ${summaryFilter} AND action !~ '(^|\\.)(approve|pay)$' ORDER BY at DESC,id DESC LIMIT 1
+ ) SELECT (SELECT count(*)::int FROM events) AS total,
+ (SELECT row_to_json(x) FROM (SELECT actor,at,entity_type AS type,entity_id AS id FROM latest_modified)x) AS modified,
+ (SELECT row_to_json(x) FROM (SELECT e.actor,e.at,e.entity_type AS type,e.entity_id AS id FROM events e JOIN latest_modified m
+   ON e.entity_type=m.entity_type AND e.entity_id IS NOT DISTINCT FROM m.entity_id
+   WHERE e.action ~ '(^|\\.)approve$' AND (e.at>m.at OR (e.at=m.at AND e.id>m.id))
+   ORDER BY e.at DESC,e.id DESC LIMIT 1)x) AS approved`,args);
  return {...pageResult(rows.map(r=>({id:Number(r.id),type:r.entity_type,recordId:r.entity_id,action:r.action,actor:r.actor||'System / not recorded',at:r.at,reason:r.reason,
  changes:auditChanges(r.details,selected.find(s=>s.entity===r.entity_type).fields)})),query,metadata.total),summary:{modified:metadata.modified,approved:metadata.approved}};
 }
