@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
+import AuditBottomBar from './AuditBottomBar.jsx';
+import {auditScope} from '../api/auditScope.js';
 import ApprovalNotice from './ApprovalNotice.jsx';
 import WorkspaceSwitcher from './WorkspaceSwitcher.jsx';
 import {canOpenPath,workspacePath,workspaceArea,isAdmin} from '../api/workspaces.js';
@@ -75,6 +77,7 @@ export default function HrLayout() {
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
       <main id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet /></main>
+      <AuditBottomBar key={pathname} scope={auditScope(pathname)} />
     </div>
   );
 }

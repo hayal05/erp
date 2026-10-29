@@ -217,3 +217,26 @@ failure and the full payroll-to-settlement workflow. Existing role/safeguard/aud
 regressions explicitly submit and review their writes with a separate Admin. Embedded
 PostgreSQL uses one connection; native multi-connection race verification and the
 remaining broad Task 9 integration are not represented as completed by these checks.
+
+
+## Dedicated audit bottom bar
+
+The management shell now includes a persistent footer below Admin, HR and Finance
+pages. It displays the current section's latest modifying and approving actor/date,
+including the record reference, with an expandable paginated change log and manual
+refresh. Section labels make clear that these are latest events across that section;
+individual record audit cards remain available in their dialogs/detail views.
+
+The footer reserves its measured height so it does not cover page controls or the
+last table row. It adapts to phone widths, supports keyboard close/focus return and
+safe-area padding, and stays below navigation drawers and modal dialogs. Locked QR
+screens and the employee portal do not display management audit information.
+
+A read-only /api/audit-history?area= endpoint filters fixed section/entity sources
+using the same operation and audit-domain permissions as individual records.
+Approval-request events additionally check requester or eligible departmental review
+visibility. Only whitelisted changed fields are returned; raw audit details and
+credentials are excluded. Workspace summaries exclude proposal-only events so a
+pending proposal is not reported as a modification of a live business record.
+
+No migration, worker, polling or additional environment configuration is required.
