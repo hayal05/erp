@@ -1,3 +1,5 @@
+import {useAuth} from '../api/auth.jsx';
+import {allowed} from '../api/workspaces.js';
 import {workspacePath,workspaceArea} from '../api/workspaces.js';
 import AttendanceDeductionSettings from './AttendanceDeductionSettings.jsx';
 import { useRef } from 'react';
@@ -11,6 +13,8 @@ import { PAYROLL_TABS, tabForKey, tabFromParam } from './payrollSettingsView.js'
 // Payroll settings (spec 12): Income Tax, Pension, Other Taxes, Other Deductions. This is the shell: tabs, loading and error states.
 // All four tabs are real components now. The server enforces everything; HR only (locked tablet gets 423).
 export default function PayrollSettings() {
+  const {user}=useAuth();
+  const readOnly=!allowed(user,'payroll_settings.manage');
   const {pathname}=useLocation();
   const [params, setParams] = useSearchParams();
   const active = tabFromParam(params.get('tab'));
@@ -37,8 +41,11 @@ export default function PayrollSettings() {
             ref={(el) => { refs.current[t.key] = el; }} onClick={() => choose(t.key, false)}>{t.label}</button>
         ))}
       </div>
+      {readOnly && <p className="muted">Payroll settings are read-only for HR. Finance or Admin manages these settings.</p>}
       <div role="tabpanel" id={`panel-${active}`} aria-labelledby={`tab-${active}`} className="card">
-        {active === 'income-tax' ? <IncomeTaxTab /> : active === 'pension' ? <PensionTab /> : active === 'other-taxes' ? <OtherTaxesTab /> : <div className="stack"><AttendanceDeductionSettings /><DeductionsTab /></div>}
+        <fieldset disabled={readOnly && active!=='other-deductions'} style={{border:0,padding:0,margin:0,minWidth:0}}>
+        {active === 'income-tax' ? <IncomeTaxTab /> : active === 'pension' ? <PensionTab /> : active === 'other-taxes' ? <OtherTaxesTab /> : <div className="stack"><fieldset disabled={readOnly} style={{border:0,padding:0,margin:0}}><AttendanceDeductionSettings /></fieldset><DeductionsTab readOnly={readOnly} /></div>}
+        </fieldset>
       </div>
     </section>
   );

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { idParams, leaveApproveBody, leaveBalanceChange, leaveHrBalanceQuery, leaveHrListQuery, leaveRejectBody } from '../services/hrSchemas.js';
@@ -11,7 +11,8 @@ import { balanceRows, changeBalance, decideLeaveRequest, REQUEST_COLUMNS, reques
 
 // HR leave (spec 10, task 3.4), mounted at /api/leave-admin. Locked tablets get 423 (default-deny in requireHr).
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('leave.read'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('leave.manage')(req,res,next));
 
 // GET /requests?page&pageSize&status&year&employeeId&departmentId -> pending first, then newest
 router.get('/requests', validate(leaveHrListQuery, 'query'), wrap(async (req, res) => {

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { audit } from '../services/audit.js';
@@ -11,7 +11,8 @@ import { departmentBody, departmentListQuery, idParams } from '../services/hrSch
 import { departmentPositions } from './positions.js';
 
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('organization.manage'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 router.use('/:id/positions', departmentPositions); // list + create positions of one department (task 6.3)
 
 const toDepartment = (r) => ({ id: Number(r.id), name: r.name, employeeCount: r.employee_count, positionCount: r.position_count });

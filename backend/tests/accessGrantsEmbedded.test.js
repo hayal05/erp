@@ -99,3 +99,41 @@ test('Access Management is Admin-only and grants access to registered employees 
  assert.equal((await admin.post('/api/qr/lock').send({})).status,200);
  assert.equal((await admin.get('/api/access-management/employees')).status,423);
 });
+
+test('HR grants enable HR operations and draft preparation but cannot approve, pay or change finance settings',async()=>{
+ const {signIn}=await import('./hrClient.js');
+ await q("UPDATE access_grants SET revoked_at=now(),revoked_by_user_id=$2,revoke_reason='HR only test' WHERE user_id=$1 AND access_role='finance' AND revoked_at IS NULL",[employeeId,rootId]);
+ const staff=await signIn(app,{email:'emp@access.test',password:'password-123'});
+ let r=await staff.post('/api/departments').send({name:'HR managed'});assert.equal(r.status,201,JSON.stringify(r.body));const departmentId=r.body.id;
+ r=await staff.post('/api/shifts').send({name:'HR shift',startTime:'09:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:5});assert.equal(r.status,201,JSON.stringify(r.body));const shiftId=r.body.id;
+ r=await staff.post('/api/employees').send({employeeCode:'HR-NEW',fullName:'New Employee',email:'new@hr.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId,departmentId});assert.equal(r.status,201,JSON.stringify(r.body));const id=r.body.id;
+ r=await staff.put(`/api/salary-profiles/${id}`).send({basicMinor:200000,allowanceMinor:10000,allowanceTaxable:true,allowancePensionable:false,pensionApplies:true});assert.equal(r.status,200,JSON.stringify(r.body));
+ assert.equal((await staff.patch(`/api/employees/${id}`).send({phone:'0911111111'})).status,200);
+ assert.equal((await staff.get('/api/attendance-records?view=today')).status,200);
+ assert.equal((await staff.get(`/api/leave-admin/balances?employeeId=${id}`)).status,200);
+ const draftNotice=await staff.post('/api/announcements').send({title:'HR notice',body:'Draft for review',status:'draft',expiresOn:null});assert.equal(draftNotice.status,201);
+ assert.ok((await staff.get('/api/announcements?status=draft')).body.items.some(n=>n.id===draftNotice.body.id));
+ const qr=await staff.post('/api/qr/tokens').send({});assert.equal(qr.status,201,JSON.stringify(qr.body));
+ const {checkQrToken}=await import('../src/services/qrToken.js');await checkQrToken({query:q},qr.body.token);
+ assert.equal((await staff.get('/api/payroll-settings/calculation')).status,200);
+ assert.equal((await staff.patch('/api/payroll-settings/calculation').send({companyPensionRate:20})).status,403);
+ assert.equal((await staff.put('/api/payroll-settings/brackets').send({items:[]})).status,403);
+ assert.equal((await staff.post('/api/deductions').send({})).status,403);
+ assert.equal((await staff.get(`/api/deductions?employeeId=${id}`)).status,200);
+ // Establish calculation inputs as the test fixture, not through HR's read-only settings endpoints.
+ await q('INSERT INTO income_tax_brackets(from_minor,rate,fixed_deduction_minor) VALUES(0,10,0)');
+ r=await staff.post('/api/payroll/periods').send({month:'2026-07'});assert.equal(r.status,201,JSON.stringify(r.body));const periodId=r.body.id;
+ assert.equal((await staff.post(`/api/payroll/periods/${periodId}/regenerate`).send({})).status,200);
+ assert.equal((await staff.post(`/api/payroll/periods/${periodId}/approve`).send({})).status,403);
+ assert.equal((await staff.post(`/api/payroll/periods/${periodId}/pay`).send({paidOn:'2026-07-31'})).status,403);
+ assert.equal((await staff.get('/api/settlements')).status,403);
+ assert.equal((await staff.get('/api/payroll-costs')).status,403);
+ assert.equal((await staff.get('/api/access-management/employees')).status,403);
+ assert.equal((await staff.post('/api/qr/lock').send({})).status,200);
+ assert.equal((await staff.get('/api/employees')).status,423);
+ assert.equal((await staff.post('/api/qr/unlock').send({password:'password-123'})).status,200);
+ await q("UPDATE access_grants SET revoked_at=now(),revoked_by_user_id=$2,revoke_reason='HR revoked' WHERE user_id=$1 AND access_role='hr' AND revoked_at IS NULL",[employeeId,rootId]);
+ await assert.rejects(checkQrToken({query:q},qr.body.token),{code:'invalid_token'});
+ assert.equal((await staff.get('/api/employees')).status,403);
+ assert.equal((await staff.get('/api/auth/me')).body.user.role,'employee');
+});

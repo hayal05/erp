@@ -1,3 +1,5 @@
+import {useAuth} from '../api/auth.jsx';
+import {allowed} from '../api/workspaces.js';
 import {workspacePath,workspaceArea} from '../api/workspaces.js';
 import PayrollExportButton from './PayrollExportButton.jsx';
 import PayrollWorkflowDialog from './PayrollWorkflowDialog.jsx';
@@ -16,6 +18,7 @@ import { formatMoney } from '../api/money.js';
 import { SALARY_COLUMNS, canEditSalary, periodIdFromParam, salaryEditForm, salaryEditPayload } from './salarySheetView.js';
 const PAGE_SIZE = 25;
 export default function Payroll() {
+  const {user}=useAuth();
   const {pathname}=useLocation();
   const [params, setParams] = useSearchParams();
   const toast = useToast();
@@ -43,7 +46,7 @@ export default function Payroll() {
       .catch((e) => { if (!ctrl.signal.aborted) setState({ loading: false, error: e.message, period: null, entries: [], total: 0 }); });
     return () => ctrl.abort();
   }, [selected, requestedMonth, page, reload]);
-  const editable = canEditSalary(state.period) && !state.loading;
+  const editable = canEditSalary(state.period) && !state.loading && allowed(user,'payroll.prepare');
   const columns = SALARY_COLUMNS.map((col, index) => ({ ...col, align: index > 1 ? 'num' : undefined, className: index < 2 ? 'nowrap' : undefined,
     render: index === 1 ? (entry) => <button type="button" className="salary-name" onClick={() => setDetails({ periodId: state.period.id, entry })} aria-label={`View salary details for ${entry.employeeName}`}>{entry.employeeName}</button> : index === 0 ? undefined : (entry) => col.editable && editable ?
       <button type="button" className="salary-cell" onClick={() => setEditing({ entry, field: col.key, period: state.period })} aria-label={`Edit ${col.header.toLowerCase()} for ${entry.employeeName}`}>
@@ -52,12 +55,13 @@ export default function Payroll() {
   }));
   const refresh = () => setReload((n) => n + 1);
   const shownMonth = validMonth(requestedMonth) ? requestedMonth : state.period?.month ?? localDate().slice(0,7);
-  const action = state.error ? null : workflowAction(state.period, state.loading, state.total);
+  const proposedAction = state.error ? null : workflowAction(state.period, state.loading, state.total);
+  const action = allowed(user,({generate:'payroll.prepare',approve:'payroll.approve',pay:'payroll.pay'})[proposedAction]) ? proposedAction : null;
   const chooseMonth = (e) => { if (validMonth(e.target.value)) { setPage(1); setParams({ month: e.target.value }); } };
   const actionLabel = { generate: 'Generate draft', approve: 'Approve payroll', pay: 'Mark paid' };
   const openWorkflow = () => setWorkflow({ action, month: shownMonth, period: state.period, total: state.total });
   return <section className="stack salary-sheet">
-    <div className="row between"><h1>Payroll</h1><div className="row"><Link className="btn" to={workspacePath('/hr/payroll/company-costs',pathname)}>Company costs</Link><Link to={workspacePath('/hr/settings/payroll',pathname)}>Payroll settings</Link></div></div>
+    <div className="row between"><h1>Payroll</h1><div className="row">{allowed(user,'company_costs.read') && <Link className="btn" to={workspacePath('/hr/payroll/company-costs',pathname)}>Company costs</Link>}<Link to={workspacePath('/hr/settings/payroll',pathname)}>Payroll settings</Link></div></div>
     <div className="row between payroll-controls">
       <Field label="Payroll month" type="month" min="1000-01" max="9999-12" value={shownMonth} onChange={chooseMonth} disabled={!!workflow} />
       <div className="row">{state.period && !state.loading && !state.error && <PayrollExportButton key={state.period.id} period={state.period} disabled={!!workflow} />}

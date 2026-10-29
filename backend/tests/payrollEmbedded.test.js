@@ -31,6 +31,7 @@ before(async()=>{
  const shift=(await q("INSERT INTO shifts(name,start_time,end_time,work_days) VALUES('Test','09:00','17:00','{1,2,3,4,5}') RETURNING id")).rows[0].id;
  for(const[c,role,name,code]of[[HR,'hr','HR Admin'],[EMP,'employee','Own Employee','E-1'],[OTHER,'employee','Other Employee','E-2']]){
   const u=(await q('INSERT INTO users(email,full_name,password_hash,role) VALUES($1,$2,$3,$4) RETURNING id',[c.email,name,await hashPassword(c.password),role])).rows[0].id;
+  if(role==='hr')await q("INSERT INTO access_grants(user_id,access_role) VALUES($1,'admin')",[u]);
   if(code){const id=Number((await q("INSERT INTO employees(employee_code,user_id,start_date,shift_id) VALUES($1,$2,'2026-01-05',$3) RETURNING id",[code,u,shift])).rows[0].id);if(code==='E-1')empId=id;else otherId=id;}
  }
 });

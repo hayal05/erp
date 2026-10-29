@@ -22,7 +22,7 @@ function useDebounced(value, ms = 300) {
 // Other Deductions tab (spec 16): advances, loans, penalties and other amounts taken from one employee's pay.
 // Items belong to an employee, so the tab starts with a picker (kept in ?employee= so a refresh stays on the same person).
 // One-time items apply to the next payroll only; once a payroll has used one it is history and the server refuses edits (409).
-export default function DeductionsTab() {
+export default function DeductionsTab({ readOnly = false }) {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const employeeId = employeeFromParam(params.get('employee'));
@@ -62,9 +62,9 @@ export default function DeductionsTab() {
       ? <small className="muted">Already taken in a payroll</small>
       : (
         <span className="row">
-          <Button size="sm" busy={toggling === d.id} onClick={() => toggle(d)} aria-label={`${d.enabled ? 'Pause' : 'Resume'} ${d.name}`}>{d.enabled ? 'Pause' : 'Resume'}</Button>
-          <Button size="sm" onClick={() => setDialog({ item: d })} aria-label={`Edit ${d.name}`}>Edit</Button>
-          <Button size="sm" onClick={() => setRemoving({ item: d, busy: false })} aria-label={`Delete ${d.name}`}>Delete</Button>
+          <Button size="sm" disabled={readOnly} busy={toggling === d.id} onClick={() => toggle(d)} aria-label={`${d.enabled ? 'Pause' : 'Resume'} ${d.name}`}>{d.enabled ? 'Pause' : 'Resume'}</Button>
+          <Button size="sm" disabled={readOnly} onClick={() => setDialog({ item: d })} aria-label={`Edit ${d.name}`}>Edit</Button>
+          <Button size="sm" disabled={readOnly} onClick={() => setRemoving({ item: d, busy: false })} aria-label={`Delete ${d.name}`}>Delete</Button>
         </span>
       )) },
   ];
@@ -73,7 +73,7 @@ export default function DeductionsTab() {
     <div className="stack">
       <div className="row between">
         <h2>Other deductions</h2>
-        <Button variant="primary" disabled={!employeeId || !list.data} onClick={() => setDialog({ item: null })}><Plus size={16} aria-hidden="true" /> Add deduction</Button>
+        <Button variant="primary" disabled={readOnly || !employeeId || !list.data} onClick={() => setDialog({ item: null })}><Plus size={16} aria-hidden="true" /> Add deduction</Button>
       </div>
 
       <div className="picker">

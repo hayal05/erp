@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError, wrap } from '../middleware/error.js';
-import { requireHr } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { audit, diffFields } from '../services/audit.js';
@@ -14,7 +14,8 @@ import { holidayCreate, holidayListQuery, holidayUpdate, idParams } from '../ser
 // schedule are the shifts API (/api/shifts, `workDays`). Both feed the leave day count (services/workdays.js).
 // A holiday change only affects requests made AFTER it: a request keeps the day count it was created with (3.1 decision).
 const router = Router();
-router.use(noStore, requireHr);
+router.use(noStore, requirePermission('organization.manage'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 
 const SELECT = `SELECT id, to_char(holiday_date, 'YYYY-MM-DD') AS holiday_date, name FROM holidays`;
 const toHoliday = (r) => ({ id: Number(r.id), date: r.holiday_date, name: r.name });
