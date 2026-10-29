@@ -42,7 +42,6 @@ export default function Announcements() {
   }
   return <section className="stack">
     <div className="row between"><h1>Announcements</h1><Button variant="primary" onClick={()=>setEditing({title:'',body:'',status:'draft',expiresOn:''})}>New announcement</Button></div>
-    <p className="muted">Published notices appear on the employee home page. Drafts, archived notices and expired notices stay hidden from employees. Expiry uses the company’s calendar date.</p>
     <div className="row"><Field as="select" label="Status" placeholder="All statuses" options={OPTIONS} value={status} onChange={e=>{setStatus(e.target.value);data.setPage(1);}} /><Button onClick={data.refresh} disabled={data.loading}>Refresh</Button></div>
     <Table caption="Company announcements" columns={[
       {key:'title',header:'Title',render:r=><strong style={{overflowWrap:'anywhere'}}>{r.title}</strong>},
@@ -70,9 +69,9 @@ function AnnouncementEditor({item,onClose,onSaved,onRefresh}) {
     <form id="announcement-editor" className="stack" onSubmit={submit}>
       {error&&<p role="alert" className="form-error">{error}</p>}
       <Field label="Title" value={form.title} onChange={change('title')} required maxLength={160} disabled={busy||conflict} error={fields.title} autoFocus />
-      <Field as="textarea" label="Message" value={form.body} onChange={change('body')} required rows={8} maxLength={5000} disabled={busy||conflict} error={fields.body} hint={`${form.body.length}/5000 characters. Plain text only.`} />
+      <Field as="textarea" label="Message" value={form.body} onChange={change('body')} required rows={8} maxLength={5000} disabled={busy||conflict} error={fields.body} hint={`${form.body.length}/5000`} />
       <Field as="select" label="Status" options={OPTIONS} value={form.status} onChange={change('status')} disabled={busy||conflict} error={fields.status} />
-      <Field type="date" label="Visible through (optional)" value={form.expiresOn} onChange={change('expiresOn')} disabled={busy||conflict} error={fields.expiresOn} hint="Leave blank for no expiry. Visible until the end of this date in the company timezone." />
+      <Field type="date" label="Visible through (optional)" value={form.expiresOn} onChange={change('expiresOn')} disabled={busy||conflict} error={fields.expiresOn} hint="Leave blank for no expiry." />
     </form>
   </Modal>;
 }
