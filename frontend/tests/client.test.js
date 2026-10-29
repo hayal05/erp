@@ -87,7 +87,7 @@ test('session events: 401 unauthenticated and 423 screen_locked notify the liste
   await assert.rejects(post('/auth/login', {}));
   reply(403, { error: { code: 'forbidden', message: 'no' } });
   await assert.rejects(get('/x'));
-  assert.deepEqual(seen, ['unauthenticated', 'locked']);
+  assert.deepEqual(seen, ['unauthenticated', 'locked', 'permissions_changed']);
 });
 
 test('file downloads preserve authenticated requests and return the blob without JSON parsing', async()=>{
