@@ -7,6 +7,7 @@ import { cookieParser, loadSession } from './middleware/session.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { lockGate } from './middleware/lock.js';
 import authRoutes from './routes/auth.js';
+import profileRoutes from './routes/profile.js';
 import employeeRoutes from './routes/employees.js';
 import departmentRoutes from './routes/departments.js';
 import positionRoutes from './routes/positions.js';
@@ -53,6 +54,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use(lockGate); // a locked tablet session can only reach the allowlist (middleware/lock.js)
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/profile', profileRoutes);
   app.use('/api/employees', employeeRoutes);
   app.use('/api/departments', departmentRoutes);
   app.use('/api/positions', positionRoutes); // edit/delete by id; list+create live under /api/departments/:id/positions (6.3)

@@ -1,10 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { CalendarCheck, CalendarDays, FileText, Home, LogOut } from 'lucide-react';
+import { CalendarCheck, CalendarDays, FileText, Home, LogOut, UserRound } from 'lucide-react';
 import { useAuth } from '../../api/auth.jsx';
 import ThemeToggle from '../../components/ThemeToggle.jsx';
 import { PORTAL_NAV, firstName } from './portalNav.js';
 
-const ICONS = { home: Home, attendance: CalendarCheck, leave: CalendarDays, payslips: FileText };
+const ICONS = { profile: UserRound, home: Home, attendance: CalendarCheck, leave: CalendarDays, payslips: FileText };
 
 // Mobile-first shell for employees: compact top bar, content, bottom tab bar (thumb reach).
 // Mounted inside RequireRole('employee'); the server enforces access on every request.

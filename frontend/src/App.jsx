@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Payroll from './pages/Payroll.jsx';
 import PayrollSettings from './pages/PayrollSettings.jsx';
 import QrAttendance from './pages/QrAttendance.jsx';
+import Profile from './pages/portal/Profile.jsx';
 import Scan from './pages/portal/Scan.jsx';
 import Payslips, { Payslip } from './pages/portal/Payslips.jsx';
 import History from './pages/portal/History.jsx';
@@ -82,6 +83,7 @@ export default function App() {
         </Route>
         <Route path="/portal" element={<RequireRole role="employee"><PortalLayout /></RequireRole>}>
           <Route index element={<PortalHome />} />
+          <Route path="profile" element={<Profile />} />
           <Route path="scan" element={<Scan />} />
           <Route path="attendance" element={<History />} />
           <Route path="leave" element={<Leave />} />
