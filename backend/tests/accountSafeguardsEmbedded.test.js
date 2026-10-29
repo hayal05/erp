@@ -5,7 +5,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {btree_gist} from '@electric-sql/pglite/contrib/btree_gist';
 process.env.NODE_ENV='test';process.env.DATABASE_URL='postgres://unused/account_safeguards_test';
 const db=new PGlite({extensions:{btree_gist}}),{pool}=await import('../src/db/pool.js');const q=(s,p)=>db.query(s,p);pool.query=q;pool.connect=async()=>({query:q,release(){}});
-const {app}=await import('../src/server.js'),{seedAdmin}=await import('../src/db/seed.js'),{signIn}=await import('./hrClient.js');
+const {app}=await import('../src/server.js'),{seedAdmin}=await import('../src/db/seed.js'),{signIn,signInWithReviewer}=await import('./hrClient.js');
 let admin,staff,root,hr,finance,normal,shift;
 const creds=email=>({email,password:'password-123'});
 async function employee(code,role){
@@ -18,7 +18,7 @@ before(async()=>{
  const dir=new URL('../../database/migrations/',import.meta.url);for(const f of(await fs.readdir(dir)).filter(f=>f.endsWith('.sql')).sort())await db.exec(await fs.readFile(new URL(f,dir),'utf8'));
  root=(await seedAdmin(creds('root@safe.test'))).id;admin=await signIn(app,creds('root@safe.test'));
  shift=(await admin.post('/api/shifts').send({name:'Day',startTime:'09:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:0})).body.id;
- hr=await employee('hr','hr');finance=await employee('finance','finance');normal=await employee('normal');staff=await signIn(app,creds('hr@safe.test'));
+ hr=await employee('hr','hr');finance=await employee('finance','finance');normal=await employee('normal');staff=await signInWithReviewer(app,creds('hr@safe.test'),admin);
 });
 after(async()=>db.close());
 test('database rejects disabling or revoking the only active Admin',async()=>{

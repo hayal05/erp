@@ -15,10 +15,10 @@ export function workspaceOptions(user){
 }
 export const workspaceArea=pathname=>pathname==='/finance'||pathname.startsWith('/finance/')?'finance':'hr';
 export const workspacePath=(path,pathname)=>workspaceArea(pathname)==='finance'?path.replace(/^\/hr(?=\/|$)/,'/finance'):path;
-const HR_PATHS=[['/hr/access-management','access.manage'],['/hr/payroll/company-costs','company_costs.read'],['/hr/settings/payroll','payroll_settings.read'],
+const HR_PATHS=[['/hr/approvals','approvals.read'],['/hr/access-management','access.manage'],['/hr/payroll/company-costs','company_costs.read'],['/hr/settings/payroll','payroll_settings.read'],
  ['/hr/employees','employees.manage'],['/hr/departments','organization.manage'],['/hr/attendance','attendance.manage'],['/hr/qr','attendance.qr'],
  ['/hr/leave','leave.manage'],['/hr/payroll','payroll.read'],['/hr/settlements','settlements.manage'],['/hr/announcements','announcements.manage'],['/hr/settings','organization.manage']];
-const FINANCE_PATHS=['/hr/payroll','/hr/payroll/company-costs','/hr/settlements','/hr/settings/payroll'];
+const FINANCE_PATHS=['/hr/approvals','/hr/payroll','/hr/payroll/company-costs','/hr/settlements','/hr/settings/payroll'];
 export function canOpenPath(user,path){
  if(path==='/portal'||path.startsWith('/portal/'))return canUseWorkspace(user,'portal');
  const area=workspaceArea(path);if(!canUseWorkspace(user,area))return false;

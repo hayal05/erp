@@ -1,10 +1,11 @@
+import {approvalWrap as wrap} from '../middleware/approval.js';
 import { hasPermission } from '../services/permissions.js';
 import { Router } from 'express';
 import { withTransaction } from '../db/pool.js';
 import { config } from '../config.js';
 import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
-import { HttpError, wrap } from '../middleware/error.js';
+import { HttpError } from '../middleware/error.js';
 import { validate, v } from '../middleware/validate.js';
 import { pageSchema, pageOffset, pageResult } from '../services/sql.js';
 import { idParams } from '../services/hrSchemas.js';

@@ -149,3 +149,12 @@ test('CSRF origin errors and payroll/settlement writes are never automatically r
  calls=[];sequence([[403,{error:{code:'csrf_origin',message:'Request origin is not allowed'}}]]);
  await assert.rejects(post('/auth/login',{}),{code:'csrf_origin'});assert.equal(calls.length,1);
 });
+
+
+test('pending approval is announced and never returned as an applied record or retried', async () => {
+  let event;
+  onSessionEvent((kind,data)=>{event={kind,data};});
+  reply(202,{code:'approval_pending',requestId:7,message:'Request #7 submitted for approval. Live records have not changed.'});
+  await assert.rejects(post('/employees',{fullName:'Pending'}),e=>e instanceof ApiError&&e.status===202&&e.code==='approval_pending'&&e.details.requestId===7);
+  assert.equal(event.kind,'approval_pending');assert.equal(event.data.requestId,7);assert.equal(calls.length,1);
+});

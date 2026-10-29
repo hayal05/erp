@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
+import ApprovalNotice from './ApprovalNotice.jsx';
 import WorkspaceSwitcher from './WorkspaceSwitcher.jsx';
 import {canOpenPath,workspacePath,workspaceArea,isAdmin} from '../api/workspaces.js';
 import { useAuth } from '../api/auth.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import { HR_NAV, QR_PATH, ROLE_LABEL, formatClock, initials, layoutMode } from './hrNav.js';
 
-const ICONS = { access: ShieldCheck, settlements: Landmark, announcements: Megaphone, dashboard: LayoutDashboard, employees: Users, departments: Building2, attendance: CalendarCheck, qr: QrCode, leave: CalendarDays, payroll: Wallet, settings: Settings };
+const ICONS = { approvals: ShieldCheck, access: ShieldCheck, settlements: Landmark, announcements: Megaphone, dashboard: LayoutDashboard, employees: Users, departments: Building2, attendance: CalendarCheck, qr: QrCode, leave: CalendarDays, payroll: Wallet, settings: Settings };
 
 function useClock() {
   const [now, setNow] = useState(() => new Date());
@@ -73,7 +74,7 @@ export default function HrLayout() {
       </aside>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
-      <main id="main" className="content" tabIndex={-1}><Outlet /></main>
+      <main id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet /></main>
     </div>
   );
 }

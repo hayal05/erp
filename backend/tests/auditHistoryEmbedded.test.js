@@ -6,7 +6,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {btree_gist} from '@electric-sql/pglite/contrib/btree_gist';
 process.env.NODE_ENV='test';process.env.DATABASE_URL='postgres://unused/audit_history_test';
 const db=new PGlite({extensions:{btree_gist}}),{pool}=await import('../src/db/pool.js');const q=(s,p)=>db.query(s,p);pool.query=q;pool.connect=async()=>({query:q,release(){}});
-const {app}=await import('../src/server.js'),{seedAdmin}=await import('../src/db/seed.js'),{signIn}=await import('./hrClient.js'),{companyDate}=await import('../src/services/attendance.js');
+const {app}=await import('../src/server.js'),{seedAdmin}=await import('../src/db/seed.js'),{signIn,signInWithReviewer}=await import('./hrClient.js'),{companyDate}=await import('../src/services/attendance.js');
 const request=(await import('supertest')).default;
 let admin,hr,finance,plain,person,department,period,root;
 const creds=email=>({email,password:'password-123'});
@@ -20,7 +20,7 @@ before(async()=>{
   await q('UPDATE users SET must_change_password=false WHERE id=$1',[r.body.userId]);
   if(role)await q('INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,$2,$3)',[r.body.userId,role,root]);
  }
- hr=await signIn(app,creds('hr@audit.test'));finance=await signIn(app,creds('finance@audit.test'));plain=await signIn(app,creds('plain@audit.test'));
+ hr=await signInWithReviewer(app,creds('hr@audit.test'),admin);finance=await signInWithReviewer(app,creds('finance@audit.test'),admin);plain=await signIn(app,creds('plain@audit.test'));
 });
 after(async()=>db.close());
 test('history checks domain and record permissions; employees cannot read even their own admin history',async()=>{
@@ -52,15 +52,15 @@ test('payroll history includes old entry edits after regeneration, approval and 
  await finance.post(`/api/payroll/periods/${period}/pay`).send({paidOn:'2026-06-30'});
  r=await finance.get(`/api/audit-history/payroll_period/${period}`);assert.equal(r.status,200,JSON.stringify(r.body));
  for(const action of ['payroll.period.generate','payroll.entry.recalculate','payroll.period.regenerate','payroll.period.approve','payroll.period.pay'])assert.ok(r.body.items.some(x=>x.action===action),action);
- assert.equal(r.body.summary.approved.actor,'finance');assert.equal(r.body.summary.created.actor,'hr');assert.equal(r.body.summary.modified.actor,'hr');
+ assert.equal(r.body.summary.approved.actor,'Main Admin');assert.equal(r.body.summary.created.actor,'hr');assert.equal(r.body.summary.modified.actor,'hr');
  assert.equal((await hr.get(`/api/audit-history/payroll_period/${period}`)).status,200);
- const page=await finance.get(`/api/audit-history/payroll_period/${period}?pageSize=2&page=2`);assert.equal(page.body.items.length,2);assert.equal(page.body.total,5);
+ const page=await finance.get(`/api/audit-history/payroll_period/${period}?pageSize=2&page=2`);assert.equal(page.body.items.length,2);assert.equal(page.body.total,10);
 });
 test('settings, access and settlement histories keep separate permissions and records',async()=>{
  assert.equal((await finance.get('/api/audit-history/payroll_settings/1')).status,200);
  assert.equal((await finance.get(`/api/audit-history/access_employee/${person.id}`)).status,403);
  assert.equal((await admin.get(`/api/audit-history/access_employee/${person.id}`)).status,200);
  let r=await finance.post(`/api/settlements/${period}/payments`).send({kind:'income_tax',amountMinor:1000,paymentDate:companyDate(),reference:'PAY-123',notes:'',requestId:randomUUID()});assert.equal(r.status,201,JSON.stringify(r.body));
- r=await finance.get(`/api/audit-history/settlement_period/${period}`);assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.total,1);assert.ok(r.body.items[0].changes.some(c=>c.field==='reference'&&c.value==='PAY-123'));
+ r=await finance.get(`/api/audit-history/settlement_period/${period}`);assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.total,2);assert.ok(r.body.items.some(item=>item.changes.some(c=>c.field==='reference'&&c.value==='PAY-123')));
  assert.equal((await hr.get(`/api/audit-history/settlement_period/${period}`)).status,403);
 });

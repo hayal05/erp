@@ -1,4 +1,5 @@
 import pg from 'pg';
+import {approvalTransaction} from '../services/approvalExecution.js';
 import { reportFailure } from '../services/logging.js';
 import { config } from '../config.js';
 
@@ -22,12 +23,13 @@ function assertConfigured() {
 
 export function query(text, params) {
   assertConfigured();
-  return pool.query(text, params);
+  return (approvalTransaction.getStore() || pool).query(text, params);
 }
 
 // Runs fn(client) inside BEGIN/COMMIT; rolls back and rethrows on any error.
 export async function withTransaction(fn) {
   assertConfigured();
+  if (approvalTransaction.getStore()) return fn(approvalTransaction.getStore());
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

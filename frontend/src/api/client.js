@@ -54,6 +54,10 @@ export async function api(path, { method = 'GET', body, query, signal, responseT
   if (res.status === 204) return null;
   if (res.ok && responseType === 'blob') return res.blob();
   const data = await res.json().catch(() => null); // proxies can return HTML error pages
+  if (res.status === 202 && data?.code === 'approval_pending') {
+    listener('approval_pending', data);
+    throw new ApiError(202, data.code, data.message, {requestId:data.requestId});
+  }
   if (res.ok) return data;
 
   const err = data?.error ?? {};
