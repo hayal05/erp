@@ -1,3 +1,4 @@
+import { withAccess, loadAccessRoles } from '../services/accessGrants.js';
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
@@ -34,6 +35,6 @@ router.post('/',validate({currentPassword:field(),newPassword:field(),confirmPas
     await audit(db,{actorId:user.id,action:'auth.password.change',entityType:'user',entityId:user.id,details:{temporaryPasswordReplaced:user.must_change_password}});
   });
   passwordChangeLimit.reset(key);
-  res.json({user:{id:Number(user.id),role:user.role,email:user.email,fullName:user.full_name,mustChangePassword:false},csrfToken,locked:false});
+  res.json({user:withAccess({id:Number(user.id),role:user.role,email:user.email,fullName:user.full_name,mustChangePassword:false},await loadAccessRoles({query},user.id)),csrfToken,locked:false});
 }));
 export default router;

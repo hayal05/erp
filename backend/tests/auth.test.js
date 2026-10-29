@@ -33,7 +33,7 @@ after(async () => { if (!skip) await query(TRUNCATE_ALL); await pool.end(); });
 test('login succeeds, sets an HttpOnly cookie, returns the CSRF token and no secrets', { skip }, async () => {
   const res = await login(HR);
   assert.equal(res.status, 200);
-  assert.deepEqual(res.body.user, { id: res.body.user.id, email: HR.email, fullName: 'Hana HR', role: 'hr', mustChangePassword: false });
+  assert.deepEqual(res.body.user, { id: res.body.user.id, email: HR.email, fullName: 'Hana HR', role: 'hr', mustChangePassword: false, accessRoles: [], permissions: [] });
   assert.equal(res.body.locked, false);
   assert.ok(res.body.csrfToken.length >= 40);
   assert.doesNotMatch(JSON.stringify(res.body), /password_hash|passwordHash|"(?:password|hash)"\s*:/i);

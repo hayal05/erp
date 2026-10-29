@@ -1,0 +1,62 @@
+import {test,before,after} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import express from 'express';
+import {PGlite} from '@electric-sql/pglite';
+import {btree_gist} from '@electric-sql/pglite/contrib/btree_gist';
+process.env.NODE_ENV='test';process.env.DATABASE_URL='postgres://unused/access_grants_test';
+const db=new PGlite({extensions:{btree_gist}}),{pool}=await import('../src/db/pool.js');
+const q=(s,p)=>db.query(s,p);pool.query=q;pool.connect=async()=>({query:q,release(){}});
+const {app}=await import('../src/server.js'),{cookieParser,loadSession}=await import('../src/middleware/session.js');
+const {requirePermission}=await import('../src/middleware/auth.js'),{errorHandler}=await import('../src/middleware/error.js');
+const {hashPassword}=await import('../src/services/password.js'),{seedAdmin}=await import('../src/db/seed.js');
+const request=(await import('supertest')).default;
+const protectedApp=express();protectedApp.use(cookieParser(),loadSession);
+protectedApp.get('/approve',requirePermission('payroll.approve'),(req,res)=>res.json({ok:true}));protectedApp.use(errorHandler);
+let rootId,employeeId,cookie,employee;
+before(async()=>{
+ const dir=new URL('../../database/migrations/',import.meta.url),files=(await fs.readdir(dir)).filter(f=>f.endsWith('.sql')).sort();
+ for(const f of files.filter(f=>!f.startsWith('010_')))await db.exec(await fs.readFile(new URL(f,dir),'utf8'));
+ const hash=await hashPassword('password-123');
+ rootId=(await q("INSERT INTO users(email,full_name,password_hash,role) VALUES('root@access.test','Root',$1,'hr') RETURNING id",[hash])).rows[0].id;
+ employeeId=(await q("INSERT INTO users(email,full_name,password_hash,role) VALUES('emp@access.test','Employee',$1,'employee') RETURNING id",[hash])).rows[0].id;
+ await db.exec(await fs.readFile(new URL('010_access_grants.sql',dir),'utf8'));
+ employee=request.agent(app);const login=await employee.post('/api/auth/login').send({email:'emp@access.test',password:'password-123'});
+ assert.equal(login.status,200);cookie=login.headers['set-cookie'].map(x=>x.split(';')[0]).join('; ');
+});
+after(async()=>db.close());
+test('migration preserves legacy admin access and leaves employee identity unchanged',async()=>{
+ const login=await request(app).post('/api/auth/login').send({email:'root@access.test',password:'password-123'});
+ assert.equal(login.status,200);assert.deepEqual(login.body.user.accessRoles,['admin']);assert.ok(login.body.user.permissions.includes('access.manage'));
+ assert.equal((await q('SELECT role FROM users WHERE id=$1',[employeeId])).rows[0].role,'employee');
+ const me=await employee.get('/api/auth/me');assert.deepEqual(me.body.user.accessRoles,[]);assert.ok(me.body.user.permissions.includes('self.payslips'));
+ assert.equal((await q("SELECT count(*)::int AS n FROM audit_logs WHERE action='access.grant'")).rows[0].n,1);
+});
+test('active grants are loaded per request and revocation affects an existing session immediately',async()=>{
+ assert.equal((await request(protectedApp).get('/approve').set('Cookie',cookie)).status,403);
+ const grant=(await q("INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,'finance',$2) RETURNING id",[employeeId,rootId])).rows[0].id;
+ let me=(await employee.get('/api/auth/me')).body.user;assert.equal(me.role,'employee');assert.deepEqual(me.accessRoles,['finance']);assert.ok(me.permissions.includes('self.profile'));assert.ok(me.permissions.includes('payroll.approve'));
+ assert.equal((await request(protectedApp).get('/approve').set('Cookie',cookie)).status,200);
+ await assert.rejects(q("INSERT INTO access_grants(user_id,access_role) VALUES($1,'finance')",[employeeId]),/unique|duplicate/i);
+ await q("UPDATE access_grants SET revoked_at=now(),revoked_by_user_id=$2,revoke_reason='Removed finance duties' WHERE id=$1",[grant,rootId]);
+ assert.equal((await request(protectedApp).get('/approve').set('Cookie',cookie)).status,403);
+ me=(await employee.get('/api/auth/me')).body.user;assert.deepEqual(me.accessRoles,[]);assert.ok(me.permissions.includes('self.profile'));
+ await assert.rejects(q('DELETE FROM access_grants WHERE id=$1',[grant]),/cannot be deleted/);
+ await assert.rejects(q('UPDATE access_grants SET revoked_at=NULL WHERE id=$1',[grant]),/revoked once/);
+ await q("INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,'finance',$2)",[employeeId,rootId]);
+ assert.equal((await q('SELECT count(*)::int AS n FROM access_grants WHERE user_id=$1',[employeeId])).rows[0].n,2);
+ assert.equal((await q("SELECT count(*)::int AS n FROM audit_logs WHERE action='access.revoke'")).rows[0].n,1);
+});
+test('multiple grants combine without changing login identity; spoofed login roles are ignored',async()=>{
+ await q("INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,'hr',$2)",[employeeId,rootId]);
+ const login=await request(app).post('/api/auth/login').send({email:'emp@access.test',password:'password-123',accessRoles:['admin'],role:'hr'});
+ assert.equal(login.status,200);assert.equal(login.body.user.role,'employee');assert.deepEqual(login.body.user.accessRoles,['finance','hr']);assert.ok(!login.body.user.permissions.includes('access.manage'));
+ await assert.rejects(q("INSERT INTO access_grants(user_id,access_role) VALUES($1,'unknown')",[employeeId]),/check constraint/i);
+ const grant=(await q("SELECT id FROM access_grants WHERE user_id=$1 AND access_role='hr' AND revoked_at IS NULL",[employeeId])).rows[0].id;
+ await assert.rejects(q('UPDATE access_grants SET revoked_at=now(),revoked_by_user_id=$2 WHERE id=$1',[grant,rootId]),/check constraint/i);
+});
+test('first-install seed creates explicit admin access and rerunning it does not duplicate grants',async()=>{
+ const params={email:'seed@access.test',password:'password-123'};
+ const first=await seedAdmin(params);assert.equal(first.created,true);await seedAdmin(params);
+ assert.equal((await q("SELECT count(*)::int AS n FROM access_grants WHERE user_id=$1 AND access_role='admin'",[first.id])).rows[0].n,1);
+});

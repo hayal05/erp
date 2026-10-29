@@ -49,6 +49,6 @@ test('refuses weak passwords, bad emails and non-HR collisions', { skip }, async
 
 test('seeding is audited and the audit trail never contains the password', { skip }, async () => {
   const { rows } = await query(`SELECT action, details::text AS d FROM audit_logs ORDER BY id`);
-  assert.deepEqual(rows.map((r) => r.action), ['user.create', 'user.password_reset']);
+  assert.deepEqual(rows.map((r) => r.action), ['access.grant', 'user.create', 'user.password_reset']);
   assert.ok(rows.every((r) => !/password-\d/.test(r.d)));
 });

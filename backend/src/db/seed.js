@@ -30,6 +30,7 @@ export async function seedAdmin({ email, password, name = 'HR Administrator', re
     const { rows: [user] } = await db.query(
       `INSERT INTO users (email, full_name, password_hash, role) VALUES ($1, $2, $3, 'hr') RETURNING id`,
       [email, name, hash]);
+    await db.query("INSERT INTO access_grants(user_id,access_role) VALUES($1,'admin')", [user.id]);
     await log(user.id, 'user.create');
     return { id: user.id, created: true, passwordReset: false };
   });
