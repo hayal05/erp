@@ -1,3 +1,4 @@
+import AuditBar from '../components/AuditBar.jsx';
 import {useAuth} from '../api/auth.jsx';
 import {allowed} from '../api/workspaces.js';
 import {workspacePath,workspaceArea} from '../api/workspaces.js';
@@ -47,6 +48,7 @@ export default function PayrollSettings() {
         {active === 'income-tax' ? <IncomeTaxTab /> : active === 'pension' ? <PensionTab /> : active === 'other-taxes' ? <OtherTaxesTab /> : <div className="stack"><fieldset disabled={readOnly} style={{border:0,padding:0,margin:0}}><AttendanceDeductionSettings /></fieldset><DeductionsTab readOnly={readOnly} /></div>}
         </fieldset>
       </div>
+      <AuditBar type="payroll_settings" id={1} reload={active} />
     </section>
   );
 }

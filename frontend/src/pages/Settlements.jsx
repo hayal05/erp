@@ -1,3 +1,4 @@
+import AuditBar from '../components/AuditBar.jsx';
 import { useEffect,useState } from 'react';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -68,6 +69,7 @@ function SettlementDetails({period,kind,onClose,onRecorded}){
       <Table caption={`${label} settlement history`} columns={[{key:'paymentDate',header:'Payment date'},money('amountMinor','Amount'),{key:'reference',header:'Reference'},{key:'notes',header:'Notes'}, {key:'recordedBy',header:'Recorded by'}]}
         rows={history.items} loading={history.loading} error={history.error} onRetry={refresh} empty="No payments recorded" />
       <Pager page={historyPage} pageSize={DETAIL_SIZE} total={history.total} onPage={setHistoryPage} disabled={history.loading||busy} />
+      <AuditBar type="settlement_period" id={period.id} reload={reload}/>
     </div>
   </Modal>;
 }

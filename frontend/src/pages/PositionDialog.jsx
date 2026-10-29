@@ -1,3 +1,4 @@
+import AuditBar from '../components/AuditBar.jsx';
 import { useState } from 'react';
 import Modal from '../components/Modal.jsx';
 import Button from '../components/Button.jsx';
@@ -60,6 +61,7 @@ export default function PositionDialog({ departmentId, position, onClose, onSave
           <p className="muted">Existing salaries stay unchanged. Renaming updates job titles.</p>
         </div>
       </form>
+    <AuditBar type="position" id={position?.id} />
     </Modal>
   );
 }

@@ -1,3 +1,4 @@
+import AuditBar from '../components/AuditBar.jsx';
 import {useAuth} from '../api/auth.jsx';
 import {allowed} from '../api/workspaces.js';
 import {workspacePath,workspaceArea} from '../api/workspaces.js';
@@ -74,6 +75,7 @@ export default function Payroll() {
     <Table caption="Salary sheet" columns={columns} rows={state.entries} loading={state.loading} error={state.error} onRetry={refresh}
       empty={state.period ? 'No salary entries in this period.' : `No payroll for ${shownMonth}. Generate a draft to view the salary sheet.`} />
     {state.period && <Pager page={page} pageSize={PAGE_SIZE} total={state.total} onPage={setPage} disabled={state.loading} />}
+    {state.period && <AuditBar type="payroll_period" id={state.period.id} reload={reload} />}
     {workflow && <PayrollWorkflowDialog {...workflow} onClose={() => setWorkflow(null)} onReload={() => { setWorkflow(null); refresh(); }} onSaved={(saved) => { setWorkflow(null); setEditing(null); setDetails(null); setPage(1); setParams({ month: saved.month }); refresh(); toast.success(saved.status === 'draft' ? (workflow.action === 'regenerate' ? 'Payroll regenerated' : 'Draft payroll generated') : saved.status === 'approved' ? 'Payroll approved' : 'Payment recorded'); }} />}
     {details && <SalaryDetailDialog key={`${details.periodId}-${details.entry.id}`} {...details} onClose={() => setDetails(null)} />}
     {editing && <SalaryEditDialog key={`${editing.period.id}-${editing.entry.id}`} {...editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} onConflict={() => { setEditing(null); refresh(); }} />}

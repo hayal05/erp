@@ -145,3 +145,23 @@ The new database tests exercise direct SQL and HTTP safeguards, privileged-accou
 restrictions, inactive-session rejection and an alternative inactive Admin. Real
 multi-connection race tests remain part of broader integration validation; the embedded
 engine runs a single database session. Task 8 remains audit bars and change history.
+
+## Task 8 — record audit bars
+
+Reusable audit bars show recorded creation, last modification and approval actor/date,
+with an expandable paginated change log and manual refresh. They are attached to
+employee/salary/position dialogs, department detail, attendance corrections, leave
+decisions, payroll, payroll settings, announcements, access management and settlements.
+
+The read-only API uses a fixed record registry, verifies record existence and requires
+both an audit-domain permission and the record capability. Only whitelisted fields
+are returned, never raw audit JSON. Unrecorded metadata stays null/Not recorded.
+Before/after values appear only where the source audit event actually captured them;
+records and actions are not retroactively reconstructed. Actor names reflect the
+current referenced user record; dates are original event timestamps.
+
+Payroll history combines period events and related entry recalculations, including
+entries replaced by regeneration. Photo-view events are excluded from modification
+history. Access history is scoped by the employee's user ID. Settings, access grants
+and settlements retain their separate read permissions. Audit loading is on demand,
+with no polling or background jobs. No schema migration is required for this task.

@@ -1,3 +1,4 @@
+import AuditBar from '../components/AuditBar.jsx';
 import { useState } from 'react';
 import Modal from '../components/Modal.jsx';
 import Button from '../components/Button.jsx';
@@ -59,6 +60,7 @@ export default function CorrectionDialog({ record, onClose, onSaved }) {
         <Field label="Check-out time" type="time" hint="Clear if no check-out." {...bind('checkOutTime')} />
         <Field as="textarea" className="full" label="Reason for the correction (required)" maxLength={500} rows={3} {...bind('reason')} />
       </form>
+    <AuditBar type="attendance_record" id={record.id} />
     </Modal>
   );
 }
