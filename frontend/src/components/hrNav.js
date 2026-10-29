@@ -1,6 +1,6 @@
 // Pure data/helpers for the HR shell (kept free of React so they are unit-tested).
 
-// Spec §4 (updated by Phase 6): exactly these eight items, in this order. `end` makes Dashboard active only on /hr itself.
+// Spec §4 (updated by Phase 6): navigation items, in this order. `end` makes Dashboard active only on /hr itself.
 // Departments has no `end`, so it stays highlighted on its detail page (/hr/departments/:id) as well.
 export const HR_NAV = [
   { key: 'dashboard', label: 'Dashboard', to: '/hr', end: true },
@@ -10,6 +10,7 @@ export const HR_NAV = [
   { key: 'qr', label: 'QR Attendance', to: '/hr/qr' },
   { key: 'leave', label: 'Leave', to: '/hr/leave' },
   { key: 'payroll', label: 'Payroll', to: '/hr/payroll' },
+  { key: 'announcements', label: 'Announcements', to: '/hr/announcements' },
   { key: 'settings', label: 'Settings', to: '/hr/settings' },
 ];
 
