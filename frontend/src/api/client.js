@@ -35,7 +35,7 @@ function buildUrl(path, query) {
   return `${BASE}/api${path}${s ? `?${s}` : ''}`;
 }
 
-export async function api(path, { method = 'GET', body, query, signal, responseType = 'json' } = {}) {
+export async function api(path, { method = 'GET', body, query, signal, responseType = 'json', csrfRetried = false } = {}) {
   const headers = { Accept: responseType === 'blob' ? 'text/csv' : 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (!SAFE.has(method) && csrfToken) headers['X-CSRF-Token'] = csrfToken;
@@ -58,6 +58,20 @@ export async function api(path, { method = 'GET', body, query, signal, responseT
 
   const err = data?.error ?? {};
   const apiErr = new ApiError(res.status, err.code ?? 'error', err.message ?? `Request failed (${res.status})`, err.details);
+  // A different tab (or a failed logout) can leave a cookie newer than our in-memory token.
+  // These auth requests were rejected before their handlers ran; refresh the token and retry once.
+  // Other writes are never replayed automatically, especially payroll and settlement operations.
+  if (!csrfRetried && res.status === 403 && apiErr.code === 'csrf' && method === 'POST'
+      && (path === '/auth/login' || path === '/auth/logout')) {
+    try {
+      const session = await api('/auth/me', { signal });
+      setCsrfToken(session.csrfToken);
+    } catch (e) {
+      if (e.status === 401) setCsrfToken(null);
+      else throw e;
+    }
+    return api(path, { method, body, query, signal, responseType, csrfRetried: true });
+  }
   if (apiErr.code === 'password_change_required') listener('password_change_required');
   else if (apiErr.code === 'unauthenticated') listener('unauthenticated');
   else if (apiErr.code === 'screen_locked') listener('locked');
