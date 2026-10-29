@@ -9,6 +9,7 @@ import HrLayout from './components/HrLayout.jsx';
 import Employees from './pages/Employees.jsx';
 import Departments from './pages/Departments.jsx';
 import DepartmentDetail from './pages/DepartmentDetail.jsx';
+import Approvals from './pages/Approvals.jsx';
 import AccessManagement from './pages/AccessManagement.jsx';
 import Announcements from './pages/Announcements.jsx';
 import Attendance from './pages/Attendance.jsx';
@@ -81,6 +82,7 @@ export default function App() {
         <Route path="/login" element={<LoginRoute />} />
         <Route path="/hr" element={<RequireRole role="hr"><HrLayout /></RequireRole>}>
           <Route index element={<ManagementHome />} />
+          <Route path="approvals" element={<Approvals />} />
           <Route path="access-management" element={<AccessManagement />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="employees" element={<Employees />} />
@@ -98,6 +100,7 @@ export default function App() {
         </Route>
         <Route path="/finance" element={<RequireRole role="finance"><HrLayout /></RequireRole>}>
           <Route index element={<ManagementHome />} />
+          <Route path="approvals" element={<Approvals />} />
           <Route path="access-management" element={<AccessManagement />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="employees" element={<Employees />} />

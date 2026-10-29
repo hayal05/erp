@@ -1,4 +1,5 @@
 import express from 'express';
+import changeRequestRoutes from './routes/changeRequests.js';
 import helmet from 'helmet';
 import { pathToFileURL } from 'node:url';
 import { config } from './config.js';
@@ -59,6 +60,22 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use(csrfProtection);
   app.use(passwordChangeGate);
   app.use(lockGate); // a locked tablet session can only reach the allowlist (middleware/lock.js)
+
+  const operations=express.Router();
+  operations.use('/api/announcements', announcementRoutes);
+  operations.use('/api/employees', employeeRoutes);
+  operations.use('/api/departments', departmentRoutes);
+  operations.use('/api/positions', positionRoutes);
+  operations.use('/api/shifts', shiftRoutes);
+  operations.use('/api/attendance-records', attendanceRecordRoutes);
+  operations.use('/api/leave-admin', leaveAdminRoutes);
+  operations.use('/api/settings', settingsRoutes);
+  operations.use('/api/payroll-settings', payrollSettingsRoutes);
+  operations.use('/api/deductions', deductionRoutes);
+  operations.use('/api/salary-profiles', salaryProfileRoutes);
+  operations.use('/api/settlements', settlementRoutes);
+  operations.use('/api/payroll', payrollRoutes);
+  app.use('/api/change-requests', changeRequestRoutes(operations));
 
   app.use('/api/announcements', announcementRoutes);
   app.use('/api/audit-history', auditHistoryRoutes);

@@ -1,6 +1,7 @@
+import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
-import { wrap } from '../middleware/error.js';
+
 import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';

@@ -165,3 +165,55 @@ entries replaced by regeneration. Photo-view events are excluded from modificati
 history. Access history is scoped by the employee's user ID. Settings, access grants
 and settlements retain their separate read permissions. Audit loading is on demand,
 with no polling or background jobs. No schema migration is required for this task.
+
+
+## Administrative change approvals (added before Task 9)
+
+Migration 012 adds durable, immutable change requests. Administrative record writes
+by HR and Finance return 202 with a pending request ID; they do not modify live
+records. A different person with the same HR/Finance area and operation permission,
+or a general Admin, must approve. General Admin's own changes apply immediately.
+Dual grants never permit self-approval. Registration still creates an ordinary
+employee; only Admin can issue access, immediately under the agreed Admin exception.
+
+The queue covers employee/organization/salary changes, attendance corrections,
+leave entitlement changes, announcements, payroll generation/edit/regeneration,
+financial settings/deductions, payroll approval/payment and settlement recording.
+Attendance check-ins, employee self-service, authentication/QR session controls and
+existing employee leave submissions and HR leave decisions retain their workflows.
+Review decisions do not themselves require an additional approval.
+
+The Approvals sidebar page is available in both workspaces and to Admin. It provides
+pending/all/my filters, pagination, protected proposed-value previews, approve,
+reasoned rejection and requester withdrawal. It has no polling/background worker.
+Shared API handling reports submitted-for-approval and prevents existing forms from
+treating queued writes as saved records. A successful approval returns the applied
+operation result; retries return the final status without executing again.
+
+Application rechecks both accounts and current grants, then dispatches through the
+same administrative router, permission guards, validation and business rules, using
+one transaction for business writes, original actor audit, reviewer audit and final
+decision. Payroll approved_by_user_id records the final reviewer; original operation
+audit keeps the submitting actor. Related entry/settlement approval events remain
+visible in existing record histories. Failures roll back and leave the request pending.
+
+Pending sensitive bodies use authenticated AES-GCM encryption derived from
+SESSION_SECRET; read APIs only expose protected previews. Final decisions discard
+ciphertext. Rotating SESSION_SECRET invalidates pending encrypted requests: reject
+or withdraw and submit them again. Proposal fields and final decisions cannot be
+rewritten/deleted through ordinary SQL updates/deletes. Audit remains append-only.
+
+Stale detection is deliberately conservative: it fingerprints the affected tables,
+not just the edited row. Changes elsewhere in those tables (including attendance
+inputs while payroll is pending) can require withdrawing and resubmitting a request.
+Review takes short database table locks in a consistent order and rechecks the
+fingerprint before application. Ordinary reads remain available. This favors refusing
+an obsolete proposal; record-level narrowing can follow after broad integration.
+
+Embedded integration covers separate HR/Finance reviewers, Admin exception,
+self/cross-area denial, pending deduplication, restart recovery, encrypted credentials,
+revocation, stale proposals, rejection/withdrawal, immutable history, rollback on audit
+failure and the full payroll-to-settlement workflow. Existing role/safeguard/audit
+regressions explicitly submit and review their writes with a separate Admin. Embedded
+PostgreSQL uses one connection; native multi-connection race verification and the
+remaining broad Task 9 integration are not represented as completed by these checks.

@@ -41,3 +41,12 @@ test('internal links retain finance workspace; redirects reject hostile URLs',()
  assert.equal(workspacePath('/hr/settings/payroll','/hr/payroll'),'/hr/settings/payroll');
  for(const path of ['//evil.test','/finance\\bad','/financex/payroll','https://evil.test/finance','/hr/access-management'])assert.equal(redirectTarget(path,finance),'/portal');
 });
+
+
+test('the approval inbox is available in HR and Finance workspaces and excluded from plain employee access',()=>{
+ assert.equal(canOpenPath({...hr,permissions:[...hr.permissions,'approvals.read']},'/hr/approvals'),true);
+ assert.equal(canOpenPath({...finance,permissions:[...finance.permissions,'approvals.read']},'/finance/approvals'),true);
+ assert.equal(canOpenPath(employee,'/hr/approvals'),false);
+ assert.equal(canOpenPath(employee,'/finance/approvals'),false);
+ assert.equal(workspacePath('/hr/approvals','/finance/payroll'),'/finance/approvals');
+});

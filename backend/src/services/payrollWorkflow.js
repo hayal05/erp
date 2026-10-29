@@ -12,7 +12,7 @@ export function assertEntryCurrent(entry, items, computed) {
 }
 // The caller supplies one repeatable-read transaction and configuration loaded under the settings lock.
 // Approval never changes reviewed amounts: stale entries must be recalculated explicitly before retrying.
-export async function approvePeriod(db, { periodId, actorId, settings, brackets, otherTaxes }) {
+export async function approvePeriod(db, { periodId, actorId, approvedById = actorId, settings, brackets, otherTaxes }) {
   const { rows: [period] } = await db.query("SELECT *, to_char(period_month, 'YYYY-MM') AS month FROM payroll_periods WHERE id=$1 FOR UPDATE", [periodId]);
   if (!period) throw new HttpError(404, 'Payroll period not found', 'not_found');
   if (period.status !== 'draft') throw new HttpError(409, 'Only a draft payroll can be approved', 'conflict');
@@ -38,7 +38,7 @@ export async function approvePeriod(db, { periodId, actorId, settings, brackets,
   }
   const { rows: [extra] } = await db.query('SELECT currency_code, absence_deduction_enabled, unpaid_leave_deduction_enabled FROM payroll_settings');
   const snapshot = { version: 1, month: period.month, settings: { ...settings, attendanceDeductionRule: 'basic_over_scheduled_working_days_v1', currencyCode: extra.currency_code, absenceDeductionEnabled: extra.absence_deduction_enabled, unpaidLeaveDeductionEnabled: extra.unpaid_leave_deduction_enabled }, brackets, otherTaxes, entries: snapshots };
-  const { rows: [approved] } = await db.query("UPDATE payroll_periods SET status='approved', config_snapshot=$2::jsonb, approved_at=now(), approved_by_user_id=$3 WHERE id=$1 RETURNING approved_at, approved_by_user_id", [periodId, JSON.stringify(snapshot), actorId]);
+  const { rows: [approved] } = await db.query("UPDATE payroll_periods SET status='approved', config_snapshot=$2::jsonb, approved_at=now(), approved_by_user_id=$3 WHERE id=$1 RETURNING approved_at, approved_by_user_id", [periodId, JSON.stringify(snapshot), approvedById]);
   await audit(db, { actorId, action: 'payroll.period.approve', entityType: 'payroll_period', entityId: periodId, details: { month: period.month, employeeCount: rows.length, from: 'draft', to: 'approved' } });
   return { id: periodId, month: period.month, status: 'approved', approvedAt: approved.approved_at, approvedByUserId: Number(approved.approved_by_user_id) };
 }

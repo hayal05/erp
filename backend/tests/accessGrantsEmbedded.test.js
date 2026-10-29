@@ -1,3 +1,4 @@
+import {signInWithReviewer} from './hrClient.js';
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -104,7 +105,8 @@ test('Access Management is Admin-only and grants access to registered employees 
 test('HR grants enable HR operations and draft preparation but cannot approve, pay or change finance settings',async()=>{
  const {signIn}=await import('./hrClient.js');
  await q("UPDATE access_grants SET revoked_at=now(),revoked_by_user_id=$2,revoke_reason='HR only test' WHERE user_id=$1 AND access_role='finance' AND revoked_at IS NULL",[employeeId,rootId]);
- const staff=await signIn(app,{email:'emp@access.test',password:'password-123'});
+ const reviewer=await signIn(app,{email:'root@access.test',password:'password-123'});
+ const staff=await signInWithReviewer(app,{email:'emp@access.test',password:'password-123'},reviewer);
  let r=await staff.post('/api/departments').send({name:'HR managed'});assert.equal(r.status,201,JSON.stringify(r.body));const departmentId=r.body.id;
  r=await staff.post('/api/shifts').send({name:'HR shift',startTime:'09:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:5});assert.equal(r.status,201,JSON.stringify(r.body));const shiftId=r.body.id;
  r=await staff.post('/api/employees').send({employeeCode:'HR-NEW',fullName:'New Employee',email:'new@hr.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId,departmentId});assert.equal(r.status,201,JSON.stringify(r.body));const id=r.body.id;
@@ -142,7 +144,8 @@ test('HR grants enable HR operations and draft preparation but cannot approve, p
 test('Finance reviews and settles HR payroll without editing HR records or preparing drafts',async()=>{
  const {signIn}=await import('./hrClient.js');
  await q("INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,'finance',$2)",[employeeId,rootId]);
- const finance=await signIn(app,{email:'emp@access.test',password:'password-123'});
+ const reviewer=await signIn(app,{email:'root@access.test',password:'password-123'});
+ const finance=await signInWithReviewer(app,{email:'emp@access.test',password:'password-123'},reviewer);
  assert.deepEqual((await finance.get('/api/auth/me')).body.user.accessRoles,['finance']);
  const period=(await q("SELECT id FROM payroll_periods WHERE period_month='2026-07-01'")).rows[0].id;
  const entries=await finance.get(`/api/payroll/periods/${period}/entries`);assert.equal(entries.status,200);const entry=entries.body.items[0];
@@ -156,7 +159,8 @@ test('Finance reviews and settles HR payroll without editing HR records or prepa
  assert.equal((await finance.get('/api/access-management/employees')).status,403);
  assert.equal((await finance.get('/api/dashboard')).status,403);
  let r=await finance.patch('/api/payroll-settings/calculation').send({companyPensionRate:11});assert.equal(r.status,200,JSON.stringify(r.body));
- assert.equal((await finance.post(`/api/payroll/periods/${period}/approve`).send({})).status,409); // changed inputs require HR regeneration
+ const stale=await finance.post(`/api/payroll/periods/${period}/approve`).send({});assert.equal(stale.status,409); // changed inputs require HR regeneration
+ assert.equal((await finance.post(`/api/change-requests/${stale.requestId}/cancel`).send({})).status,200); // immutable proposal must be resubmitted after regeneration
  const admin=await signIn(app,{email:'root@access.test',password:'password-123'});
  assert.equal((await admin.post(`/api/payroll/periods/${period}/regenerate`).send({})).status,200);
  r=await finance.post(`/api/payroll/periods/${period}/approve`).send({});assert.equal(r.status,200,JSON.stringify(r.body));

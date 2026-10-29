@@ -8,19 +8,19 @@ export const PERMISSIONS = Object.freeze([
   'announcements.read', 'announcements.manage', 'payroll.read', 'payroll.prepare',
   'payroll.approve', 'payroll.pay', 'payroll_settings.read', 'payroll_settings.manage',
   'deductions.read', 'deductions.manage', 'company_costs.read', 'settlements.manage',
-  'access.manage', 'audit.hr', 'audit.finance', 'audit.access',
+  'approvals.read', 'access.manage', 'audit.hr', 'audit.finance', 'audit.access',
 ]);
 const employeePermissions = Object.freeze(['self.profile', 'self.attendance', 'self.leave', 'self.payslips', 'announcements.read']);
 const hrPermissions = Object.freeze([
   'employees.read', 'employees.manage', 'organization.manage', 'salary_profiles.manage',
   'attendance.read', 'attendance.manage', 'attendance.qr', 'leave.read', 'leave.manage',
   'announcements.read', 'announcements.manage', 'payroll.read', 'payroll.prepare',
-  'payroll_settings.read', 'deductions.read', 'audit.hr',
+  'payroll_settings.read', 'deductions.read', 'audit.hr', 'approvals.read',
 ]);
 const financePermissions = Object.freeze([
   'employees.read', 'attendance.read', 'leave.read', 'announcements.read', 'payroll.read',
   'payroll.approve', 'payroll.pay', 'payroll_settings.read', 'payroll_settings.manage',
-  'deductions.read', 'deductions.manage', 'company_costs.read', 'settlements.manage', 'audit.finance',
+  'deductions.read', 'deductions.manage', 'company_costs.read', 'settlements.manage', 'audit.finance', 'approvals.read',
 ]);
 export const ROLE_PERMISSIONS = Object.freeze({
   hr: hrPermissions, finance: financePermissions,

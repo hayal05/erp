@@ -1,6 +1,8 @@
+import {approvalTransaction} from '../services/approvalExecution.js';
+import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
-import { HttpError, wrap } from '../middleware/error.js';
+import { HttpError } from '../middleware/error.js';
 import { requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
@@ -99,7 +101,7 @@ router.post('/periods/:id/approve', requirePermission('payroll.approve'), valida
     await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
     const settings = await loadSettings(db, { lock: true });
     const brackets = await loadBrackets(db), otherTaxes = await loadOtherTaxes(db);
-    return approvePeriod(db, { periodId: req.params.id, actorId: req.user.id, settings, brackets, otherTaxes });
+    return approvePeriod(db, { periodId: req.params.id, actorId: req.user.id, approvedById: approvalTransaction.getStore()?.reviewerId ?? req.user.id, settings, brackets, otherTaxes });
   }).catch((err) => {
     if (err.code === '40001' || err.code === '40P01') throw new HttpError(409, 'Payroll inputs changed during approval. Review the draft and retry.', 'conflict');
     throw err;

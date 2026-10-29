@@ -5,9 +5,12 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   // status: loading (asking /me) | ready | error (server unreachable: show a retry, not a login form)
+  const [approvalNotice, setApprovalNotice] = useState(null);
+  const dismissApproval = useCallback(() => setApprovalNotice(null), []);
   const [state, setState] = useState({ status: 'loading', user: null, locked: false, error: null });
 
   const apply = useCallback((data) => {
+    setApprovalNotice(null);
     setCsrfToken(data?.csrfToken);
     setState({ status: 'ready', user: data?.user ?? null, locked: !!data?.locked, error: null });
   }, []);
@@ -31,7 +34,8 @@ export function AuthProvider({ children }) {
 
   // Session expired mid-use -> back to the login screen. Server says locked -> reflect it in the UI.
   useEffect(() => {
-    onSessionEvent((kind) => {
+    onSessionEvent((kind, data) => {
+      if (kind === 'approval_pending') { setApprovalNotice(data); return; }
       if (kind === 'permissions_changed') { get('/auth/me').then(apply).catch(e=>{if(e.status===401)apply(null);}); }
       else if (kind === 'unauthenticated') apply(null);
       else if (kind === 'password_change_required') setState(s => ({ ...s, user: s.user ? { ...s.user, mustChangePassword: true } : null }));
@@ -82,8 +86,8 @@ export function AuthProvider({ children }) {
   const setLocked = useCallback((locked) => setState((s) => ({ ...s, locked: !!locked })), []);
 
   const value = useMemo(
-    () => ({ ...state, login, logout, changePassword, setLocked, reload: () => load() }),
-    [state, login, logout, changePassword, setLocked, load],
+    () => ({ ...state, approvalNotice, dismissApproval, login, logout, changePassword, setLocked, reload: () => load() }),
+    [state, approvalNotice, dismissApproval, login, logout, changePassword, setLocked, load],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
