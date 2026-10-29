@@ -55,6 +55,7 @@ export const shiftListQuery = pageSchema;
 // ---- HR attendance records (task 2.17)
 export const ATTENDANCE_STATUSES = ['present', 'late', 'absent', 'on_leave', 'incomplete'];
 export const attendanceListQuery = {
+  view: v.enum({ values: ['today', 'archive'] }),
   ...pageSchema,
   from: v.date(), // first work date, inclusive
   to: v.date(), // last work date, inclusive

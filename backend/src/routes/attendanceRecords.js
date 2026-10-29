@@ -10,6 +10,7 @@ import { pageOffset, pageResult } from '../services/sql.js';
 import { validationError } from '../services/dbErrors.js';
 import { attendanceCorrection, attendanceListQuery, idParams, photoParams } from '../services/hrSchemas.js';
 import { classifyCheckIn, fillAttendanceGaps, fillWindow } from '../services/attendanceStatus.js';
+import { attendanceRange } from '../services/attendanceRange.js';
 import { companyDate } from '../services/attendance.js';
 import { photos } from '../services/cloudinary.js';
 
@@ -60,8 +61,11 @@ export async function fillGapsFor(q, today = companyDate()) {
 // GET /?page&pageSize&from&to&employeeId&departmentId&status -> { items, page, pageSize, total, today }, newest date first.
 // `today` is the company-timezone date, so the page can offer "Today" without trusting the browser's clock or zone.
 router.get('/', validate(attendanceListQuery, 'query'), wrap(async (req, res) => {
-  const q = req.query;
+  const today = companyDate();
+  const q = { ...req.query };
   if (q.from && q.to && q.from > q.to) throw validationError({ to: 'Must be on or after the start date' });
+  Object.assign(q, attendanceRange(q, today));
+  if (q.from && q.to && q.from > q.to) return res.json({ ...pageResult([], q, 0), today });
   await recordDeps.fillGaps(q);
   const filters = [[q.from, 'a.work_date >= $?'], [q.to, 'a.work_date <= $?'], [q.employeeId, 'a.employee_id = $?'],
     [q.departmentId, 'e.department_id = $?'], [q.status, 'a.status = $?']].filter(([value]) => value !== undefined);
@@ -77,7 +81,7 @@ router.get('/', validate(attendanceListQuery, 'query'), wrap(async (req, res) =>
     [config.company.timezone, ...data.params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n ${FROM} ${count.sql}`, count.params),
   ]);
-  res.json({ ...pageResult(rows.map(toRecord), q, total), today: companyDate() });
+  res.json({ ...pageResult(rows.map(toRecord), q, total), today });
 }));
 
 // PATCH /:id: HR correction (spec 8). A reason is REQUIRED. Body (all optional except reason; omitted = unchanged):
