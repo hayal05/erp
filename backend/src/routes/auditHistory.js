@@ -1,3 +1,4 @@
+import {AUDIT_AREAS,loadAuditActivity} from '../services/auditActivity.js';
 import {Router} from 'express';
 import {withTransaction} from '../db/pool.js';
 import {requireAuth} from '../middleware/auth.js';
@@ -7,6 +8,13 @@ import {HttpError,wrap} from '../middleware/error.js';
 import {pageSchema,pageOffset,pageResult} from '../services/sql.js';
 import {AUDIT_RECORDS,canReadAudit,auditChanges} from '../services/auditHistory.js';
 const router=Router();router.use(noStore,requireAuth);
+router.get('/',validate({...pageSchema,area:v.enum({required:true,values:Object.keys(AUDIT_AREAS)})},'query'),wrap(async(req,res)=>{
+ const data=await withTransaction(async db=>{
+  await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  return loadAuditActivity(db,req.user,req.query);
+ });
+ res.json(data);
+}));
 router.get('/:type/:id',validate({type:v.enum({required:true,values:Object.keys(AUDIT_RECORDS)}),id:v.int({required:true,min:1})},'params'),validate(pageSchema,'query'),wrap(async(req,res)=>{
  const {type,id}=req.params,c=AUDIT_RECORDS[type];
  if(!canReadAudit(req.user,type))throw new HttpError(403,'You do not have access to this record history','forbidden');

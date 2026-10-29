@@ -358,3 +358,32 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .portal-account-options { position: absolute; right: 0; top: calc(100% + 6px); min-width: 150px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px #0003; }
 .portal-account-options button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--tap); padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
 .portal-account-options button:hover, .portal-account-options button:focus-visible { background: var(--bg); }
+
+
+/* Persistent audit footer. Its measured height reserves space in the main content. */
+.hr-shell { --audit-bar-height: 160px; }
+.hr-shell .content { padding-bottom: calc(var(--audit-bar-height) + 24px); }
+.audit-bottom-bar { position: fixed; z-index: 25; left: 240px; right: 0; bottom: 0;
+  background: var(--bg-sidebar); border-top: 1px solid var(--border); box-shadow: 0 -4px 18px #0002;
+  padding-bottom: env(safe-area-inset-bottom); max-height: 85dvh; overflow-y: auto; }
+.audit-bottom-summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding: 12px 24px; }
+.audit-bottom-title { display: grid; gap: 2px; }
+.audit-bottom-title > small, .audit-bottom-facts dt, .audit-bottom-facts small { color: var(--muted); }
+.audit-bottom-facts { display: flex; flex: 1; justify-content: center; flex-wrap: wrap; gap: 12px 32px; margin: 0; }
+.audit-bottom-facts > div { min-width: 150px; }
+.audit-bottom-facts dt { font-size: .8rem; }
+.audit-bottom-facts dd { margin: 2px 0 0; display: grid; font-size: .85rem; overflow-wrap: anywhere; }
+.audit-bottom-error { flex: 1; color: var(--danger); margin: 0; }
+.audit-bottom-log { padding: 16px 24px; max-height: 52dvh; overflow: auto; border-bottom: 1px solid var(--border); outline: 0; }
+.audit-bottom-log p { margin: 0; }
+@media (max-width: 900px) {
+  .audit-bottom-bar { left: 0; }
+  .audit-bottom-summary, .audit-bottom-log { padding: 10px 16px; }
+}
+@media (max-width: 600px) {
+  .audit-bottom-facts { width: 100%; justify-content: flex-start; gap: 10px; }
+  .audit-bottom-facts > div { flex: 1; min-width: 120px; }
+  .audit-bottom-summary > .row { width: 100%; }
+  .audit-bottom-summary { gap: 8px; }
+}
+@media print { .audit-bottom-bar { display: none; } .hr-shell .content { padding-bottom: 0; } }

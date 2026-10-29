@@ -64,3 +64,30 @@ test('settings, access and settlement histories keep separate permissions and re
  r=await finance.get(`/api/audit-history/settlement_period/${period}`);assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.total,2);assert.ok(r.body.items.some(item=>item.changes.some(c=>c.field==='reference'&&c.value==='PAY-123')));
  assert.equal((await hr.get(`/api/audit-history/settlement_period/${period}`)).status,403);
 });
+
+test('section audit feeds enforce domain permissions and never expose raw details',async()=>{
+ assert.equal((await request(app).get('/api/audit-history?area=employees')).status,401);
+ assert.equal((await plain.get('/api/audit-history?area=employees')).status,403);
+ assert.equal((await finance.get('/api/audit-history?area=employees')).status,403);
+ assert.equal((await hr.get('/api/audit-history?area=access')).status,403);
+ assert.equal((await hr.get('/api/audit-history?area=settlements')).status,403);
+ assert.equal((await admin.get('/api/audit-history?area=not_real')).status,400);
+ assert.equal((await admin.get('/api/audit-history?area=all&pageSize=1000')).status,400);
+ let r=await hr.get('/api/audit-history?area=employees&pageSize=1');assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.items.length,1);assert.equal(r.body.pageSize,1);assert.equal(r.headers['cache-control'],'no-store');
+ const text=JSON.stringify(r.body);assert.ok(!text.includes('SECRET'));assert.ok(!text.includes('password_hash'));assert.ok(!text.includes('details'));
+ const next=await hr.get('/api/audit-history?area=employees&pageSize=1&page=2');assert.equal(next.status,200);assert.notEqual(next.body.items[0].id,r.body.items[0].id);assert.equal(next.body.total,r.body.total);
+ r=await finance.get('/api/audit-history?area=all');assert.equal(r.status,200);assert.ok(!r.body.items.some(x=>['employee','salary_profile','access_grant','department'].includes(x.type)));
+});
+test('persistent footer summaries identify the latest modifying and approving actors in a section',async()=>{
+ const r=await hr.get('/api/audit-history?area=payroll');assert.equal(r.status,200,JSON.stringify(r.body));
+ assert.equal(r.body.summary.modified.actor,'hr');assert.equal(r.body.summary.approved.actor,'Main Admin');
+ assert.ok(r.body.summary.modified.at);assert.equal(r.body.summary.approved.type,'payroll_period');
+ assert.ok(r.body.items.some(x=>x.action==='change.approve'));
+});
+test('approval activity is restricted to the user or an authorized reviewer of its department',async()=>{
+ const proposal=await (await import('./hrClient.js')).signIn(app,creds('hr@audit.test'));
+ const submitted=await proposal.post('/api/departments').send({name:'Pending audit feed department'});assert.equal(submitted.status,202);
+ const r=await finance.get('/api/audit-history?area=approvals');assert.equal(r.status,200);assert.ok(!r.body.items.some(x=>Number(x.recordId)===submitted.body.requestId));
+ const own=await hr.get('/api/audit-history?area=approvals');assert.equal(own.status,200);assert.ok(own.body.items.some(x=>Number(x.recordId)===submitted.body.requestId));
+ const all=await admin.get('/api/audit-history?area=approvals');assert.equal(all.status,200);assert.ok(all.body.items.some(x=>Number(x.recordId)===submitted.body.requestId));
+});
