@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
+import { ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
 import { useAuth } from '../api/auth.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import { HR_NAV, QR_PATH, ROLE_LABEL, formatClock, initials, layoutMode } from './hrNav.js';
 
-const ICONS = { settlements: Landmark, announcements: Megaphone, dashboard: LayoutDashboard, employees: Users, departments: Building2, attendance: CalendarCheck, qr: QrCode, leave: CalendarDays, payroll: Wallet, settings: Settings };
+const ICONS = { access: ShieldCheck, settlements: Landmark, announcements: Megaphone, dashboard: LayoutDashboard, employees: Users, departments: Building2, attendance: CalendarCheck, qr: QrCode, leave: CalendarDays, payroll: Wallet, settings: Settings };
 
 function useClock() {
   const [now, setNow] = useState(() => new Date());
@@ -57,7 +57,7 @@ export default function HrLayout() {
 
       <aside id="hr-nav" className={`sidebar${menuOpen ? ' open' : ''}`}>
         <nav aria-label="Main">
-          {HR_NAV.map((item) => {
+          {HR_NAV.filter(item => !item.permission || user.permissions?.includes(item.permission)).map((item) => {
             const Icon = ICONS[item.key];
             return (
               <NavLink key={item.key} to={item.to} end={item.end} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>

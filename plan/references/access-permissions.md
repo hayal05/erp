@@ -56,3 +56,21 @@ Production endpoints still use their legacy role guards until Tasks 5–6. This 
 does not yet expose grant/revoke APIs, workspace switching or Access Management.
 Task 3 must use the authenticated Admin as actor; Task 7 adds the last-active-Admin
 and other account safeguards before access issuance is complete.
+
+## Task 3 — Access Management
+
+The Admin-only /hr/access-management page and /api/access-management routes list
+registered employees, issue HR/Finance grants, revoke them with a reason, and show
+paginated grant/revocation history. Admin grants are deliberately excluded from
+these issuance/revocation endpoints. Granting never creates an account or changes
+employee identity. Inactive employee/user accounts cannot receive new grants.
+Duplicate grant/revocation requests are idempotent and retain their original audit
+facts; per-employee row locks serialize issuance and revocation through the API.
+
+The sidebar hides this page without access.manage. The API independently enforces
+that permission, CSRF and session lock checks. An active grant is rechecked from the
+database on subsequent requests through Task 2's session loader.
+
+The current legacy administrator can open the page. Employees given additional
+access receive their separate workspace switcher in Task 4; feature endpoint
+permissions remain part of Tasks 5–6. The full audit bottom bar remains Task 8.
