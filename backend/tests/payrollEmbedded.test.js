@@ -189,3 +189,30 @@ test('embedded PostgreSQL #11: photo links are HR-only, no-store and audited; em
   const audit=(await q("SELECT details FROM audit_logs WHERE action='attendance.photo_view'")).rows;assert.equal(audit.length,1);assert.ok(!JSON.stringify(audit).includes(photoId));
  }finally{recordDeps.photos=original;}
 });
+
+test('company costs: HR-only paid monthly totals match all saved entries and preserve historical amounts', async()=>{
+ const hr=await signIn(app,HR),emp=await signIn(app,EMP);
+ assert.equal((await request(app).get('/api/payroll-costs')).status,401);
+ assert.equal((await emp.get('/api/payroll-costs')).status,403);
+ const first=await draft(hr,'2026-09');
+ assert.equal((await hr.get('/api/payroll-costs')).body.total,0);
+ assert.equal((await hr.post(`${URL}/${first.id}/approve`).send({})).status,200);
+ assert.equal((await hr.get('/api/payroll-costs')).body.total,0);
+ assert.equal((await hr.post(`${URL}/${first.id}/pay`).send({paidOn:'2026-10-05'})).status,200);
+ const saved=await entries(hr,first),sum=key=>saved.reduce((n,e)=>n+e[key],0);
+ let r=await hr.get('/api/payroll-costs');assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.total,1);
+ assert.equal(r.headers['cache-control'],'no-store');
+ const cost=r.body.items[0];assert.equal(cost.month,'2026-09');assert.equal(cost.paidOn,'2026-10-05');assert.equal(cost.employeeCount,2);assert.equal(cost.currency,'ETB');
+ assert.equal(cost.salaryPaidMinor,sum('netMinor'));assert.equal(cost.grossMinor,sum('grossMinor'));assert.equal(cost.companyPensionMinor,sum('employerPensionMinor'));assert.equal(cost.employerCostMinor,sum('employerCostMinor'));
+ await q('UPDATE salary_profiles SET basic_minor=999999 WHERE employee_id=$1',[empId]);
+ await q('UPDATE payroll_settings SET company_pension_rate=50');
+ assert.deepEqual((await hr.get('/api/payroll-costs')).body.items[0],cost);
+ const second=await draft(hr,'2026-10');
+ assert.equal((await hr.post(`${URL}/${second.id}/approve`).send({})).status,200);
+ assert.equal((await hr.post(`${URL}/${second.id}/pay`).send({paidOn:'2026-10-28'})).status,200);
+ r=await hr.get('/api/payroll-costs?pageSize=1&page=1');assert.equal(r.body.total,2);assert.equal(r.body.items.length,1);assert.equal(r.body.items[0].month,'2026-10');
+ r=await hr.get('/api/payroll-costs?pageSize=1&page=2');assert.equal(r.body.items[0].month,'2026-09');
+ const detail1=await hr.get(`${URL}/${first.id}/entries?pageSize=1&page=1`),detail2=await hr.get(`${URL}/${first.id}/entries?pageSize=1&page=2`);
+ assert.equal(detail1.body.total,2);assert.notEqual(detail1.body.items[0].employeeId,detail2.body.items[0].employeeId);
+ assert.equal((await hr.get('/api/payroll-costs?page=0')).status,400);
+});
