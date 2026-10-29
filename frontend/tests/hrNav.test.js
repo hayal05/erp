@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HR_NAV, QR_PATH, ROLE_LABEL, isQrPath, layoutMode, initials, formatClock } from '../src/components/hrNav.js';
 
-test('sidebar has exactly the 8 spec items (§4, updated in Phase 6), in order: Departments right after Employees', () => {
+test('sidebar includes Announcements and keeps Departments right after Employees', () => {
   assert.deepEqual(HR_NAV.map((i) => i.label),
-    ['Dashboard', 'Employees', 'Departments', 'Attendance', 'QR Attendance', 'Leave', 'Payroll', 'Settings']);
+    ['Dashboard', 'Employees', 'Departments', 'Attendance', 'QR Attendance', 'Leave', 'Payroll', 'Announcements', 'Settings']);
 });
 
 test('Departments points at /hr/departments and is a prefix item, so it stays active on /hr/departments/:id', () => {

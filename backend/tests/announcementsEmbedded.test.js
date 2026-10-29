@@ -1,0 +1,75 @@
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
+process.env.NODE_ENV='test';process.env.DATABASE_URL='postgres://unused/announcements_test';
+const db=new PGlite({extensions:{btree_gist}});
+const {pool}=await import('../src/db/pool.js');
+const q=(sql,params)=>db.query(sql,params);pool.query=q;pool.connect=async()=>({query:q,release(){}});
+const {app}=await import('../src/server.js');
+const {signIn}=await import('./hrClient.js');
+const {hashPassword}=await import('../src/services/password.js');
+const {companyDate}=await import('../src/services/attendance.js');
+const request=(await import('supertest')).default;
+let hr,employee;
+const URL_PATH='/api/announcements';
+const notice=(status='draft')=>({title:'Company notice',body:'Meeting on Monday.\nBring your report.',status,expiresOn:null});
+before(async()=>{
+ const dir=new URL('../../database/migrations/',import.meta.url);
+ for(const name of(await fs.readdir(dir)).filter(n=>n.endsWith('.sql')).sort())await db.exec(await fs.readFile(new URL(name,dir),'utf8'));
+ for(const role of ['hr','employee'])await q('INSERT INTO users(email,full_name,password_hash,role) VALUES($1,$2,$3,$4)',[`${role}@ann.test`,role,await hashPassword('password-123'),role]);
+ hr=await signIn(app,{email:'hr@ann.test',password:'password-123'});
+ employee=await signIn(app,{email:'employee@ann.test',password:'password-123'});
+});
+after(async()=>db.close());
+test('announcements require authentication, HR role for writes and CSRF protection',async()=>{
+ assert.equal((await request(app).get(URL_PATH)).status,401);
+ assert.equal((await employee.post(URL_PATH).send(notice())).status,403);
+ assert.equal((await employee.put(`${URL_PATH}/1`).send({...notice(),version:1})).status,403);
+ assert.equal((await request(app).post(URL_PATH).send(notice())).status,401);
+ const raw=request.agent(app);
+ assert.equal((await raw.post('/api/auth/login').send({email:'hr@ann.test',password:'password-123'})).status,200);
+ assert.equal((await raw.post(URL_PATH).send(notice())).status,403);
+ const r=await hr.get(URL_PATH);assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.headers['cache-control'],'no-store');
+});
+test('HR can create, publish, edit and archive; employee parameters cannot expose hidden notices',async()=>{
+ let r=await hr.post(URL_PATH).send(notice());assert.equal(r.status,201,JSON.stringify(r.body));const draft=r.body;
+ assert.equal((await employee.get(URL_PATH+'?status=draft')).body.total,0);
+ const live=(await hr.put(`${URL_PATH}/${draft.id}`).send({...notice('published'),version:draft.version}));assert.equal(live.status,200,JSON.stringify(live.body));assert.ok(live.body.publishedAt);
+ r=await employee.get(URL_PATH);assert.equal(r.body.total,1);assert.equal(r.body.items[0].body,notice().body);
+ const edited=await hr.put(`${URL_PATH}/${draft.id}`).send({...notice('published'),title:'Updated notice',version:live.body.version});assert.equal(edited.status,200);
+ assert.equal((await hr.put(`${URL_PATH}/${draft.id}`).send({...notice('published'),version:live.body.version})).status,409);
+ assert.equal((await employee.get(URL_PATH)).body.items[0].title,'Updated notice');
+ r=await hr.put(`${URL_PATH}/${draft.id}`).send({...notice('archived'),version:edited.body.version});assert.equal(r.status,200);
+ assert.equal((await employee.get(URL_PATH+'?status=archived')).body.total,0);
+ assert.equal((await hr.get(URL_PATH+'?status=archived')).body.total,1);
+ const audit=await q("SELECT action FROM audit_logs WHERE entity_type='announcement'");assert.equal(audit.rows.length,4);
+});
+test('expiry is inclusive of company today; expired notices are hidden without a background job',async()=>{
+ let r=await hr.post(URL_PATH).send({...notice('published'),expiresOn:companyDate()});assert.equal(r.status,201,JSON.stringify(r.body));
+ const id=r.body.id;
+ assert.equal((await employee.get(URL_PATH)).body.total,1);
+ await q("UPDATE announcements SET expires_on=(now() AT TIME ZONE 'Africa/Addis_Ababa')::date-1 WHERE id=$1",[id]);
+ assert.equal((await employee.get(URL_PATH)).body.total,0);
+ r=await hr.get(URL_PATH+'?status=published');assert.equal(r.body.items[0].expired,true);
+ assert.equal((await hr.post(URL_PATH).send({...notice('published'),expiresOn:'2000-01-01'})).status,422);
+});
+test('pagination and validation work for both roles',async()=>{
+ for(let i=0;i<3;i++)assert.equal((await hr.post(URL_PATH).send({...notice('published'),title:`Notice ${i}`})).status,201);
+ const first=await employee.get(URL_PATH+'?pageSize=2&page=1'),second=await employee.get(URL_PATH+'?pageSize=2&page=2');
+ assert.equal(first.body.total,3);assert.equal(first.body.items.length,2);assert.equal(second.body.items.length,1);
+ assert.ok(!first.body.items.some(x=>x.id===second.body.items[0].id));
+ assert.equal((await hr.get(URL_PATH+'?pageSize=1')).body.items.length,1);
+ assert.equal((await hr.get(URL_PATH+'?page=0')).status,400);
+ assert.equal((await hr.post(URL_PATH).send({...notice(),title:'   '})).status,400);
+ assert.equal((await hr.post(URL_PATH).send({...notice(),body:'x'.repeat(5001)})).status,400);
+ assert.equal((await hr.post(URL_PATH).send({...notice(),status:'invalid'})).status,400);
+ assert.equal((await hr.post(URL_PATH).send({...notice(),expiresOn:'not-a-date'})).status,400);
+ assert.equal((await hr.put(URL_PATH+'/999999').send({...notice(),version:1})).status,404);
+});
+test('locked HR cannot read or publish announcements',async()=>{
+ assert.equal((await hr.post('/api/qr/lock').send({})).status,200);
+ assert.equal((await hr.get(URL_PATH)).status,423);
+ assert.equal((await hr.post(URL_PATH).send(notice())).status,423);
+});

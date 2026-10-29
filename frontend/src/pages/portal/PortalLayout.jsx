@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { CalendarCheck, CalendarDays, FileText, Home, LogOut, UserRound, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../api/auth.jsx';
 import ThemeToggle from '../../components/ThemeToggle.jsx';
+import { AnnouncementFeed } from '../Announcements.jsx';
 import { PORTAL_NAV, firstName } from './portalNav.js';
 
 const ICONS = { profile: UserRound, home: Home, attendance: CalendarCheck, leave: CalendarDays, payslips: FileText };
@@ -65,6 +66,7 @@ export function PortalHome() {
   return (
     <section className="stack">
       <h1>Hello, {firstName(user.fullName)}</h1>
+      <AnnouncementFeed />
       <div className="card stack">
         <strong>Check in or out</strong>
         <p className="muted">Scan the QR code on the office tablet with your phone camera. You will be asked to take a selfie.</p>
