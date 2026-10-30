@@ -1,6 +1,5 @@
 import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
-import AuditBar from '../components/AuditBar.jsx';
 import { useEffect,useState } from 'react';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -28,7 +27,6 @@ export default function Settlements(){
   const balance=(kind,key,header)=>({key,header,align:'num',render:r=><button type="button" className="salary-cell" onClick={()=>setSelected({period:r,kind})} aria-label={`View ${settlementLabel(kind)} payable for ${r.month}`}>{formatMoney(r[key])}</button>});
   return <section className="stack">
     <div className="row between"><h1>Settlements</h1><Button onClick={refresh} disabled={data.loading}>Refresh</Button></div>
-    <p className="muted">Income tax and pension payable from payrolls marked Paid. Pension includes employee and company contributions. Record payments already made to reduce the balance; this does not transfer money.</p>
     {!data.loading&&!data.error&&data.summary?.map(s=><div className="card stack" key={s.currency||'currency'}><strong>Outstanding · {s.currency||'Currency not recorded'}</strong><div className="row"><span>Income tax: <strong>{formatMoney(s.incomeTaxBalanceMinor)}</strong></span><span>Pension: <strong>{formatMoney(s.pensionBalanceMinor)}</strong></span></div></div>)}
     <Field as="select" label="Show" value={view} options={[{value:'unsettled',label:'Unsettled months'},{value:'all',label:'All paid payroll months'}]} onChange={e=>{setView(e.target.value);setPage(1);}} />
     <Table caption="Monthly tax and pension payable" columns={[
@@ -65,14 +63,13 @@ function SettlementDetails({period,kind,onClose,onRecorded}){
         {canManage&&amounts.balance>0&&!recording&&<Button variant="primary" onClick={()=>setRecording(true)}>Record payment</Button>}
         {canManage&&recording&&<PaymentForm period={current} kind={kind} balance={amounts.balance} onBusy={setBusy} onConflict={()=>{setRecording(false);refresh();onRecorded();}} onCancel={()=>setRecording(false)} onSaved={()=>{setRecording(false);setHistoryPage(1);refresh();onRecorded();}} />}
       </>}
-      <h2>Employee breakdown</h2><p className="muted">Saved payroll liabilities for every employee. Partial settlements apply to this month’s total and are not allocated to individual employees.</p>
+      <h2>Employee breakdown</h2>
       <Table caption={`${label} employee breakdown`} columns={cols} rows={employees.items} loading={employees.loading} error={employees.error} onRetry={refresh} empty="No employee entries" />
       <Pager page={page} pageSize={DETAIL_SIZE} total={employees.total} onPage={setPage} disabled={employees.loading||busy} />
       <h2>Settlement history</h2>
       <Table caption={`${label} settlement history`} columns={[{key:'paymentDate',header:'Payment date'},money('amountMinor','Amount'),{key:'reference',header:'Reference'},{key:'notes',header:'Notes'}, {key:'recordedBy',header:'Recorded by'}]}
         rows={history.items} loading={history.loading} error={history.error} onRetry={refresh} empty="No payments recorded" />
       <Pager page={historyPage} pageSize={DETAIL_SIZE} total={history.total} onPage={setHistoryPage} disabled={history.loading||busy} />
-      <AuditBar type="settlement_period" id={period.id} reload={reload}/>
     </div>
   </Modal>;
 }
@@ -93,7 +90,7 @@ function PaymentForm({period,kind,balance,onBusy,onConflict,onCancel,onSaved}){
     <Field label="Payment date" type="date" max={period.today} value={form.paymentDate} onChange={change('paymentDate')} disabled={busy} error={fields.paymentDate} required />
     <Field label="Payment reference" value={form.reference} onChange={change('reference')} maxLength={120} disabled={busy} error={fields.reference} required />
     <Field as="textarea" label="Notes (optional)" value={form.notes} onChange={change('notes')} maxLength={1000} disabled={busy} error={fields.notes} />
-    <p className="muted">Check the month, amount and reference before saving. Saved payment records cannot be edited or deleted.</p>
+    <p className="muted">Records a payment already made. Saved records cannot be edited or deleted.</p>
     <div className="row"><Button disabled={busy} onClick={onCancel}>Cancel</Button><Button variant="primary" type="submit" busy={busy}>Save payment</Button></div>
   </form>;
 }

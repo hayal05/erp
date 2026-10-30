@@ -1,6 +1,5 @@
 import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
-import AuditBar from '../components/AuditBar.jsx';
 import { useEffect, useState } from 'react';
 import Modal from '../components/Modal.jsx';
 import Button from '../components/Button.jsx';
@@ -39,6 +38,5 @@ export default function SalaryProfileDialog({ employee, onClose }) {
           <label key={key}><input type="checkbox" checked={form[key]} disabled={busy||!canManage} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
         <small className="muted">Allowance flags require matching payroll base settings.</small>
       </form>}
-  <AuditBar type="salary_profile" id={employee.id} />
     </Modal>;
 }

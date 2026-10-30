@@ -1,4 +1,3 @@
-import AuditBar from '../components/AuditBar.jsx';
 import {useEffect,useState} from 'react';
 import {usePermission,useAuth} from '../api/auth.jsx';
 import {get,post} from '../api/client.js';
@@ -26,7 +25,6 @@ function AccessList(){
    .catch(e=>{if(!ctrl.signal.aborted)setData({items:[],total:0,loading:false,error:e.message});});return()=>ctrl.abort();
  },[page,query,reload]);
  return <section className="stack"><h1>Access Management</h1>
-  <p className="muted">{canManage?'Select an employee to issue or revoke HR/Finance access.':'Read only. View employee access and grant history.'}</p>
   <form className="row" onSubmit={e=>{e.preventDefault();setQuery(search.trim());setPage(1);}}><Field label="Name, username, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /><Button type="submit">Search</Button><Button onClick={refresh} disabled={data.loading}>Refresh</Button></form>
   <Table caption="Employee access" columns={[
    {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'email',header:'Contact email'},{key:'department',header:'Department'},{key:'position',header:'Position'},
@@ -61,12 +59,11 @@ function AccessDialog({employee,onClose,onChanged}){
  return <Modal open wide title={`Access · ${employee.fullName}`} dismissible={!busy} onClose={()=>!busy&&onClose()} footer={<Button disabled={busy} onClick={onClose}>Close</Button>}><div className="stack">
   <p>{employee.employeeCode} · {employee.username}</p><p>Additional access: <strong>{active.map(roleName).join(', ')||'None'}</strong></p>
   {error&&<p role="alert" className="form-error">{error}</p>}
-  {!canManage?<p className="muted">Read only. General Admin issues and revokes access.</p>:!employee.active?<p className="muted">Inactive employees cannot receive new grants. Existing access can still be revoked.</p>:<form className="stack" onSubmit={grant}>
+  {canManage&&(!employee.active?<p className="muted">Activate the employee to grant access.</p>:<form className="stack" onSubmit={grant}>
    <Field as="select" label="Grant additional access" options={[{value:'hr',label:'HR'},{value:'finance',label:'Finance'}]} value={role} onChange={e=>setRole(e.target.value)} disabled={busy}/>
-   <p className="muted">{role==='hr'?'HR manages employees, attendance, leave and prepares payroll drafts.':'Finance manages payroll settings, deductions, approval, payment and settlements.'} The separate workspaces are being enabled in the next rollout tasks.</p>
    <Button type="submit" variant="primary" busy={busy} disabled={active.includes(role)}>Grant {roleName(role)} access</Button>
-  </form>}
-  {canManage&&revoke&&<form className="card stack" onSubmit={remove}><h3>Revoke {roleName(revoke.role)} access?</h3><p>Employee self-service remains available.</p><Field as="textarea" label="Reason" required minLength={3} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} disabled={busy}/><div className="row"><Button disabled={busy} onClick={()=>setRevoke(null)}>Cancel</Button><Button type="submit" variant="danger" busy={busy}>Revoke access</Button></div></form>}
+  </form>)}
+  {canManage&&revoke&&<form className="card stack" onSubmit={remove}><h3>Revoke {roleName(revoke.role)} access?</h3><Field as="textarea" label="Reason" required minLength={3} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} disabled={busy}/><div className="row"><Button disabled={busy} onClick={()=>setRevoke(null)}>Cancel</Button><Button type="submit" variant="danger" busy={busy}>Revoke access</Button></div></form>}
   <h2>Access history</h2>
   <Table caption="Grant and revocation history" columns={[
    {key:'role',header:'Access',render:r=>roleName(r.role)},{key:'grantedBy',header:'Granted by'},{key:'grantedAt',header:'Granted on',render:r=>stamp(r.grantedAt)},
@@ -74,6 +71,5 @@ function AccessDialog({employee,onClose,onChanged}){
    {key:'actions',header:'Status',render:r=>r.revokedAt?'Revoked':r.role==='admin'?'Active (protected)':!canManage?'Active':<Button size="sm" disabled={busy} onClick={()=>{setRevoke(r);setReason('');setError('');}}>Revoke {roleName(r.role)}</Button>},
   ]} rows={history.items} loading={history.loading} error={history.error} onRetry={refresh} empty="No access grants recorded"/>
   <Pager page={page} pageSize={HISTORY_SIZE} total={history.total} onPage={setPage} disabled={history.loading||busy}/>
- <AuditBar type="access_employee" id={employee.id} reload={reload}/>
  </div></Modal>;
 }

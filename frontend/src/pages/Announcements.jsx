@@ -1,6 +1,5 @@
 import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
-import AuditBar from '../components/AuditBar.jsx';
 import { useEffect, useState } from 'react';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -77,6 +76,5 @@ function AnnouncementEditor({item,onClose,onSaved,onRefresh}) {
       <Field as="select" label="Status" options={OPTIONS} value={form.status} onChange={change('status')} disabled={busy||conflict} error={fields.status} />
       <Field type="date" label="Visible through (optional)" value={form.expiresOn} onChange={change('expiresOn')} disabled={busy||conflict} error={fields.expiresOn} hint="Leave blank for no expiry." />
     </form>
-    {item.id && <AuditBar type="announcement" id={item.id}/>}
   </Modal>;
 }
