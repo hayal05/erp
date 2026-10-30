@@ -65,7 +65,7 @@ export default function HrLayout() {
         <time className="clock muted" dateTime={now.toISOString()}>{formatClock(now)}</time>
         <ThemeToggle />
         <WorkspaceSwitcher />
-        <div className="user-chip">
+        <div className="user-chip" title={user.fullName}>
           <span className="avatar" aria-hidden="true">{initials(user.fullName)}</span>
           <span className="user-text"><strong>{user.fullName}</strong><small className="muted">{workspaceArea(pathname)==='finance'?'Finance':isAdmin(user)?'Admin':'HR'}</small></span>
         </div>
