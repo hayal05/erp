@@ -308,7 +308,7 @@ ul.form-error { margin: 0; padding-left: 28px; }
 /* Salary sheet: nine columns stay intact inside the keyboard-scrollable table wrapper. */
 .salary-sheet { min-width: 0; }
 .salary-sheet .table { min-width: 1180px; }
-.salary-sheet .table th, .salary-sheet .table td { padding: 9px 12px; border-right: 1px solid var(--border); }
+.salary-sheet .table th, .salary-sheet .table td { padding: var(--cell-y) var(--cell-x); border-right: 1px solid var(--border); }
 .salary-sheet .table th:last-child, .salary-sheet .table td:last-child { border-right: 0; font-weight: 700; }
 .salary-sheet .table .num { white-space: nowrap; }
 .salary-cell { display: inline-flex; align-items: center; justify-content: flex-end; gap: 7px; width: 100%; padding: 4px 0;
@@ -321,7 +321,7 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .salary-name { padding: 4px 0; border: 0; background: transparent; color: var(--accent); font: inherit; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .salary-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .salary-detail-summary { margin: 0; display: grid; gap: 0; }
-.salary-detail-summary > div { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.salary-detail-summary > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); }
 .salary-detail-summary dd { margin: 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .salary-detail-summary > div:last-child { font-weight: 700; }
 .salary-detail .table { min-width: 440px; }
@@ -587,3 +587,20 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .leave-balance-summary dt { color: var(--muted); font-size: .8rem; }
 .leave-balance-summary dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 @media (max-width: 400px) { .leave-balance-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+/* Payroll detail views prioritize totals without padded outer cards. */
+.company-costs-page h1, .salary-breakdown h3 { margin: 0; }
+.cost-scope, .cost-detail-meta { font-size: .85rem; }
+.company-costs-page .table { min-width: 820px; }
+.cost-details .table { min-width: 820px; }
+.cost-details .table th, .cost-details .table td { white-space: nowrap; }
+.cost-totals { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr)); gap: var(--space-sm); margin: 0; padding: var(--space-sm) 0; border-block: 1px solid var(--border); }
+.cost-totals dt { color: var(--muted); font-size: .8rem; }
+.cost-totals dd { margin: 2px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.salary-summary-main { grid-template-columns: repeat(2,minmax(0,1fr)); column-gap: 20px; }
+.salary-summary-main > div { min-width: 0; font-size: .9rem; }
+.salary-summary-main > div:last-child { grid-column: 1 / -1; }
+.salary-detail-summary dt { min-width: 0; overflow-wrap: anywhere; }
+.salary-breakdown { gap: var(--space-xs); }
+.salary-breakdown h3, .salary-breakdown > .row > strong { font-size: .9rem; }
+@media (max-width: 700px) { .salary-summary-main { grid-template-columns: minmax(0,1fr); } }
