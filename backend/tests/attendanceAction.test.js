@@ -57,7 +57,7 @@ function fakeTx({ record = null, tokenRow = { id: 1, issued_by_session_id: 's1',
     sql.push(text.replace(/\s+/g, ' ').trim());
     if (/FROM attendance_tokens/.test(text)) return { rows: tokenRow ? [tokenRow] : [] };
     if (/FROM attendance_records/.test(text)) return { rows: record ? [record] : [] };
-    if (/UPDATE attendance_tokens/.test(text)) return { rowCount: consumed, rows: [] };
+    if (/INSERT INTO attendance_token_scans/.test(text)) return { rows: consumed ? [{token_id: 1}] : [] };
     if (/INSERT INTO audit_logs/.test(text)) return { rows: [{ id: 1 }] };
     return { rows: [{ id: 9 }] };
   } };
@@ -65,15 +65,15 @@ function fakeTx({ record = null, tokenRow = { id: 1, issued_by_session_id: 's1',
 }
 const args = (run) => ({ employeeId: 7, userId: 3, token: TOKEN, workDate: '2026-10-19', photoId: PHOTO, run });
 
-test('applyScan locks the token first, then the record, consumes the token, then writes', async () => {
+test('applyScan shares the token lock, reserves an employee receipt, then writes attendance', async () => {
   const { sql, run } = fakeTx();
   const out = await applyScan(args(run));
   assert.equal(out.action, ACTION.CHECK_IN);
   const at = (re) => sql.findIndex((q) => re.test(q));
-  assert.match(sql[0], /FROM attendance_tokens.*FOR UPDATE OF t/);
+  assert.match(sql[0], /FROM attendance_tokens.*FOR SHARE OF t/);
   assert.ok(at(/FROM attendance_records.*FOR UPDATE/) > 0);
-  assert.ok(at(/UPDATE attendance_tokens SET used_at/) > at(/FROM attendance_records.*FOR UPDATE/));
-  assert.ok(at(/INSERT INTO attendance_records/) > at(/UPDATE attendance_tokens SET used_at/));
+  assert.ok(at(/INSERT INTO attendance_token_scans/) < at(/FROM attendance_records.*FOR UPDATE/));
+  assert.ok(at(/INSERT INTO attendance_records/) > at(/INSERT INTO attendance_token_scans/));
   assert.ok(at(/INSERT INTO audit_logs/) > at(/INSERT INTO attendance_records/));
 });
 
@@ -91,9 +91,9 @@ test('applyScan: a completed day throws before the token is consumed', async () 
   assert.equal(sql.some((q) => /UPDATE attendance_tokens/.test(q)), false);
 });
 
-test('applyScan: losing the token race (0 rows consumed) is 409 token_used', async () => {
+test('applyScan: a duplicate employee receipt is 409 token_already_scanned', async () => {
   const { run } = fakeTx({ consumed: 0 });
-  await assert.rejects(applyScan(args(run)), (e) => e.status === 409 && e.code === 'token_used');
+  await assert.rejects(applyScan(args(run)), (e) => e.status === 409 && e.code === 'token_already_scanned');
 });
 
 test('applyScan rejects a malformed date or photo id before opening a transaction', async () => {

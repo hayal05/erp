@@ -82,8 +82,9 @@ export default function QrAttendance() {
           </div>
         )}
         <p className="qr-countdown" aria-live="off">
-          {!canManage?(status?.error||(!status?'Loading QR status…':status.active?`An unused code is active until ${new Date(status.expiresAt).toLocaleString()}.`:'No unused active code.')):live ? <>Expires in <strong>{formatCountdown(remaining)}</strong></> : 'Press the button to show a new code.'}
+          {!canManage?(status?.error||(!status?'Loading QR status…':status.active?`A shared code is active until ${new Date(status.expiresAt).toLocaleString()}.`:'No active code.')):live ? <>Expires in <strong>{formatCountdown(remaining)}</strong></> : 'Press the button to show a new code.'}
         </p>
+        {canManage && live && <p className="muted">All employees can use this code before it expires. Each employee can use it once.</p>}
         {error && <p className="field-error" role="alert">{error}</p>}
         {canManage ? <div className="qr-actions">
           <Button variant="primary" busy={busy} onClick={generate}>

@@ -39,6 +39,7 @@ export function describeScanError(err) {
   const status = err?.status ?? 0;
   const code = err?.code ?? '';
   if (status === 0 || code === 'network') return { next: 'retry', message: 'Cannot reach the server. Your attendance was not recorded. Check your connection and try again.' };
+  if (code === 'token_already_scanned') return { next: 'stop', message: 'You already recorded attendance with this QR code. Check your attendance history. Use a new code when checking out.' };
   if (code === 'invalid_token' || code === 'token_expired' || code === 'token_used') {
     return { next: 'rescan', message: 'This QR code has expired or was already used. Ask HR to show a new one on the tablet and scan it again.' };
   }

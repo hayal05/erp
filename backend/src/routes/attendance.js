@@ -4,7 +4,7 @@ import { HttpError, wrap } from '../middleware/error.js';
 import { requireEmployee } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
 import { createLimiter } from '../middleware/rateLimit.js';
-import { checkQrToken } from '../services/qrToken.js';
+import { checkQrToken, assertQrNotScanned } from '../services/qrToken.js';
 import { parseScanBody, MAX_BASE64_CHARS } from '../services/scanRequest.js';
 import { submitScan, companyDate, companyTime } from '../services/attendance.js';
 import { classifyForEmployee } from '../services/attendanceStatus.js';
@@ -19,7 +19,7 @@ import { config } from '../config.js';
 export const scanDeps = { photos };
 
 // Employee QR attendance submit (spec 7 step 4): authenticate, validate the request, check the employee is active,
-// validate the token (2.12), then decide in/out, upload the selfie and run the transaction that consumes the token and
+// validate the token (2.12), then decide in/out, upload the selfie and run the transaction that reserves the employee scan and
 // writes the record (2.13-2.15, services/attendance.js). A check-in is classified present/late from the employee's
 // shift inside that transaction (2.16, services/attendanceStatus.js).
 // Bad tokens are counted per user (an employee cannot hammer the endpoint with guesses).
@@ -50,7 +50,8 @@ router.post('/scan', scanJson, wrap(async (req, res) => {
   if (emp.status !== 'active') throw new HttpError(403, 'Your employee record is inactive. Contact HR.', 'employee_inactive');
 
   try {
-    await checkQrToken({ query }, token);
+    const checked = await checkQrToken({ query }, token);
+    await assertQrNotScanned({ query }, checked.id, emp.id);
   } catch (e) {
     if (e instanceof HttpError) scanLimits.user.fail(key);
     throw e;

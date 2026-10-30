@@ -10,11 +10,12 @@ for(const name of(await fs.readdir(path.join(root,'tests'))).filter(n=>n.endsWit
 }
 // These cases depend on distinct PostgreSQL connections. Never present their exclusion as a pass.
 const omitted=[
- '#9 two people scanning the same token at once: exactly one succeeds',
+ 'concurrency: duplicate submissions by one employee on the same QR never check out',
+ '#9 two people scanning the same token at once: both succeed',
  '#9 one person scanning twice at once with two tokens: a single check-in row, never two',
  'lock: a second transaction waits for the first to finish, then sees its result',
  'each correction is audited; the record shows the latest, two simultaneous corrections both complete',
- 'concurrency: two simultaneous scans with the SAME token (two people) -> exactly one succeeds',
+ 'concurrency: two simultaneous scans with the SAME token (two people) -> both succeed',
  'concurrency: two simultaneous check-ins by ONE person (different tokens) -> one record, the loser keeps its token',
  'deductions 4.8b-6: two generations at once cannot take the same one-time item (the second waits, then does not see it)',
  'two simultaneous requests cannot overspend the balance or overlap',
