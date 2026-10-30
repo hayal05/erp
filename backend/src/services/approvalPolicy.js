@@ -1,6 +1,8 @@
 // Only fixed administrative operations may enter the queue. Daily attendance, QR,
 // personal profiles/passwords and existing leave decisions do not use this wrapper.
 const rules=[
+ ['hr','vacancies.review',/^\/api\/vacancies\/\d+\/applications\/\d+$/,['vacancy_applications']],
+ ['hr','vacancies.manage',/^\/api\/vacancies(?:\/\d+)?$/,['internal_vacancies','positions','departments']],
  ['hr','employees.manage',/^\/api\/employees(?:\/\d+(?:\/(?:activate|deactivate))?)?$/,['employees','users','salary_profiles','positions','departments','shifts']],
  ['hr','organization.manage',/^\/api\/(?:departments(?:\/\d+(?:\/positions)?)?|positions\/\d+|shifts(?:\/\d+)?|settings\/holidays(?:\/\d+)?)$/,['departments','positions','employees','shifts','holidays']],
  ['hr','salary_profiles.manage',/^\/api\/salary-profiles\/\d+$/,['salary_profiles','employees']],
@@ -16,6 +18,6 @@ const rules=[
 ];
 export function approvalPolicy(method,path){
  if(!['POST','PUT','PATCH','DELETE'].includes(method))return null;
- const found=rules.find(r=>r[2].test(path));return found?{department:found[0],permission:found[1],tables:found[3]}:null;
+ const found=rules.find(r=>r[2].test(path));return found?{department:found[0],permission:found[1],tables:found[3],...(found[1]==='vacancies.review'?{recordScope:{table:'vacancy_applications',id:Number(path.split('/').at(-1))}}:{})}:null;
 }
 export const leaveDecision=(method,path)=>method==='POST'&&/^\/api\/leave-admin\/requests\/\d+\/(approve|reject)$/.test(path);

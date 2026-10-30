@@ -14,7 +14,8 @@ export async function fingerprint(db,policy){
  for(const table of policy.tables){
   // Exclude login/session bookkeeping from the user identity fingerprint.
   const row=table==='users'?"jsonb_build_object('id',id,'email',email,'username',username,'fullName',full_name,'role',role,'active',is_active,'password',password_hash,'mustChangePassword',must_change_password)":'to_jsonb(t)';
-  const {rows:[r]}=await db.query(`SELECT md5(COALESCE(string_agg(md5((${row})::text),'' ORDER BY md5((${row})::text)),'')) AS digest FROM ${table} t`);
+  const scope=policy.recordScope?.table===table?policy.recordScope:null;
+  const {rows:[r]}=await db.query(`SELECT md5(COALESCE(string_agg(md5((${row})::text),'' ORDER BY md5((${row})::text)),'')) AS digest FROM ${table} t${scope?' WHERE id=$1':''}`,scope?[scope.id]:[]);
   parts.push(r.digest);
  }
  return crypto.createHash('sha256').update(parts.join(':')).digest('hex');

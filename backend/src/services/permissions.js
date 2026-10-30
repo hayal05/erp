@@ -2,6 +2,7 @@
 // Task 2 will populate user.accessRoles from persisted grants on every authenticated request.
 export const ACCESS_ROLES = Object.freeze(['hr', 'finance', 'admin']);
 export const PERMISSIONS = Object.freeze([
+  'vacancies.read','vacancies.admin_read','vacancies.manage','vacancies.review',
   'dashboard.read','organization.read','attendance.qr.read','announcements.admin_read','settlements.read','access.read',
   'self.profile', 'self.attendance', 'self.leave', 'self.payslips',
   'employees.read', 'employees.manage', 'organization.manage', 'salary_profiles.manage',
@@ -11,10 +12,10 @@ export const PERMISSIONS = Object.freeze([
   'deductions.read', 'deductions.manage', 'company_costs.read', 'settlements.manage',
   'approvals.read', 'access.manage', 'audit.hr', 'audit.finance', 'audit.access',
 ]);
-const employeePermissions = Object.freeze(['self.profile', 'self.attendance', 'self.leave', 'self.payslips', 'announcements.read']);
-const sharedManagementReads=['dashboard.read','organization.read','attendance.qr.read','announcements.admin_read','company_costs.read','settlements.read','access.read'];
+const employeePermissions = Object.freeze(['self.profile', 'self.attendance', 'self.leave', 'self.payslips', 'announcements.read', 'vacancies.read']);
+const sharedManagementReads=['vacancies.read','vacancies.admin_read','dashboard.read','organization.read','attendance.qr.read','announcements.admin_read','company_costs.read','settlements.read','access.read'];
 const hrPermissions = Object.freeze([
-  ...sharedManagementReads,
+  ...sharedManagementReads, 'vacancies.manage', 'vacancies.review',
   'employees.read', 'employees.manage', 'organization.manage', 'salary_profiles.manage',
   'attendance.read', 'attendance.manage', 'attendance.qr', 'leave.read', 'leave.manage',
   'announcements.read', 'announcements.manage', 'payroll.read', 'payroll.prepare',

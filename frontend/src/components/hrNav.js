@@ -11,6 +11,7 @@ export const HR_NAV = [
   { key: 'leave', label: 'Leave', to: '/hr/leave' },
   { key: 'payroll', label: 'Payroll', to: '/hr/payroll' },
   { key: 'settlements', label: 'Settlements', to: '/hr/settlements' },
+  { key: 'vacancies', label: 'Internal vacancies', to: '/hr/vacancies' },
   { key: 'announcements', label: 'Announcements', to: '/hr/announcements' },
   { key: 'approvals', label: 'Approvals', to: '/hr/approvals' },
   { key: 'access', label: 'Access Management', to: '/hr/access-management', permission: 'access.read' },

@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {diffJson} from '../../../shared/jsonDelta.mjs';
 
-const READ_PATH = /^\/api\/(employees|departments|positions|shifts|attendance-records|attendance|leave|leave-admin|payroll-settings|salary-profiles|deductions|settlements|payroll-costs|payroll|payslips|settings|dashboard|profile|announcements|change-requests|access-management|audit-history)(\/|$)/;
+const READ_PATH = /^\/api\/(vacancies|employees|departments|positions|shifts|attendance-records|attendance|leave|leave-admin|payroll-settings|salary-profiles|deductions|settlements|payroll-costs|payroll|payslips|settings|dashboard|profile|announcements|change-requests|access-management|audit-history)(\/|$)/;
 // Baselines are private, bounded, short-lived server memory. No cookies or browser
 // HTTP caches hold response bodies. Every refresh still runs the normal route guards.
 export function incrementalReads({maxBytes=8*1024*1024,maxEntries=128,ttlMs=10*60_000,now=Date.now}={}) {

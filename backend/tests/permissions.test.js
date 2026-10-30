@@ -70,3 +70,9 @@ test('HR and Finance share administrative read access while ordinary employees d
  for(const role of ['hr','finance'])for(const p of ['dashboard.read','employees.read','organization.read','attendance.read','attendance.qr.read','leave.read','announcements.admin_read','payroll.read','payroll_settings.read','company_costs.read','settlements.read','access.read'])assert.equal(hasPermission(person(role),p),true,role+':'+p);
  for(const p of ['dashboard.read','organization.read','attendance.qr.read','announcements.admin_read','settlements.read','access.read'])assert.equal(hasPermission(person(),p),false,p);
 });
+
+
+test('internal vacancies share posting visibility while keeping recruitment review with HR and Admin',()=>{
+ for(const p of ['vacancies.manage','vacancies.review']){assert.equal(hasPermission(person('hr'),p),true);assert.equal(hasPermission(person('admin'),p),true);assert.equal(hasPermission(person('finance'),p),false);assert.equal(hasPermission(person(),p),false);}
+ assert.equal(hasPermission(person(),'vacancies.read'),true);assert.equal(hasPermission(person(),'vacancies.admin_read'),false);assert.equal(hasPermission(person('finance'),'vacancies.admin_read'),true);
+});

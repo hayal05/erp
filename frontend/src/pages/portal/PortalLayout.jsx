@@ -1,14 +1,14 @@
 import {PageRefreshProvider} from '../../api/pageRefresh.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { CalendarCheck, CalendarDays, FileText, Home, LogOut, UserRound, ChevronDown } from 'lucide-react';
+import { Briefcase, CalendarCheck, CalendarDays, FileText, Home, LogOut, UserRound, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../api/auth.jsx';
 import WorkspaceSwitcher from '../../components/WorkspaceSwitcher.jsx';
 import ThemeToggle from '../../components/ThemeToggle.jsx';
 import { AnnouncementFeed } from '../Announcements.jsx';
 import { PORTAL_NAV, firstName } from './portalNav.js';
 
-const ICONS = { profile: UserRound, home: Home, attendance: CalendarCheck, leave: CalendarDays, payslips: FileText };
+const ICONS = { vacancies: Briefcase, profile: UserRound, home: Home, attendance: CalendarCheck, leave: CalendarDays, payslips: FileText };
 
 // Mobile-first shell for employees: compact top bar, content, bottom tab bar (thumb reach).
 // Mounted inside RequireRole('employee'); the server enforces access on every request.

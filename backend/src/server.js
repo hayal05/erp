@@ -1,3 +1,4 @@
+import vacancyRoutes from './routes/vacancies.js';
 import {incrementalReads} from './middleware/incrementalReads.js';
 import express from 'express';
 import changeRequestRoutes from './routes/changeRequests.js';
@@ -65,6 +66,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use(incrementalReads());
 
   const operations=express.Router();
+  operations.use('/api/vacancies', vacancyRoutes);
   operations.use('/api/announcements', announcementRoutes);
   operations.use('/api/employees', employeeRoutes);
   operations.use('/api/departments', departmentRoutes);
@@ -80,6 +82,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   operations.use('/api/payroll', payrollRoutes);
   app.use('/api/change-requests', changeRequestRoutes(operations));
 
+  app.use('/api/vacancies', vacancyRoutes);
   app.use('/api/announcements', announcementRoutes);
   app.use('/api/audit-history', auditHistoryRoutes);
   app.use('/api/access-management', accessManagementRoutes);

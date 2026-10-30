@@ -1,7 +1,7 @@
 import {PageRefreshProvider} from '../api/pageRefresh.jsx';
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
+import { Briefcase, ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
 import AuditBottomBar from './AuditBottomBar.jsx';
 import {auditScope} from '../api/auditScope.js';
 import ApprovalNotice from './ApprovalNotice.jsx';
@@ -11,7 +11,7 @@ import { useAuth } from '../api/auth.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import { HR_NAV, QR_PATH, ROLE_LABEL, formatClock, initials, layoutMode } from './hrNav.js';
 
-const ICONS = { approvals: ShieldCheck, access: ShieldCheck, settlements: Landmark, announcements: Megaphone, dashboard: LayoutDashboard, employees: Users, departments: Building2, attendance: CalendarCheck, qr: QrCode, leave: CalendarDays, payroll: Wallet, settings: Settings };
+const ICONS = { vacancies: Briefcase, approvals: ShieldCheck, access: ShieldCheck, settlements: Landmark, announcements: Megaphone, dashboard: LayoutDashboard, employees: Users, departments: Building2, attendance: CalendarCheck, qr: QrCode, leave: CalendarDays, payroll: Wallet, settings: Settings };
 
 function useClock() {
   const [now, setNow] = useState(() => new Date());

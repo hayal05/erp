@@ -382,3 +382,10 @@ Render or rerun seeding on every deployment.
 Pending employee-creation proposals submitted before this schema change may need to
 be withdrawn and resubmitted with an explicit username. Run migration 013 before
 starting the updated server; the configured Render start command runs migrations.
+
+
+### Internal vacancies
+
+HR/Admin can post draft or open vacancies, set a closing date, and review applications under **Internal vacancies**. Employees use **Vacancies** in their portal and click **Apply**; no CV, attachment or application text is required. Each employee can apply once per vacancy. Applications save a recruitment-only copy of their profile, experience and position history at submission time; later profile edits do not rewrite the application. HR/Admin can shortlist, select or reject applicants. Selection does not change the employee's position automatically. Finance can view vacancy postings, while applicant profiles and reviews are restricted to HR/Admin.
+
+HR posting/editing and review decisions require another HR reviewer or General Admin through the existing Approvals page. General Admin changes and employee applications are immediate. Vacancy and applicant lists are paginated and participate in navigation-triggered incremental refresh. Migration `015_internal_vacancies.sql` adds the vacancy/application tables; no new environment variables, file storage or background jobs are needed.
