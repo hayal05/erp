@@ -449,3 +449,9 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
  .hr-shell { height: auto; min-height: 0; overflow: visible; grid-template-rows: auto auto; }
  .hr-shell > .content, .hr-shell > .sidebar { overflow: visible; scrollbar-gutter: auto; }
 }
+
+/* Search guidance lives inside the control; accessible labels remain available. */
+.field input[type="search"] { appearance: none; -webkit-appearance: none; }
+.field input[type="search"]::-webkit-search-decoration,
+.field input[type="search"]::-webkit-search-results-button,
+.field input[type="search"]::-webkit-search-results-decoration { display: none; }

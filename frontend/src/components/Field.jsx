@@ -22,7 +22,7 @@ export default function Field({ label, error, hint, as = 'input', options = [], 
 
   return (
     <div className={`field ${className}`.trim()}>
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} className={rest.type === 'search' ? 'sr-only' : undefined}>{label}</label>
       {control}
       {hint && <small id={`${id}-hint`} className="field-hint">{hint}</small>}
       {error && <small id={`${id}-err`} className="field-error">{error}</small>}
