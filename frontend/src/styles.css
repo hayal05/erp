@@ -628,3 +628,22 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
   .pension-settings-grid .field:last-child { grid-column: 1 / -1; }
   .deduction-picker { grid-template-columns: minmax(0,1fr); }
 }
+
+/* Settlement totals stay separated by currency; detail tabs reduce stacked tables. */
+.settlement-heading h1, .settlement-payment h3 { margin: 0; }
+.settlement-heading .field { width: 240px; max-width: 100%; }
+.settlement-summary-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: var(--space-sm); }
+.settlement-currency { display: grid; gap: var(--space-sm); }
+.settlement-currency > strong { font-size: .85rem; }
+.settlement-totals { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-sm); margin: 0; }
+.settlement-totals dt { color: var(--muted); font-size: .8rem; }
+.settlement-totals dd { margin: 2px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.settlement-period-totals { grid-template-columns: repeat(3,minmax(0,1fr)); padding-block: var(--space-sm); border-block: 1px solid var(--border); }
+.settlement-meta { font-size: .85rem; }
+.settlements-page .table { min-width: 1100px; }
+.settlement-details .table { min-width: 700px; }
+.settlement-details .table th, .settlement-details .table td { white-space: nowrap; }
+.settlement-note { min-width: 100px; max-width: 280px; }
+.settlement-note summary { cursor: pointer; color: var(--accent); min-height: var(--tap); align-content: center; }
+.settlement-note p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; }
+.settlement-payment { border-block: 1px solid var(--border); padding-block: var(--space-md); }
