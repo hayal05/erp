@@ -80,6 +80,15 @@ try{
  const profile=await render('pages/Vacancies.jsx','ApplicantProfile',{profile:{...person,experienceSummary:'Experience remains available',positionHistory:[{id:1,department:'Operations',position:'Officer',recordedOn:'2025-01-01'}]}});
  assert.ok(profile.includes('Experience remains available')&&profile.includes('2025-01-01'),'Applicant snapshot details lost');
  await render('pages/AccessManagement.jsx','AccessDialog',{employee:person});await render('components/UnlockDialog.jsx','default',{open:true});
+ const ownProfile={...person,experienceSummary:'Previous role in customer service'};
+ const ownProps={profile:ownProfile,history:{items:[{id:1,position:'Officer',department:'Operations',recordedOn:'2025-01-01',baseline:true}],total:1,loading:false,error:''},page:1,summary:ownProfile.experienceSummary,editing:false,busy:false,saveError:''};
+ const own=await render('pages/portal/Profile.jsx','ProfileDetails',ownProps,'/portal/profile');
+ for(const value of [person.fullName,person.employeeCode,person.username,'Operations','Officer','Account &amp; contact','Employment','Previous role in customer service','Starting record'])assert.ok(own.includes(value),`Employee profile lost ${value}`);
+ assert.ok(!own.includes('<input')&&!own.includes('<textarea'),'HR-managed profile facts became editable');
+ await render('pages/portal/Profile.jsx','ProfileDetails',{...ownProps,editing:true},'/portal/profile');
+ await render('pages/portal/Profile.jsx','ProfileDetails',{...ownProps,profile:{...ownProfile,fullName:'A very long employee name that must wrap in the identity header',email:null,phone:null},history:{items:[],total:0,loading:false,error:''}},'/portal/profile');
+ const historyError=await render('pages/portal/Profile.jsx','ProfileDetails',{...ownProps,history:{items:[],total:0,loading:false,error:'History unavailable'}},'/portal/profile');
+ assert.ok(historyError.includes('History unavailable')&&historyError.includes('Retry'),'Position history error recovery disappeared');
  const html=await render('pages/SalaryDetailDialog.jsx','SalaryDetails',{data:salary});
  for(const label of ['Basic salary','Allowance','Gross salary','Taxable income','Income tax','Employee pension','Net salary','Total employer cost'])assert.ok(html.includes(label),`Salary detail lost ${label}`);
  assert.ok(html.includes('1,010.00')&&html.includes('1,310.00'),'Saved net/employer totals changed');
