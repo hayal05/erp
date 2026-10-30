@@ -11,7 +11,7 @@ import { PORTAL_NAV, firstName } from './portalNav.js';
 
 const ICONS = { vacancies: Briefcase, profile: UserRound, home: Home, attendance: CalendarCheck, leave: CalendarDays, payslips: FileText };
 
-// Employee shell: desktop sidebar, with bottom navigation on tablet and mobile widths.
+// Employee shell: sidebar on mouse-based desktop views; bottom navigation on touch devices.
 // Mounted inside RequireRole('employee'); the server enforces access on every request.
 export default function PortalLayout() {
   const { user, logout } = useAuth();
