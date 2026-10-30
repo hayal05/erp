@@ -753,3 +753,9 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 @media screen and (pointer: coarse) {
   .salary-cell, .salary-name { min-height: var(--tap); }
 }
+
+/* Settings actions align with the table's right edge, with a tight shared gap. */
+.settings-table-section { gap: var(--space-sm); }
+.settings-section-actions { width: 100%; }
+.settings-section-actions > .row { justify-content: flex-end; }
+.settings-section-actions .field { width: 100px; }
