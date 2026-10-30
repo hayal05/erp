@@ -70,8 +70,8 @@ function Holidays() {
   ];
 
   return (
-    <div className="stack">
-      <div className="row between">
+    <div className="stack settings-table-section">
+      <div className="row end settings-section-actions">
         <h2 className="sr-only">Holidays</h2>
         <div className="row">
           {years.length > 0 && <Field hideLabel label="Year" as="select" options={years} value={year ?? data.year} onChange={(e) => setYear(Number(e.target.value))} />}
@@ -124,8 +124,8 @@ function Schedules() {
   ];
 
   return (
-    <div className="stack">
-      <div className="row between">
+    <div className="stack settings-table-section">
+      <div className="row end settings-section-actions">
         <h2 className="sr-only">Working schedules</h2>
         {canManage && <Button size="sm" variant="primary" onClick={() => setDialog({ shift: null })}><Plus size={16} aria-hidden="true" /> Add schedule</Button>}
       </div>

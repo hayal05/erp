@@ -178,7 +178,7 @@ a { color: var(--accent); }
 .sidebar { grid-area: side; display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-md); padding: var(--space-sm) 0;
   background: var(--bg-sidebar); border-right: 1px solid var(--border); min-height: 0; overflow-y: auto;
   overscroll-behavior: contain; scrollbar-gutter: stable; }
-.sidebar > nav, .sidebar > .logout { flex-shrink: 0; }
+.sidebar > nav { flex-shrink: 0; }
 .sidebar nav { display: grid; gap: 2px; }
 .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--tap); padding: 4px 12px;
   color: var(--muted); text-decoration: none; background: transparent; border: 0; border-left: 3px solid transparent;
@@ -187,7 +187,6 @@ a { color: var(--accent); }
 .nav-item span { min-width: 0; overflow-wrap: anywhere; }
 .nav-item:hover { color: var(--text); background: var(--surface-2); }
 .nav-item.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
-.nav-item.logout { color: var(--danger); }
 
 .content { grid-area: main; min-width: 0; min-height: 0; padding: var(--shell-padding); outline: 0; overflow: auto;
   overscroll-behavior: contain; scrollbar-gutter: stable; }
@@ -753,3 +752,18 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 @media screen and (pointer: coarse) {
   .salary-cell, .salary-name { min-height: var(--tap); }
 }
+
+/* Settings actions align with the table's right edge, with a tight shared gap. */
+.settings-table-section { gap: var(--space-sm); }
+.settings-section-actions { width: 100%; }
+.settings-section-actions > .row { justify-content: flex-end; }
+.settings-section-actions .field { width: 100px; }
+
+/* Management logout belongs to the top-right account disclosure. */
+.management-account { position: relative; min-width: 0; max-width: 220px; flex-shrink: 0; }
+.management-account > summary { cursor: pointer; list-style: none; min-height: var(--tap); }
+.management-account > summary::-webkit-details-marker { display: none; }
+.management-account > summary > svg { flex-shrink: 0; }
+.management-account-options { position: absolute; top: calc(100% + 6px); right: 0; width: 160px; max-width: calc(100vw - 24px); padding: 4px; background: var(--bg-sidebar); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow); }
+.management-account-options button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: inherit; text-align: left; cursor: pointer; }
+.management-account-options button:hover { background: var(--surface-2); }
