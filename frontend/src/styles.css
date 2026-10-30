@@ -665,3 +665,19 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .approval-nested summary { color: var(--accent); cursor: pointer; min-height: var(--tap); align-content: center; }
 .approval-nested .approval-values > div { grid-template-columns: minmax(0,1fr); gap: 2px; }
 @media (max-width: 400px) { .approval-meta, .approval-values > div { grid-template-columns: minmax(0,1fr); } }
+
+/* Compact access directory and role controls retain single-line history rows. */
+.access-heading h1, .access-details h2, .access-revoke h3 { margin: 0; }
+.access-heading .field { width: 280px; max-width: 100%; }
+.access-identity { font-size: .85rem; overflow-wrap: anywhere; }
+.access-role-list { display: inline-flex; align-items: center; flex-wrap: nowrap; gap: 6px; }
+.access-details > .access-role-list { flex-wrap: wrap; }
+.access-grant { display: flex; align-items: end; flex-wrap: wrap; gap: var(--space-sm); }
+.access-grant .field { width: 180px; max-width: 100%; }
+.access-details h2 { font-size: 1rem; }
+.access-details .table { min-width: 1040px; }
+.access-details .table th, .access-details .table td { white-space: nowrap; }
+.access-revoke { padding-block: var(--space-sm); border-block: 1px solid var(--border); }
+.access-reason { min-width: 100px; max-width: 280px; }
+.access-reason summary { cursor: pointer; color: var(--accent); min-height: var(--tap); align-content: center; }
+.access-reason p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
