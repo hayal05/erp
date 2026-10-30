@@ -455,3 +455,17 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .field input[type="search"]::-webkit-search-decoration,
 .field input[type="search"]::-webkit-search-results-button,
 .field input[type="search"]::-webkit-search-results-decoration { display: none; }
+
+/* Compact employee lookup, with a full touch target on narrow screens. */
+.employees-page > .toolbar { grid-template-columns: minmax(0, 280px) repeat(2, minmax(0, 1fr)); align-items: end; }
+.employees-page .employee-search input { min-height: 36px; padding: 6px 10px; font-size: .875rem; }
+@media (max-width: 700px) {
+  .employees-page > .toolbar { grid-template-columns: minmax(0, 1fr); }
+  .employees-page .employee-search { width: 100%; max-width: 280px; }
+  .employees-page .employee-search input { min-height: var(--tap); }
+}
+
+/* Keep search icons inside the right edge without covering text or intercepting clicks. */
+.search-control { position: relative; display: block; min-width: 0; }
+.field .search-control > input[type="search"] { padding-right: 40px; }
+.search-control > .search-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
