@@ -309,8 +309,20 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .salary-detail .table { min-width: 440px; }
 .salary-detail-total { display: flex; justify-content: space-between; gap: 16px; font-variant-numeric: tabular-nums; }
 
-.payroll-controls { align-items: end; }
-.payroll-controls .field { max-width: 260px; flex: 1 1 180px; }
+.salary-sheet { gap: 10px; }
+.payroll-heading .row { gap: 6px; }
+.payroll-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.payroll-period, .payroll-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.payroll-period .field { width: 168px; min-width: 0; }
+.payroll-period input { min-height: 36px; padding: 5px 8px; font-size: .9rem; }
+.payroll-currency, .payroll-paid { font-size: .85rem; }
+.payroll-actions { margin-left: auto; }
+.payroll-actions .btn { min-height: 36px; padding: 5px 12px; font-size: .9rem; }
+@media (max-width: 700px) {
+  .payroll-toolbar { padding: 8px; }
+  .payroll-actions { width: 100%; margin-left: 0; }
+  .payroll-period input, .payroll-actions .btn { min-height: var(--tap); }
+}
 
 .payslip-paper { width: 100%; max-width: 850px; margin-inline: auto; min-width: 0; }
 @media print {
