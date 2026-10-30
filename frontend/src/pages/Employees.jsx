@@ -91,7 +91,7 @@ export default function Employees() {
     <section className="stack employees-page">
       <div className="row between">
         <h1>Employees</h1>
-        {canManage && <Button variant="primary" onClick={() => setDialog({ employee: null })} disabled={!lookups.shifts.length}
+        {canManage && <Button size="sm" variant="primary" onClick={() => setDialog({ employee: null })} disabled={!lookups.shifts.length}
           title={lookups.shifts.length ? undefined : 'Create a shift first (Settings)'}><Plus size={16} aria-hidden="true" /> Add employee</Button>}
       </div>
 

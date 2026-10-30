@@ -57,7 +57,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
     : positions.status === 'error' ? `Could not load positions: ${positions.error}`
     : positions.status === 'ready' && positions.total === 0 ? 'Add positions under Departments.'
     : positions.total > POSITION_LIMIT ? `Showing the first ${POSITION_LIMIT} of ${positions.total} positions.`
-    : 'Position sets the title and salary.';
+    : undefined;
 
   async function submit(e) {
     e.preventDefault();
@@ -93,13 +93,21 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
         <Button onClick={onClose} disabled={busy}>{readOnly?'Close':'Cancel'}</Button>
         {!readOnly && <Button variant="primary" type="submit" form="employee-form" busy={busy}>{mode === 'create' ? 'Add employee' : 'Save changes'}</Button>}
       </>}>
-      <form id="employee-form" onSubmit={submit} noValidate><fieldset disabled={readOnly} className="form-grid" style={{border:0,padding:0,margin:0,minWidth:0}}> 
-        {error && <div className="form-error full" role="alert">{error}</div>}
+      <form id="employee-form" onSubmit={submit} noValidate><fieldset disabled={readOnly} className="employee-form stack">
+        {error && <div className="form-error" role="alert">{error}</div>}
+        <fieldset className="employee-form-group form-grid"><legend>Identity &amp; account</legend>
         <Field label="Employee ID" maxLength={40} autoComplete="off" {...bind('employeeCode')} />
         <Field label="Full name" maxLength={120} autoComplete="off" {...bind('fullName')} />
-        <Field label="Username (used to sign in)" required minLength={3} maxLength={254} autoComplete="off" autoCapitalize="none" {...bind('username')} />
-        <Field label="Email (optional contact)" type="email" maxLength={254} autoComplete="off" inputMode="email" autoCapitalize="none" {...bind('email')} />
+        <Field label="Username" required minLength={3} maxLength={254} autoComplete="off" autoCapitalize="none" {...bind('username')} />
+        {mode === 'create' && (
+          <Field label="Temporary password" type="password" autoComplete="new-password" hint={`${MIN_PASSWORD}+ characters; change at first sign-in.`} {...bind('password')} />
+        )}
+        </fieldset>
+        <fieldset className="employee-form-group form-grid"><legend>Contact</legend>
+        <Field label="Email (optional)" type="email" maxLength={254} autoComplete="off" inputMode="email" autoCapitalize="none" {...bind('email')} />
         <Field label="Phone" type="tel" maxLength={30} autoComplete="off" {...bind('phone')} />
+        </fieldset>
+        <fieldset className="employee-form-group form-grid"><legend>Employment</legend>
         <Field as="select" label="Department" placeholder="No department" options={departments.map((d) => ({ value: d.id, label: d.name }))}
           value={form.departmentId} error={fields.departmentId} onChange={(e) => { setForm((f) => changeDepartment(f, e.target.value, employee)); setFields((x) => ({ ...x, departmentId: undefined, positionId: undefined })); }} />
         <Field as="select" label="Position" placeholder="No position" options={positionOptions(positions.items)} disabled={!departmentChosen || busy}
@@ -109,15 +117,13 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
           <Field className="full" label="Current job title" value={employee.jobTitle} readOnly
             hint="Replaced when a position is selected." />
         )}
+        <Field label="Start date" type="date" {...bind('startDate')} />
+        <Field as="select" label="Employment type" options={EMPLOYMENT_TYPES} {...bind('employmentType')} />
+        <Field as="select" label="Shift" options={shifts.map((s) => ({ value: s.id, label: `${s.name} (${s.startTime}–${s.endTime})` }))} {...bind('shiftId')} />
         <PositionSalaryPreview plan={plan} profile={profile} busy={busy}
           onApplyChange={(apply) => setForm((f) => ({ ...f, applyPositionSalary: apply }))}
           onRetry={() => setRetry((r) => ({ ...r, profile: r.profile + 1 }))} />
-        <Field label="Start date" type="date" {...bind('startDate')} />
-        <Field as="select" label="Employment type" options={EMPLOYMENT_TYPES} {...bind('employmentType')} />
-        <Field as="select" label="Schedule (shift)" options={shifts.map((s) => ({ value: s.id, label: `${s.name} (${s.startTime}–${s.endTime})` }))} {...bind('shiftId')} />
-        {mode === 'create' && (
-          <Field label="Temporary password" type="password" autoComplete="new-password" hint={`At least ${MIN_PASSWORD} characters. Change required at first sign-in.`} {...bind('password')} />
-        )}
+        </fieldset>
       </fieldset></form>
     </Modal>
   );

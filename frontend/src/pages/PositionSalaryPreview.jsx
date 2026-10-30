@@ -10,7 +10,7 @@ function Package({ title, data, id }) {
         <dt>Basic salary</dt><dd>{data.basic}</dd>
         <dt>Allowance</dt><dd>{data.allowance}{data.allowanceNote && <small className="muted"> ({data.allowanceNote})</small>}</dd>
         <dt>Pension applies</dt><dd>{data.pension}</dd>
-        <dt>Basic plus allowance</dt><dd><strong>{data.total}</strong></dd>
+        <dt>Total</dt><dd><strong>{data.total}</strong></dd>
       </dl>
     </div>
   );
@@ -29,7 +29,7 @@ export default function PositionSalaryPreview({ plan, profile, busy, onApplyChan
     return (
       <div className="stack full" aria-live="polite">
         <Package title="Salary from position" data={plan.next} id="salary-preview" />
-        <small className="muted">Applied on save. Edit later under Salary.</small>
+        <small className="muted">Applied on save.</small>
       </div>
     );
   }
