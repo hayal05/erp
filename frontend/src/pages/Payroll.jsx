@@ -63,18 +63,20 @@ export default function Payroll() {
   const actionLabel = { generate: 'Generate draft', approve: 'Approve payroll', pay: 'Mark paid' };
   const openWorkflow = () => setWorkflow({ action, month: shownMonth, period: state.period, total: state.total });
   return <section className="stack salary-sheet">
-    <div className="row between"><h1>Payroll</h1><div className="row">{allowed(user,'company_costs.read') && <Link className="btn" to={workspacePath('/hr/payroll/company-costs',pathname)}>Company costs</Link>}<Link to={workspacePath('/hr/settings/payroll',pathname)}>Payroll settings</Link></div></div>
-    <div className="row between payroll-controls">
-      <Field label="Payroll month" type="month" min="1000-01" max="9999-12" value={shownMonth} onChange={chooseMonth} disabled={!!workflow} />
-      <div className="row">{state.period && !state.loading && !state.error && <PayrollExportButton key={state.period.id} period={state.period} disabled={!!workflow} />}
-      {editable && <Button onClick={() => setWorkflow({ action: 'regenerate', month: state.period.month, period: state.period, total: state.total })} disabled={!!workflow}>Regenerate payroll</Button>}
-      {action && <Button variant="primary" onClick={openWorkflow} disabled={!!workflow}>{actionLabel[action]}</Button>}</div>
+    <div className="row between payroll-heading"><h1>Payroll</h1><nav className="row" aria-label="Payroll pages">{allowed(user,'company_costs.read') && <Link className="btn sm" to={workspacePath('/hr/payroll/company-costs',pathname)}>Company costs</Link>}<Link className="btn sm" to={workspacePath('/hr/settings/payroll',pathname)}>Settings</Link></nav></div>
+    <div className="payroll-toolbar">
+      <div className="payroll-period">
+        <Field hideLabel label="Payroll month" type="month" min="1000-01" max="9999-12" value={shownMonth} onChange={chooseMonth} disabled={!!workflow} />
+        {state.period && <><Badge tone={state.period.status === 'draft' ? 'warn' : 'ok'}>{state.period.status === 'draft' ? 'Draft' : state.period.status === 'approved' ? 'Approved' : 'Paid'}</Badge><span className="muted payroll-currency">{state.period.configSnapshot?.settings?.currencyCode ?? 'ETB'}</span></>}
+        {state.period?.status === 'paid' && <span className="muted payroll-paid" role="status">Paid on {state.period.paidOn}</span>}
+      </div>
+      <div className="payroll-actions">{state.period && !state.loading && !state.error && <PayrollExportButton key={state.period.id} period={state.period} disabled={!!workflow} />}
+        {editable && <Button onClick={() => setWorkflow({ action: 'regenerate', month: state.period.month, period: state.period, total: state.total })} disabled={!!workflow}>Regenerate</Button>}
+        {action && <Button variant="primary" onClick={openWorkflow} disabled={!!workflow}>{actionLabel[action]}</Button>}
+      </div>
     </div>
-    {state.period?.status === 'paid' && <p className="muted" role="status">Paid on {state.period.paidOn}. This payroll is locked.</p>}
-    {state.period && <div className="row between"><div className="row"><h2>Salary sheet · {state.period.month}</h2><Badge tone={editable ? 'warn' : 'ok'}>{state.period.status === 'draft' ? 'Draft' : state.period.status === 'approved' ? 'Approved' : 'Paid'}</Badge></div><span className="muted">Amounts in {state.period.configSnapshot?.settings?.currencyCode ?? 'ETB'}</span></div>}
-    {state.period && <p className="muted">{editable ? 'Select salary or allowance to edit.' : 'Payroll locked.'} Select a name for details.</p>}
     <Table caption="Salary sheet" columns={columns} rows={state.entries} loading={state.loading} error={state.error} onRetry={refresh}
-      empty={state.period ? 'No salary entries in this period.' : `No payroll for ${shownMonth}. Generate a draft to view the salary sheet.`} />
+      empty={state.period ? 'No salary entries in this period.' : `No payroll for ${shownMonth}.`} />
     {state.period && <Pager page={page} pageSize={PAGE_SIZE} total={state.total} onPage={setPage} disabled={state.loading} />}
     {workflow && <PayrollWorkflowDialog {...workflow} onClose={() => setWorkflow(null)} onReload={() => { setWorkflow(null); refresh(); }} onSaved={(saved) => { setWorkflow(null); setEditing(null); setDetails(null); setPage(1); setParams({ month: saved.month }); refresh(); toast.success(saved.status === 'draft' ? (workflow.action === 'regenerate' ? 'Payroll regenerated' : 'Draft payroll generated') : saved.status === 'approved' ? 'Payroll approved' : 'Payment recorded'); }} />}
     {details && <SalaryDetailDialog key={`${details.periodId}-${details.entry.id}`} {...details} onClose={() => setDetails(null)} />}
