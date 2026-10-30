@@ -23,8 +23,17 @@
   --overlay: rgba(20, 30, 40, .45);
   --shadow: 0 10px 30px rgba(20, 40, 60, .18);
 }
-:root { --radius: 14px; --radius-sm: 10px; --tap: 40px; }
-@media (pointer: coarse) { :root { --tap: 46px; } }
+/* Shared density tokens: page-specific layouts reuse these measurements. */
+:root {
+  --radius: 12px; --radius-sm: 8px;
+  --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+  --tap: 36px; --control-sm: 32px;
+  --card-padding: var(--space-md); --dialog-padding: var(--space-lg);
+  --cell-y: 8px; --cell-x: 12px;
+}
+@media (max-width: 700px), (pointer: coarse) {
+  :root { --tap: 44px; --control-sm: 44px; }
+}
 
 /* ---- Base ---- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -35,27 +44,29 @@ body {
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 body.modal-open { overflow: hidden; }
-h1, h2, h3 { margin: 0 0 .4em; line-height: 1.25; }
-h1 { font-size: 1.6rem; } h2 { font-size: 1.2rem; } h3 { font-size: 1rem; }
+h1, h2, h3 { margin: 0 0 .25em; line-height: 1.25; }
+h1 { font-size: 1.45rem; } h2 { font-size: 1.1rem; } h3 { font-size: 1rem; }
 a { color: var(--accent); }
 .muted { color: var(--muted); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.stack { display: grid; gap: 14px; } .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.stack { display: grid; gap: var(--space-md); min-width: 0; } .row { display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap; }
 .row.end { justify-content: flex-end; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--card-padding); min-width: 0; }
+
+.stack > p, .card > p { margin-block: 0; }
 
 /* ---- Buttons (pill shape, as in the reference) ---- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: var(--tap); padding: 0 20px; border-radius: 999px; cursor: pointer;
+  min-height: var(--tap); padding: 4px 14px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--input-border); background: transparent; color: var(--text); font: inherit; font-weight: 600;
 }
 .btn:hover:not(:disabled) { background: var(--surface-2); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn.primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
 .btn.danger { border-color: var(--danger); color: var(--danger); }
-.btn.sm { min-height: 32px; padding: 0 14px; font-size: .9rem; }
+.btn.sm { min-height: var(--control-sm); padding: 4px 10px; font-size: .9rem; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .icon-btn {
   display: inline-grid; place-items: center; min-width: var(--tap); min-height: var(--tap);
@@ -64,16 +75,16 @@ a { color: var(--accent); }
 .icon-btn:hover { color: var(--text); background: var(--surface-2); }
 
 /* ---- Forms ---- */
-.field { display: grid; gap: 6px; font-weight: 600; font-size: .9rem; }
+.field { display: grid; min-width: 0; gap: var(--space-xs); font-weight: 600; font-size: .9rem; }
 .field > span:first-child { color: var(--muted); }
 .field input, .field select, .field textarea, .password-row input {
-  width: 100%; min-height: var(--tap); padding: 8px 12px; border-radius: var(--radius-sm);
+  width: 100%; min-width: 0; min-height: var(--tap); padding: 6px 10px; border-radius: var(--radius-sm);
   border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text); font: inherit; font-weight: 400;
 }
-.field textarea { min-height: 88px; resize: vertical; }
+.field textarea { min-height: 80px; resize: vertical; }
 .field [aria-invalid="true"] { border-color: var(--danger); }
-.field-hint { color: var(--muted); font-weight: 400; }
-.field-error { color: var(--danger); font-weight: 500; }
+.field-hint { margin: 0; color: var(--muted); font-weight: 400; }
+.field-error { margin: 0; color: var(--danger); font-weight: 500; }
 .form-error { color: var(--danger); border: 1px solid var(--danger); border-radius: var(--radius-sm); padding: 10px 12px; }
 .password-row { position: relative; display: block; }
 .password-row input { padding-right: calc(var(--tap) + 4px); }
@@ -86,18 +97,18 @@ a { color: var(--accent); }
 .auth-card h1, .auth-card p { margin: 0; }
 
 /* ---- Table (compact; scrolls sideways inside its own wrapper, never the page) ---- */
-.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.table-wrap { min-width: 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 .table th { text-align: left; color: var(--muted); font-weight: 500; white-space: nowrap; }
-.table th, .table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.table th, .table td { padding: var(--cell-y) var(--cell-x); border-bottom: 1px solid var(--border); }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr.clickable { cursor: pointer; }
 .table tbody tr.clickable:hover { background: var(--surface-2); }
 .table .nowrap { white-space: nowrap; }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
-.table .state { text-align: center; color: var(--muted); padding: 28px 14px; }
+.table .state { text-align: center; color: var(--muted); padding: 20px var(--cell-x); }
 .table .state.error { color: var(--danger); }
-.pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; color: var(--muted); }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: var(--space-sm); flex-wrap: wrap; margin-top: 0; color: var(--muted); }
 
 /* Keep employee and access columns readable; scroll within the table on narrow screens. */
 :is(.employees-page, .access-management-page) { min-width: 0; grid-template-columns: minmax(0, 1fr); }
@@ -107,7 +118,7 @@ a { color: var(--accent); }
 :is(.employees-page, .access-management-page) > .table-wrap .row { flex-wrap: nowrap; }
 
 /* ---- Status badges (colour + text, never colour alone) ---- */
-.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600;
+.badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .8rem; font-weight: 600;
   border: 1px solid currentColor; background: transparent; }
 .badge.ok { color: var(--ok); } .badge.warn { color: var(--warn); } .badge.danger { color: var(--danger); }
 .badge.info { color: var(--accent); } .badge.neutral { color: var(--muted); }
@@ -116,11 +127,11 @@ a { color: var(--accent); }
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px;
   background: var(--overlay); overflow-y: auto; }
 .modal { width: min(100%, 520px); max-height: calc(100dvh - 32px); overflow-y: auto; background: var(--surface); color: var(--text);
-  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; outline: 0; }
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: var(--dialog-padding); outline: 0; }
 .modal.wide { width: min(100%, 760px); }
-.modal-head { display: flex; justify-content: space-between; align-items: start; gap: 10px; margin-bottom: 14px; }
+.modal-head { display: flex; justify-content: space-between; align-items: start; gap: var(--space-sm); margin-bottom: var(--space-md); }
 .modal-head h2 { margin: 0; }
-.modal-foot { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: var(--space-sm); flex-wrap: wrap; margin-top: var(--space-md); }
 
 /* ---- Toasts ---- */
 .toasts { position: fixed; z-index: 60; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); left: 16px;
@@ -197,8 +208,8 @@ a { color: var(--accent); }
 
 /* ---- Employees page (1.16) ---- */
 .row.between { justify-content: space-between; }
-.toolbar { display: grid; grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr)); gap: 12px; }
-.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.toolbar { display: grid; grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr)); gap: var(--space-sm); align-items: end; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
 .form-grid .full { grid-column: 1 / -1; }
 @media (max-width: 700px) { .toolbar, .form-grid { grid-template-columns: minmax(0, 1fr); } }
 
@@ -270,7 +281,7 @@ a.btn { text-decoration: none; }
 
 /* Tabs (payroll settings, task 4.9-3) */
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; }
-.tab { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); padding: 10px 14px; min-height: var(--tap, 40px); font: inherit; cursor: pointer; white-space: nowrap; }
+.tab { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); padding: 6px 10px; min-height: var(--tap); flex-shrink: 0; font: inherit; cursor: pointer; white-space: nowrap; }
 .tab:hover { color: var(--text); }
 .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
 
@@ -314,10 +325,10 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .payroll-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
 .payroll-period, .payroll-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .payroll-period .field { width: 168px; min-width: 0; }
-.payroll-period input { min-height: 36px; padding: 5px 8px; font-size: .9rem; }
+.payroll-period input { min-height: var(--tap); padding: 5px 8px; font-size: .9rem; }
 .payroll-currency, .payroll-paid { font-size: .85rem; }
 .payroll-actions { margin-left: auto; }
-.payroll-actions .btn { min-height: 36px; padding: 5px 12px; font-size: .9rem; }
+.payroll-actions .btn { min-height: var(--tap); padding: 5px 12px; font-size: .9rem; }
 @media (max-width: 700px) {
   .payroll-toolbar { padding: 8px; }
   .payroll-actions { width: 100%; margin-left: 0; }
@@ -470,7 +481,7 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 
 /* Compact employee lookup, with a full touch target on narrow screens. */
 .employees-page > .toolbar { grid-template-columns: minmax(0, 280px) repeat(2, minmax(0, 1fr)); align-items: end; }
-.employees-page .employee-search input { min-height: 36px; padding: 6px 10px; font-size: .875rem; }
+.employees-page .employee-search input { min-height: var(--tap); padding: 6px 10px; font-size: .875rem; }
 @media (max-width: 700px) {
   .employees-page > .toolbar { grid-template-columns: minmax(0, 1fr); }
   .employees-page .employee-search { width: 100%; max-width: 280px; }
