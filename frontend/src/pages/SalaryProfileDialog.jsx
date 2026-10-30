@@ -34,10 +34,10 @@ export default function SalaryProfileDialog({ employee, onClose }) {
   </>}>
     {error && <p className="form-error" role="alert">{error}</p>}
     {!form ? error ? <Button onClick={() => setRetry((n) => n + 1)}>Retry</Button> : <Skeleton label="Loading salary…" /> :
-      <form id="salary-profile" className="stack" onSubmit={submit} noValidate>
-        {['basic', 'allowance'].map((key) => <Field key={key} label={key === 'basic' ? 'Basic salary' : 'Allowance'} inputMode="decimal" value={form[key]} error={fields[key]} disabled={busy||!canManage} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />)}
-        {[['allowanceTaxable', 'Allowance is taxable'], ['allowancePensionable', 'Allowance is pensionable'], ['pensionApplies', 'Pension applies to this employee']].map(([key, label]) =>
-          <label key={key}><input type="checkbox" checked={form[key]} disabled={busy||!canManage} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
+      <form id="salary-profile" className="stack salary-profile-form" onSubmit={submit} noValidate>
+        <div className="form-grid">{['basic', 'allowance'].map((key) => <Field key={key} label={key === 'basic' ? 'Basic salary' : 'Allowance'} inputMode="decimal" value={form[key]} error={fields[key]} disabled={busy||!canManage} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />)}</div>
+        <fieldset className="salary-profile-flags"><legend>Tax &amp; pension</legend>{[['allowanceTaxable', 'Taxable allowance'], ['allowancePensionable', 'Pensionable allowance'], ['pensionApplies', 'Employee pension']].map(([key, label]) =>
+          <label key={key}><input type="checkbox" checked={form[key]} disabled={busy||!canManage} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}</fieldset>
         <small className="muted">Allowance flags require matching payroll base settings.</small>
       </form>}
     </Modal>;

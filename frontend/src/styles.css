@@ -507,7 +507,7 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .field input[type="search"]::-webkit-search-results-decoration { display: none; }
 
 /* Compact employee lookup, with a full touch target on narrow screens. */
-.employees-page > .toolbar { grid-template-columns: minmax(0, 280px) repeat(2, minmax(0, 1fr)); align-items: end; }
+.employees-page > .toolbar { grid-template-columns: minmax(0, 280px) minmax(0, 240px) minmax(0, 160px); align-items: end; }
 .employees-page .employee-search input { min-height: var(--tap); padding: 6px 10px; font-size: .875rem; }
 @media (max-width: 700px) {
   .employees-page > .toolbar { grid-template-columns: minmax(0, 1fr); }
@@ -524,3 +524,14 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .workspace-switcher { min-width: 0; }
 .workspace-switcher select { overflow: hidden; text-overflow: ellipsis; }
 .portal-account-options { max-width: calc(100vw - 24px); }
+
+/* Employee forms group related controls without padded nested cards. */
+.employee-form, .employee-form-group, .salary-profile-flags { min-width: 0; margin: 0; padding: 0; border: 0; }
+.employee-form-group + .employee-form-group { padding-top: var(--space-sm); border-top: 1px solid var(--border); }
+.employee-form-group legend, .salary-profile-flags legend { padding: 0; margin-bottom: var(--space-sm); font-size: .85rem; font-weight: 700; color: var(--muted); }
+.employee-form .salary-pkg { padding: 8px 10px; gap: 4px; }
+.employee-form .salary-pkg dl { gap: 2px 10px; font-size: .85rem; }
+.employee-form .salary-compare { gap: var(--space-sm); }
+.salary-profile-flags { display: grid; gap: var(--space-xs); }
+.salary-profile-flags label { display: flex; align-items: center; gap: 6px; min-height: var(--tap); }
+.salary-profile-flags input { margin: 0; }
