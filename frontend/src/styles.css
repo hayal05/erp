@@ -130,7 +130,8 @@ a { color: var(--accent); }
   border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: var(--dialog-padding); outline: 0; }
 .modal.wide { width: min(100%, 760px); }
 .modal-head { display: flex; justify-content: space-between; align-items: start; gap: var(--space-sm); margin-bottom: var(--space-md); }
-.modal-head h2 { margin: 0; }
+.modal-head h2 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.modal-head > .icon-btn { flex-shrink: 0; }
 .modal-foot { display: flex; justify-content: flex-end; gap: var(--space-sm); flex-wrap: wrap; margin-top: var(--space-md); }
 
 /* ---- Toasts ---- */
@@ -255,7 +256,7 @@ a { color: var(--accent); }
 .qr-countdown { margin: 0; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
 .qr-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-sm); }
 .qr-actions .btn { min-height: 48px; padding-inline: 20px; font-size: 1rem; }
-.qr-actions .qr-unlock { opacity: .75; min-height: 40px; font-size: .9rem; } /* small, unobtrusive (spec 6.1) */
+.qr-actions .qr-unlock { opacity: .75; min-height: max(var(--tap), 40px); font-size: .9rem; } /* small, unobtrusive (spec 6.1) */
 
 /* Selfie capture (task 2.11): the live preview is mirrored like a mirror; the saved photo is not (see api/image.js). */
 .selfie-frame { width: 100%; max-width: 420px; margin-inline: auto; aspect-ratio: 3 / 4; background: #000; border-radius: var(--radius); overflow: hidden; }
@@ -431,7 +432,7 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .hr-shell { --audit-bar-height: 0px; }
 .hr-shell.has-audit-footer { --audit-bar-height: 62px; }
 .hr-shell .content { padding-bottom: calc(var(--audit-bar-height) + var(--shell-padding)); }
-.audit-bottom-bar { position: fixed; z-index: 25; left: var(--sidebar-width); right: 0; bottom: 0;
+.audit-bottom-bar { position: fixed; z-index: 25; left: calc(var(--sidebar-width) + env(safe-area-inset-left)); right: env(safe-area-inset-right); bottom: 0;
   background: var(--bg-sidebar); border-top: 1px solid var(--border); box-shadow: 0 -4px 18px #0002;
   padding-bottom: env(safe-area-inset-bottom); max-height: 85dvh; overflow-y: auto; }
 .audit-bottom-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 5px 16px; }
@@ -442,18 +443,18 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .audit-actor { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .audit-bottom-facts time { flex-shrink: 0; }
 .audit-not-authorised { display: inline-block; color: var(--warn); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; font-size: .72rem; line-height: 18px; }
-.audit-log-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 32px; padding: 4px 8px; border: 1px solid var(--input-border); border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: .76rem; cursor: pointer; }
+.audit-log-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: var(--control-sm); padding: 4px 8px; border: 1px solid var(--input-border); border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: .76rem; cursor: pointer; }
 .audit-log-toggle:hover { background: var(--surface-2); }
 .audit-bottom-log { padding: 16px 24px; max-height: 52dvh; overflow: auto; border-bottom: 1px solid var(--border); outline: 0; }
 .audit-bottom-log p { margin: 0; }
 @media (max-width: 900px) {
-  .audit-bottom-bar { left: 0; }
+  .audit-bottom-bar { left: env(safe-area-inset-left); }
   .audit-bottom-log { padding: 10px 16px; }
 }
 @media (max-width: 600px) {
   .audit-bottom-summary { padding: 5px 10px; gap: 6px; }
   .audit-log-label { display: none; }
-  .audit-log-toggle { width: 32px; padding: 4px; }
+  .audit-log-toggle { width: var(--control-sm); padding: 4px; }
 }
 @media print { .audit-bottom-bar { display: none; } .hr-shell .content { padding-bottom: 0; } }
 
@@ -747,3 +748,8 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .shift-time-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-sm); }
 @media (max-width: 700px) { .shift-time-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 400px) { .shift-time-grid { grid-template-columns: minmax(0,1fr); } }
+
+/* Touch-only safeguards keep dense salary tables operable without enlarging desktop rows. */
+@media screen and (pointer: coarse) {
+  .salary-cell, .salary-name { min-height: var(--tap); }
+}

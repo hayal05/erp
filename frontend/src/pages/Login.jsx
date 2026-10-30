@@ -56,21 +56,21 @@ export default function Login() {
           <span>Username</span>
           <input type="text" name="username" autoComplete="username" inputMode="text" autoCapitalize="none"
             autoCorrect="off" spellCheck={false} autoFocus value={form.username} onChange={set('username')}
-            aria-invalid={!!fields.username} maxLength={254} />
-          {fields.username && <small className="field-error">{fields.username}</small>}
+            aria-invalid={!!fields.username} aria-describedby={fields.username ? `${errId}-username` : undefined} maxLength={254} />
+          {fields.username && <small id={`${errId}-username`} className="field-error">{fields.username}</small>}
         </label>
 
         <label className="field">
           <span>Password</span>
           <span className="password-row">
             <input type={show ? 'text' : 'password'} name="password" autoComplete="current-password"
-              value={form.password} onChange={set('password')} aria-invalid={!!fields.password} maxLength={256} />
+              value={form.password} onChange={set('password')} aria-invalid={!!fields.password} aria-describedby={fields.password ? `${errId}-password` : undefined} maxLength={256} />
             <button type="button" className="icon-btn" onClick={() => setShow((s) => !s)}
               aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show}>
               {show ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </span>
-          {fields.password && <small className="field-error">{fields.password}</small>}
+          {fields.password && <small id={`${errId}-password`} className="field-error">{fields.password}</small>}
         </label>
 
         <button type="submit" className="btn primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
