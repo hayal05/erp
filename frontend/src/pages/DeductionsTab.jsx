@@ -77,8 +77,7 @@ export default function DeductionsTab({ readOnly = false }) {
       </div>
 
       <div className="picker">
-        <Field label="Find employee" type="search" autoComplete="off" placeholder="Name or ID" value={find} onChange={(e) => setFind(e.target.value)}
-          hint={people.data && people.data.total > employees.length ? `Showing the first ${employees.length} of ${people.data.total}. Type to narrow the list.` : undefined} />
+        <Field label="Find employee" type="search" autoComplete="off" placeholder="Name or ID" value={find} onChange={(e) => setFind(e.target.value)} />
         <Field as="select" label="Employee" value={employeeId} placeholder="Choose an employee…" options={options} onChange={pick} disabled={people.loading && !employees.length} error={people.error || undefined} />
       </div>
 

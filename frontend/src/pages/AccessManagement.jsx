@@ -19,6 +19,7 @@ function AccessList(){
   const pageRefresh = usePageRefresh();
  const canManage=usePermission('access.manage');
  const [search,setSearch]=useState(''),[query,setQuery]=useState(''),[page,setPage]=useState(1),[reload,setReload]=useState(0),[selected,setSelected]=useState(null);
+ useEffect(()=>{const timer=setTimeout(()=>{setQuery(search.trim());setPage(1);},300);return()=>clearTimeout(timer);},[search]);
  const [data,setData]=useState({items:[],total:0,loading:true,error:''});const refresh=()=>setReload(n=>n+1);
  useEffect(()=>{
   const ctrl=new AbortController();setData(d=>({...d,loading:true,error:''}));
@@ -27,7 +28,7 @@ function AccessList(){
    .catch(e=>{if(!ctrl.signal.aborted)setData({items:[],total:0,loading:false,error:e.message});});return()=>ctrl.abort();
  },[page,query,reload, pageRefresh]);
  return <section className="stack access-management-page"><h1>Access Management</h1>
-  <form className="row" onSubmit={e=>{e.preventDefault();setQuery(search.trim());setPage(1);}}><Field label="Name, username, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /><Button type="submit">Search</Button></form>
+  <div className="row"><Field label="Search employees" type="search" placeholder="Name, username, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /></div>
   <Table caption="Employee access" columns={[
    {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'department',header:'Department'},{key:'position',header:'Position'},
    {key:'active',header:'Account',render:r=>r.active?'Active':'Inactive'},
