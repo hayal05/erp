@@ -49,7 +49,6 @@ export default function Login() {
     <main className="auth-page">
       <form className="auth-card" onSubmit={submit} noValidate aria-describedby={error ? errId : undefined}>
         <h1>Natra ERP</h1>
-        <p className="muted">Sign in to continue</p>
 
         {error && <div id={errId} className="form-error" role="alert">{error}</div>}
 

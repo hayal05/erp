@@ -91,9 +91,9 @@ a { color: var(--accent); }
 .password-row .icon-btn { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); }
 
 /* ---- Login ---- */
-.auth-page { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
-.auth-card { width: min(100%, 400px); display: grid; gap: 16px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 28px 24px; box-shadow: var(--shadow); }
+.auth-page { min-height: 100dvh; display: grid; place-items: center; padding: var(--space-md); }
+.auth-card { width: min(100%, 400px); display: grid; gap: var(--space-md); background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
 .auth-card h1, .auth-card p { margin: 0; }
 
 /* ---- Table (compact; scrolls sideways inside its own wrapper, never the page) ---- */
@@ -735,3 +735,15 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .portal-scan-page .scan-summary > div { padding-bottom: 6px; font-size: .9rem; flex-wrap: wrap; }
 .portal-scan-page .scan-summary > div:last-child { grid-column: 1 / -1; }
 @media (max-width: 360px) { .portal-profile-page .profile-facts { grid-template-columns: minmax(0,1fr); } }
+
+/* Account and general configuration pages reuse compact form controls. */
+.password-change-form { width: 100%; max-width: 480px; }
+.password-change-form.auth-card { max-width: 400px; }
+.password-change-form h1, .general-settings-page h1 { margin: 0; }
+.password-actions { gap: var(--space-sm); }
+.general-settings-page .table { min-width: 560px; }
+.general-settings-page .table .row { flex-wrap: nowrap; }
+.general-settings-page .field { max-width: 120px; }
+.shift-time-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-sm); }
+@media (max-width: 700px) { .shift-time-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 400px) { .shift-time-grid { grid-template-columns: minmax(0,1fr); } }
