@@ -6,7 +6,7 @@ import Modal from '../../components/Modal.jsx';
 import Table, { Badge, Pager } from '../../components/Table.jsx';
 import { useToast } from '../../components/Toast.jsx';
 import { get, post } from '../../api/client.js';
-import { EMPTY_FORM, balanceView, buildLeaveBody, leaveErrorView, requestRow, validateLeaveForm } from './leaveView.js';
+import { EMPTY_FORM, balanceView, dayWord, buildLeaveBody, leaveErrorView, requestRow, validateLeaveForm } from './leaveView.js';
 
 const PAGE_SIZE = 10;
 
@@ -25,7 +25,7 @@ export default function Leave() {
   const refresh = useCallback(() => setReload((n) => n + 1), []);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({ fields: {}, message: '' });
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false), [requesting,setRequesting]=useState(false);
   const [confirm, setConfirm] = useState(null); // { request, busy }
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function Leave() {
     try {
       await post('/leave/requests', buildLeaveBody(form));
       toast.success('Leave request sent to HR');
-      setForm(EMPTY_FORM); setPage(1); refresh();
+      setRequesting(false); setForm(EMPTY_FORM); setPage(1); refresh();
     } catch (err) { setErrors(leaveErrorView(err)); } finally { setBusy(false); }
   }
 
@@ -80,10 +80,7 @@ export default function Leave() {
     { key: 'dates', header: 'Dates', className: 'nowrap' },
     { key: 'days', header: 'Days', align: 'num' },
     { key: 'status', header: 'Status', render: (r) => (
-      <>
-        <Badge tone={r.tone}>{r.status}</Badge>
-        {r.remarks && <details className="portal-leave-note"><summary>HR note</summary><p>{r.remarks}</p></details>}
-      </>
+      <span className="portal-leave-status"><Badge tone={r.tone}>{r.status}</Badge>{r.remarks && <details className="portal-leave-note"><summary aria-label="HR decision note">Note</summary><p>{r.remarks}</p></details>}</span>
     ) },
     { key: 'act', header: '', render: (r) => r.canCancel && (
       <Button size="sm" onClick={() => setConfirm({ request: r, busy: false })} aria-label={`Cancel request for ${r.dates}`}>Cancel</Button>
@@ -95,44 +92,45 @@ export default function Leave() {
     <section className="stack portal-leave-page">
       <div className="row between">
         <h1>Leave</h1>
-        {years.length > 0 && <Field hideLabel label="Year" as="select" options={years} value={year ?? balances.year} onChange={(e) => setYear(Number(e.target.value))} />}
+        <div className="row portal-leave-controls">{years.length > 0 && <Field hideLabel label="Balance year" as="select" options={years} value={year ?? balances.year} disabled={busy} onChange={(e) => setYear(Number(e.target.value))} />}<Button size="sm" variant="primary" disabled={busy} onClick={()=>{setErrors({fields:{},message:''});setRequesting(true);}}>Request leave</Button></div>
       </div>
+      <EmployeeLeaveBalances items={balances.items} year={balances.year}/>
 
-      <ul className="leave-balances" aria-label={`Leave balances for ${balances.year ?? 'this year'}`}>
-        {balances.items.map(balanceView).map((b) => (
-          <li key={b.id} className={`card${b.empty ? ' leave-empty' : ''}`}>
-            <strong>{b.name}</strong>
-            <span className="leave-headline">{b.headline}</span>
-            <small className="muted">{b.detail}</small>
-          </li>
-        ))}
-      </ul>
-
-      <details className="portal-leave-request"><summary>Request leave</summary><form className="stack" onSubmit={submit} noValidate aria-label="Request leave">
+      <Modal open={requesting} title="Request leave" dismissible={!busy} onClose={()=>!busy&&setRequesting(false)} footer={<><Button disabled={busy} onClick={()=>setRequesting(false)}>Cancel</Button><Button type="submit" form="employee-leave-request" variant="primary" busy={busy}>Send request</Button></>}>
+      <form id="employee-leave-request" className="stack" onSubmit={submit} noValidate>
         {errors.message && <p className="form-error" role="alert">{errors.message}</p>}
-        <Field as="select" label="Leave type" value={form.leaveTypeId} onChange={set('leaveTypeId')} placeholder="Choose…"
+        <Field as="select" label="Leave type" disabled={busy} value={form.leaveTypeId} onChange={set('leaveTypeId')} placeholder="Choose…"
           options={types.map((t) => ({ value: t.id, label: t.name }))} error={errors.fields.leaveTypeId} />
         <div className="toolbar toolbar-2">
-          <Field label="From" type="date" value={form.startDate} onChange={set('startDate')} error={errors.fields.startDate} />
-          <Field label="To" type="date" value={form.endDate} onChange={set('endDate')} error={errors.fields.endDate} />
+          <Field label="From" type="date" disabled={busy} value={form.startDate} onChange={set('startDate')} error={errors.fields.startDate} />
+          <Field label="To" type="date" disabled={busy} value={form.endDate} onChange={set('endDate')} error={errors.fields.endDate} />
         </div>
-        <Field as="textarea" rows={2} label="Reason" value={form.reason} onChange={set('reason')} maxLength={500} error={errors.fields.reason}
-          hint="Working days only. HR approval required." />
-        <Button type="submit" variant="primary" busy={busy}>Send request</Button>
-      </form></details>
+        <Field as="textarea" rows={2} label="Reason" disabled={busy} value={form.reason} onChange={set('reason')} maxLength={500} error={errors.fields.reason}
+          hint="Working days only." />
+      </form></Modal>
 
-      <h2>My requests</h2>
+      <h2>Requests</h2>
       <Table caption="My leave requests" columns={columns} rows={list.items.map(requestRow)} loading={state.loading} error={state.error} onRetry={refresh}
         empty="No leave requests yet" />
-      <Pager page={page} pageSize={PAGE_SIZE} total={list.total} onPage={setPage} disabled={state.loading} />
+      {(list.total>PAGE_SIZE||page>1)&&<Pager page={page} pageSize={PAGE_SIZE} total={list.total} onPage={setPage} disabled={state.loading} />}
 
-      <Modal open={!!confirm} title="Cancel this request?" onClose={() => !confirm?.busy && setConfirm(null)}
+      <Modal open={!!confirm} title="Cancel leave request?" onClose={() => !confirm?.busy && setConfirm(null)}
         footer={<>
           <Button onClick={() => setConfirm(null)} disabled={confirm?.busy}>Keep it</Button>
           <Button variant="danger" busy={confirm?.busy} onClick={cancel}>Cancel request</Button>
         </>}>
-        <p>{confirm?.request.type}, {confirm?.request.dates}. The days go back to your balance.</p>
+        <p>{confirm?.request.type}, {confirm?.request.dates}. Reserved days will be released.</p>
       </Modal>
     </section>
   );
+}
+
+export function EmployeeLeaveBalances({items,year}){
+  if(!items.length)return null;
+  return <ul className="leave-balances" aria-label={`Leave balances for ${year ?? 'this year'}`}>
+    {items.map(balance=>{const view=balanceView(balance);return <li key={view.id} className={`card${view.empty?' leave-empty':''}`}>
+      <div className="row between leave-balance-heading"><strong>{view.name}</strong><span className="leave-headline">{balance.hasBalance?`${dayWord(balance.remaining)} left`:'No limit'}</span></div>
+      <small className="muted">{balance.hasBalance&&<>Total {balance.total} · </>}Used {balance.used} · Pending {balance.pending}{balance.adjusted?` · Adjustment ${balance.adjusted>0?'+':''}${balance.adjusted}`:''}{!balance.hasBalance?' · Unpaid':''}</small>
+    </li>;})}
+  </ul>;
 }
