@@ -45,19 +45,17 @@ export default function CorrectionDialog({ record, onClose, onSaved }) {
         <Button onClick={onClose} disabled={busy}>Cancel</Button>
         <Button variant="primary" type="submit" form="correction-form" busy={busy}>Save correction</Button>
       </>}>
-      <form id="correction-form" className="form-grid" onSubmit={submit} noValidate>
+      <form id="correction-form" className="form-grid attendance-correction" onSubmit={submit} noValidate>
         <p className="full muted">
-          <strong>{record.fullName}</strong> ({record.employeeCode}) · {formatWorkDate(record.workDate)}. Company time. Corrections are logged.
+          <strong>{record.fullName}</strong> ({record.employeeCode}) · {formatWorkDate(record.workDate)} · Company time
         </p>
         {error && <div className="form-error full" role="alert">{error}</div>}
-        <Field as="select" label="Status" options={STATUS_OPTIONS} {...bind('status')} />
-        {form.status === 'late'
-          ? <Field label="Minutes late" inputMode="numeric" maxLength={4} autoComplete="off"
-            hint="Blank = calculate from shift." {...bind('lateMinutes')} />
-          : <div />}
+        <Field as="select" className={form.status === 'late' ? undefined : 'full'} label="Status" options={STATUS_OPTIONS} {...bind('status')} />
+        {form.status === 'late' && <Field label="Minutes late" inputMode="numeric" maxLength={4} autoComplete="off"
+            hint="Blank: use shift." {...bind('lateMinutes')} />}
         <Field label="Check-in time" type="time" {...bind('checkInTime')} />
         <Field label="Check-out time" type="time" hint="Clear if no check-out." {...bind('checkOutTime')} />
-        <Field as="textarea" className="full" label="Reason for the correction (required)" maxLength={500} rows={3} {...bind('reason')} />
+        <Field as="textarea" className="full" label="Reason" required maxLength={500} rows={3} {...bind('reason')} />
       </form>
     </Modal>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from './Button.jsx';
 import Field from './Field.jsx';
 import Modal from './Modal.jsx';
@@ -12,7 +12,6 @@ export default function UnlockDialog({ open, onClose, onUnlocked }) {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const errId = useId();
 
   useEffect(() => { if (!open) { setPassword(''); setError(''); setBusy(false); } }, [open]);
 
@@ -36,8 +35,7 @@ export default function UnlockDialog({ open, onClose, onUnlocked }) {
 
   return (
     <Modal open={open} title="Unlock this screen" onClose={onClose}>
-      <form onSubmit={submit} noValidate aria-describedby={error ? errId : undefined}>
-        <p className="muted">Enter your HR password to show the menu again.</p>
+      <form className="stack" onSubmit={submit} noValidate>
         <Field label="Password" type="password" autoComplete="off" autoFocus maxLength={256}
           value={password} onChange={(e) => setPassword(e.target.value)} error={error || undefined} />
         <div className="modal-foot">

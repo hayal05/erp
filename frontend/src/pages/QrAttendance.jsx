@@ -11,7 +11,7 @@ import { get,post } from '../api/client.js';
 import { formatClock } from '../components/hrNav.js';
 import { buildScanUrl, expiryFrom, formatCountdown, remainingSeconds } from './qrState.js';
 
-// Tablet QR page (spec 6): clock, big QR, expiry countdown, Generate / Generate Again, Lock.
+// Tablet QR page (spec 6): clock, big QR, expiry countdown, Generate / Generate again, Lock.
 // Works in both normal and locked mode; Generate stays active when locked (6.1).
 export default function QrAttendance() {
   const pageRefresh = usePageRefresh();
@@ -76,29 +76,29 @@ export default function QrAttendance() {
         <time className="qr-clock" dateTime={new Date(now).toISOString()}>{formatClock(new Date(now))}</time>
       </header>
 
-      <div className="qr-stage card">
-        {live ? (
+      <div className={`qr-stage card${!canManage ? ' qr-readonly' : ''}`}>
+        {canManage && (live ? (
           <img className="qr-img" src={qr.dataUrl} alt="Attendance QR code. Scan it with your phone camera." width="360" height="360" />
         ) : (
           <div className="qr-placeholder" role="status">
-            {!canManage ? 'QR display is managed by HR' : busy ? <Skeleton variant="image" label="Creating QR code…" /> : qr ? 'Code expired' : 'No active code'}
+            {busy ? <Skeleton variant="image" label="Creating QR code…" /> : qr ? 'Code expired' : 'No active code'}
           </div>
-        )}
+        ))}
+        {!canManage && <strong>QR status</strong>}
         <p className="qr-countdown" aria-live="off">
-          {!canManage?(status?.error||(!status?<Skeleton variant="line" label="Loading QR status…" />:status.active?`A shared code is active until ${new Date(status.expiresAt).toLocaleString()}.`:'No active code.')):live ? <>Expires in <strong>{formatCountdown(remaining)}</strong></> : 'Press the button to show a new code.'}
+          {!canManage?(status?.error||(!status?<Skeleton variant="line" label="Loading QR status…" />:status.active?`Active until ${new Date(status.expiresAt).toLocaleString()}`:'No active code.')):live ? <>Expires in <strong>{formatCountdown(remaining)}</strong></> : null}
         </p>
-        {canManage && live && <p className="muted">All employees can use this code before it expires. Each employee can use it once.</p>}
         {error && <p className="field-error" role="alert">{error}</p>}
         {canManage ? <div className="qr-actions">
           <Button variant="primary" busy={busy} onClick={generate}>
-            {qr ? <><RefreshCw size={16} aria-hidden="true" /> Generate Again</> : 'Generate New QR'}
+            {qr ? <><RefreshCw size={16} aria-hidden="true" /> Generate again</> : 'Generate QR'}
           </Button>
           {locked ? (
             <Button className="qr-unlock" onClick={() => setUnlocking(true)}><Unlock size={16} aria-hidden="true" /> Unlock</Button>
           ) : (
             <Button busy={locking} onClick={lock}><Lock size={16} aria-hidden="true" /> Lock</Button>
           )}
-        </div> : <p className="muted">Read only. HR or Admin generates QR codes and controls the attendance display.</p>}
+        </div> : <span className="badge neutral">View only</span>}
       </div>
       <UnlockDialog open={unlocking} onClose={() => setUnlocking(false)}
         onUnlocked={() => { setUnlocking(false); setLocked(false); toast.success('Screen unlocked'); }} />

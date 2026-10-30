@@ -91,15 +91,16 @@ export default function Attendance() {
 
   const columns = [
     { key: 'workDate', header: 'Date', className: 'nowrap', render: (r) => formatWorkDate(r.workDate) },
-    { key: 'fullName', header: 'Employee', render: (r) => <><strong>{r.fullName}</strong><br /><small className="muted">{r.employeeCode}</small></> },
+    { key: 'fullName', header: 'Employee', render: (r) => <span className="attendance-person"><strong>{r.fullName}</strong><small className="muted">{r.employeeCode}</small></span> },
     { key: 'departmentName', header: 'Department', render: (r) => r.departmentName ?? '—' },
     { key: 'checkInTime', header: 'In', className: 'nowrap', render: (r) => r.checkInTime ?? '—' },
     { key: 'checkOutTime', header: 'Out', className: 'nowrap', render: (r) => r.checkOutTime ?? '—' },
     { key: 'status', header: 'Status', render: (r) => (
       <>
-        <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
-        {r.status === 'late' && r.lateMinutes > 0 && <><br /><small className="muted">{r.lateMinutes} min late</small></>}
-        {r.correctedAt && <><br /><small className="muted" title={r.correctionReason}>Corrected by {r.correctedByName ?? 'HR'}</small></>}
+        <span className="attendance-status"><Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+        {r.status === 'late' && r.lateMinutes > 0 && <small className="muted">{r.lateMinutes} min late</small>}
+        {r.correctedAt && <small className="muted" title={`Corrected by ${r.correctedByName ?? 'HR'}: ${r.correctionReason ?? ''}`}>Corrected</small>}
+        </span>
       </>
     ) },
     { key: 'photos', header: 'Selfies', className: 'nowrap', render: (r) => (
@@ -119,24 +120,24 @@ export default function Attendance() {
   ];
 
   return (
-    <section className="stack">
-      <div className="row between">
-        <h1>Attendance</h1>
+    <section className="stack attendance-page">
+      <div className="row between attendance-heading">
+        <div className="row"><h1>Attendance</h1>{view === 'today' && data.today && <time className="muted" dateTime={data.today}>{formatWorkDate(data.today)}</time>}</div>
         <div className="row">
-          <Button variant={view === 'today' ? 'primary' : 'default'} aria-pressed={view === 'today'} onClick={() => { setView('today'); setFilters(NO_FILTERS); setPage(1); }}>Today</Button>
-          <Button variant={view === 'archive' ? 'primary' : 'default'} aria-pressed={view === 'archive'} onClick={() => { setView('archive'); setFilters(NO_FILTERS); setPage(1); }}>Archive</Button>
-          {filtered && <Button onClick={() => { setFilters(NO_FILTERS); setPage(1); }}>Clear filters</Button>}
+          <Button size="sm" variant={view === 'today' ? 'primary' : 'default'} aria-pressed={view === 'today'} onClick={() => { setView('today'); setFilters(NO_FILTERS); setPage(1); }}>Today</Button>
+          <Button size="sm" variant={view === 'archive' ? 'primary' : 'default'} aria-pressed={view === 'archive'} onClick={() => { setView('archive'); setFilters(NO_FILTERS); setPage(1); }}>Archive</Button>
+          {filtered && <Button size="sm" onClick={() => { setFilters(NO_FILTERS); setPage(1); }}>Clear filters</Button>}
         </div>
       </div>
 
-      <div className="toolbar toolbar-5">
-        <Field disabled={view === 'today'} label="From" type="date" value={filters.from} onChange={setFilter('from')} />
-        <Field disabled={view === 'today'} label="To" type="date" value={filters.to} onChange={setFilter('to')} error={rangeBad ? 'Must be on or after the start date' : undefined} />
-        <Field as="select" label="Employee" placeholder="All employees" value={filters.employeeId} onChange={setFilter('employeeId')}
+      <div className={`attendance-filters${view === 'archive' ? ' archive' : ''}`}>
+        {view === 'archive' && <><Field label="From" type="date" value={filters.from} onChange={setFilter('from')} />
+        <Field label="To" type="date" value={filters.to} onChange={setFilter('to')} error={rangeBad ? 'Must be on or after the start date' : undefined} /></>}
+        <Field as="select" hideLabel label="Employee" placeholder="All employees" value={filters.employeeId} onChange={setFilter('employeeId')}
           options={lookups.employees.map((e) => ({ value: e.id, label: `${e.fullName} (${e.employeeCode})` }))} />
-        <Field as="select" label="Department" placeholder="All departments" value={filters.departmentId} onChange={setFilter('departmentId')}
+        <Field as="select" hideLabel label="Department" placeholder="All departments" value={filters.departmentId} onChange={setFilter('departmentId')}
           options={lookups.departments.map((d) => ({ value: d.id, label: d.name }))} />
-        <Field as="select" label="Status" placeholder="All statuses" value={filters.status} onChange={setFilter('status')} options={STATUS_OPTIONS} />
+        <Field as="select" hideLabel label="Status" placeholder="All statuses" value={filters.status} onChange={setFilter('status')} options={STATUS_OPTIONS} />
       </div>
 
       <Table caption={view === 'today' ? "Today's attendance" : 'Attendance archive'} columns={columns.filter(c=>canManage||c.key!=='actions')} rows={rangeBad ? [] : data.items} loading={state.loading} error={state.error} onRetry={refresh}
