@@ -11,12 +11,13 @@ import { PORTAL_NAV, firstName } from './portalNav.js';
 
 const ICONS = { vacancies: Briefcase, profile: UserRound, home: Home, attendance: CalendarCheck, leave: CalendarDays, payslips: FileText };
 
-// Mobile-first shell for employees: compact top bar, content, bottom tab bar (thumb reach).
+// Employee shell: desktop sidebar, with bottom navigation on tablet and mobile widths.
 // Mounted inside RequireRole('employee'); the server enforces access on every request.
 export default function PortalLayout() {
   const { user, logout } = useAuth();
-  const account = useRef(null);
+  const account = useRef(null), mainRef = useRef(null);
   const { pathname } = useLocation();
+  useEffect(()=>{mainRef.current?.scrollTo(0,0);},[pathname]);
   const [sectionVisit, setSectionVisit] = useState(0);
   const visitSection = event => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -57,10 +58,10 @@ export default function PortalLayout() {
           </div>
         </details>
       </header>
-      <main id="main" className="portal-content" tabIndex={-1}><Outlet /></main>
       <nav className="portal-tabs" aria-label="Main">
         <PortalNavigation visitSection={visitSection} />
       </nav>
+      <main ref={mainRef} id="main" className="portal-content" tabIndex={-1}><Outlet /></main>
     </div></PageRefreshProvider></VacancyUnreadProvider>
   );
 }

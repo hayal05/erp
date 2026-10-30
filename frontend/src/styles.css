@@ -769,3 +769,35 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .management-account-options { position: absolute; top: calc(100% + 6px); right: 0; width: 160px; max-width: calc(100vw - 24px); padding: 4px; background: var(--bg-sidebar); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow); }
 .management-account-options button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: inherit; text-align: left; cursor: pointer; }
 .management-account-options button:hover { background: var(--surface-2); }
+
+/* Employee navigation becomes a sidebar above tablet widths; one nav preserves state and badges. */
+@media screen and (min-width: 1025px) {
+  html:has(.portal-shell), body:has(.portal-shell) { height: 100%; overflow: hidden; overflow: clip; overscroll-behavior: none; }
+  #root:has(.portal-shell) { height: 100%; min-height: 0; overflow: hidden; overflow: clip; }
+  .portal-shell {
+    height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height: 0;
+    max-width: none; margin: 0; overflow: hidden; display: grid;
+    grid-template-columns: 224px minmax(0,1fr); grid-template-rows: auto minmax(0,1fr);
+    grid-template-areas: "top top" "side main";
+  }
+  .portal-top { grid-area: top; position: static; padding: 6px 16px; }
+  .portal-content { grid-area: main; min-height: 0; padding: 16px; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .portal-tabs {
+    grid-area: side; position: static; inset: auto; min-width: 0; min-height: 0; max-width: none; margin: 0;
+    display: flex; flex-direction: column; gap: 2px; padding: 8px 0;
+    border-top: 0; border-right: 1px solid var(--border); overflow: auto;
+    overscroll-behavior: contain; scrollbar-gutter: stable;
+  }
+  .portal-tabs .tab {
+    display: grid; grid-template-columns: 22px minmax(0,1fr) auto; align-items: center; justify-items: start;
+    flex-shrink: 0; width: 100%; min-height: var(--tap); gap: 10px; padding: 8px 12px;
+    font-size: .9rem; border: 0; border-left: 3px solid transparent;
+  }
+  .portal-tabs .tab.active { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  .portal-tabs .tab:hover { background-color: var(--surface-2); }
+  .portal-tabs .portal-tab-icon { display: contents; }
+  .portal-tabs .portal-tab-icon > svg { grid-column: 1; grid-row: 1; }
+  .portal-tabs .tab > span:last-child { grid-column: 2; grid-row: 1; white-space: normal; overflow-wrap: anywhere; }
+  .portal-tabs .nav-unread-count { position: static; grid-column: 3; grid-row: 1; justify-self: end; }
+  body.modal-open .portal-shell > .portal-content, body.modal-open .portal-shell > .portal-tabs { overflow: hidden; }
+}
