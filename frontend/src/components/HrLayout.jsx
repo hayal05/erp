@@ -1,5 +1,5 @@
 import {PageRefreshProvider} from '../api/pageRefresh.jsx';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Briefcase, ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
 import AuditBottomBar from './AuditBottomBar.jsx';
@@ -27,6 +27,8 @@ function useClock() {
 export default function HrLayout() {
   const { user, locked, logout } = useAuth();
   const { pathname } = useLocation();
+  const mainRef = useRef(null);
+  useEffect(() => { mainRef.current?.scrollTo(0, 0); }, [pathname]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sectionVisit, setSectionVisit] = useState(0);
   const visitSection = event => {
@@ -84,7 +86,7 @@ export default function HrLayout() {
       </aside>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
-      <main id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet /></main>
+      <main ref={mainRef} id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet /></main>
       {audit && <AuditBottomBar key={pathname} scope={audit} />}
     </div></PageRefreshProvider>
   );

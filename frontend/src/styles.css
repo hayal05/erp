@@ -141,7 +141,8 @@ a { color: var(--accent); }
 .skip-link { position: absolute; left: 8px; top: -60px; z-index: 100; background: var(--accent); color: var(--on-accent);
   padding: 8px 14px; border-radius: 999px; font-weight: 600; text-decoration: none; }
 .skip-link:focus { top: 8px; }
-.hr-shell { min-height: 100dvh; display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto 1fr;
+.hr-shell { height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height: 0; overflow: hidden;
+  display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "top top" "side main"; }
 .topbar { grid-area: top; position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
   padding: 10px 20px; background: var(--bg-sidebar); border-bottom: 1px solid var(--border); }
@@ -154,7 +155,9 @@ a { color: var(--accent); }
 .menu-btn { display: none; }
 
 .sidebar { grid-area: side; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; padding: 16px 0;
-  background: var(--bg-sidebar); border-right: 1px solid var(--border); }
+  background: var(--bg-sidebar); border-right: 1px solid var(--border); min-height: 0; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-gutter: stable; }
+.sidebar > nav, .sidebar > .logout { flex-shrink: 0; }
 .sidebar nav { display: grid; gap: 2px; }
 .nav-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--tap); padding: 0 20px;
   color: var(--muted); text-decoration: none; background: transparent; border: 0; border-left: 3px solid transparent;
@@ -163,7 +166,8 @@ a { color: var(--accent); }
 .nav-item.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .nav-item.logout { color: var(--danger); }
 
-.content { grid-area: main; min-width: 0; padding: 24px; outline: 0; }
+.content { grid-area: main; min-width: 0; min-height: 0; padding: 24px; outline: 0; overflow: auto;
+  overscroll-behavior: contain; scrollbar-gutter: stable; }
 .content > h1 { margin-bottom: 16px; }
 .scrim { display: none; }
 .locked-shell { min-height: 100dvh; }
@@ -432,3 +436,10 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .nav-unread-count { position: absolute; top: -6px; left: calc(100% - 4px); min-width: 17px; height: 17px; padding: 0 4px;
  display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--accent); color: var(--on-accent);
  font-size: .65rem; font-weight: 700; line-height: 1; }
+
+/* Dialogs also lock the independent panes; print expands them back to full content. */
+body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { overflow: hidden; }
+@media print {
+ .hr-shell { height: auto; min-height: 0; overflow: visible; grid-template-rows: auto auto; }
+ .hr-shell > .content, .hr-shell > .sidebar { overflow: visible; scrollbar-gutter: auto; }
+}
