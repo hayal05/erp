@@ -45,16 +45,14 @@ function PensionForm({ saved, onSaved }) {
 
   return (
     <form className="stack" onSubmit={save} noValidate>
-      <h2>Pension</h2>
-      <div className="row">
-        <Field label="Employee contribution (%)" inputMode="decimal" value={form.employeePensionRate} onChange={set('employeePensionRate')} error={errors.employeePensionRate} />
-        <Field label="Company contribution (%)" inputMode="decimal" value={form.companyPensionRate} onChange={set('companyPensionRate')} error={errors.companyPensionRate} />
+      <div className="pension-settings-grid">
+        <Field label="Employee (%)" inputMode="decimal" value={form.employeePensionRate} onChange={set('employeePensionRate')} error={errors.employeePensionRate} />
+        <Field label="Company (%)" inputMode="decimal" value={form.companyPensionRate} onChange={set('companyPensionRate')} error={errors.companyPensionRate} />
+      <Field as="select" label="Pension base" value={form.pensionBase} options={PENSION_BASE_OPTIONS} onChange={set('pensionBase')} error={errors.pensionBase} />
       </div>
-      <Field as="select" label="Pension is calculated on" value={form.pensionBase} options={PENSION_BASE_OPTIONS} onChange={set('pensionBase')} error={errors.pensionBase} />
-      <p className="muted">Recalculate drafts to apply changes.</p>
       <div className="row end">
-        <Button disabled={!dirty || busy} onClick={() => { setForm(calcForm(saved)); setAttempted(false); setServerErrors({}); }}>Discard changes</Button>
-        <Button variant="primary" type="submit" busy={busy} disabled={!dirty}>Save pension settings</Button>
+        <Button size="sm" disabled={!dirty || busy} onClick={() => { setForm(calcForm(saved)); setAttempted(false); setServerErrors({}); }}>Discard</Button>
+        <Button size="sm" variant="primary" type="submit" busy={busy} disabled={!dirty}>Save pension</Button>
       </div>
     </form>
   );

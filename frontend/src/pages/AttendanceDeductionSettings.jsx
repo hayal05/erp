@@ -20,11 +20,9 @@ function PolicyForm({ saved, onSaved }) {
     catch (e) { toast.error(e.message); }
     finally { setBusy(false); }
   }
-  return <form className="stack" onSubmit={save}>
-    <h3>Attendance deductions</h3>
-    <p className="muted">Deduction = basic salary × missed days ÷ scheduled working days.</p>
-    {keys.map(([key, label]) => <label key={key}><input type="checkbox" checked={form[key]} disabled={busy} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
-    <p className="muted">Recalculate drafts to apply changes. Approved payroll stays unchanged.</p>
-    <div className="row end"><Button disabled={!dirty || busy} onClick={() => setForm(saved)}>Discard changes</Button><Button variant="primary" type="submit" busy={busy} disabled={!dirty}>Save attendance settings</Button></div>
+  return <form className="stack attendance-policy-settings" onSubmit={save}>
+    <div className="row between"><h3>Attendance deductions</h3><div className="row"><Button size="sm" disabled={!dirty || busy} onClick={() => setForm(saved)}>Discard</Button><Button size="sm" variant="primary" type="submit" busy={busy} disabled={!dirty}>Save policy</Button></div></div>
+    <div className="row">{keys.map(([key, label]) => <label className="row settings-check" key={key}><input type="checkbox" checked={form[key]} disabled={busy} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}</div>
+    <small className="muted">Deduction = basic salary × missed days ÷ scheduled working days.</small>
   </form>;
 }

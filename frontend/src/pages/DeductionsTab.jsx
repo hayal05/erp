@@ -55,11 +55,11 @@ export default function DeductionsTab({ readOnly = false }) {
   }
 
   const columns = [
-    { key: 'name', header: 'Deduction', render: (d) => <><strong>{d.name}</strong><br /><small className="muted">{deductionKindLabel(d.kind)}</small></> },
+    { key: 'name', header: 'Deduction', render: (d) => <span className="deduction-name"><strong>{d.name}</strong><small className="muted">{deductionKindLabel(d.kind)}</small></span> },
     { key: 'amount', header: 'Amount', align: 'num', render: (d) => formatMoney(d.amountMinor) },
     { key: 'state', header: 'Applies', render: (d) => <Badge tone={deductionTone(d)}>{deductionStatus(d)}</Badge> },
     { key: 'act', header: <span className="sr-only">Actions</span>, className: 'nowrap', render: (d) => (isConsumed(d)
-      ? <small className="muted">Already taken in a payroll</small>
+      ? <small className="muted">Applied</small>
       : (
         <span className="row">
           <Button size="sm" disabled={readOnly} busy={toggling === d.id} onClick={() => toggle(d)} aria-label={`${d.enabled ? 'Pause' : 'Resume'} ${d.name}`}>{d.enabled ? 'Pause' : 'Resume'}</Button>
@@ -73,18 +73,18 @@ export default function DeductionsTab({ readOnly = false }) {
     <div className="stack">
       <div className="row between">
         <h2>Other deductions</h2>
-        <Button variant="primary" disabled={readOnly || !employeeId || !list.data} onClick={() => setDialog({ item: null })}><Plus size={16} aria-hidden="true" /> Add deduction</Button>
+        <Button size="sm" variant="primary" disabled={readOnly || !employeeId || !list.data} onClick={() => setDialog({ item: null })}><Plus size={16} aria-hidden="true" /> Add deduction</Button>
       </div>
 
-      <div className="picker">
+      <div className="deduction-picker">
         <Field label="Find employee" type="search" autoComplete="off" placeholder="Name or ID" value={find} onChange={(e) => setFind(e.target.value)} />
-        <Field as="select" label="Employee" value={employeeId} placeholder="Choose an employee…" options={options} onChange={pick} disabled={people.loading && !employees.length} error={people.error || undefined} />
+        <Field as="select" hideLabel label="Employee" value={employeeId} placeholder="Choose an employee…" options={options} onChange={pick} disabled={people.loading && !employees.length} error={people.error || undefined} />
       </div>
 
-      {!employeeId ? <p className="muted">Choose an employee to see and manage their deductions.</p> : (
+      {employeeId && (
         <>
           <Table caption="Deductions" columns={columns} rows={list.data?.items ?? []} loading={list.loading} error={list.error} onRetry={list.reload} empty="No deductions for this employee" />
-          <p className="muted">One-time: next draft. Monthly: repeats until paused or deleted.</p>
+          <small className="muted">One-time: next draft. Monthly: repeats until paused or deleted.</small>
         </>
       )}
 
@@ -128,14 +128,14 @@ function DeductionDialog({ item, employeeId, onClose, onSaved, onConflict }) {
   return (
     <Modal open title={item ? 'Edit deduction' : 'Add deduction'} onClose={() => !busy && onClose()}
       footer={<><Button onClick={onClose} disabled={busy}>Cancel</Button><Button variant="primary" type="submit" form="deduction-form" busy={busy}>Save</Button></>}>
-      <form id="deduction-form" className="stack" onSubmit={submit} noValidate>
-        {error && <div className="form-error" role="alert">{error}</div>}
+      <form id="deduction-form" className="form-grid" onSubmit={submit} noValidate>
+        {error && <div className="form-error full" role="alert">{error}</div>}
+        <Field className="full" label="Name" maxLength={100} autoComplete="off" placeholder="e.g. March salary advance" value={form.name} onChange={set('name')} error={fields.name} />
         <Field as="select" label="Type" value={form.kind} options={DEDUCTION_KIND_OPTIONS} onChange={set('kind')} error={fields.kind} />
-        <Field label="Name" maxLength={100} autoComplete="off" placeholder="e.g. March salary advance" value={form.name} onChange={set('name')} error={fields.name} />
         <Field label="Amount" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={set('amount')} error={fields.amount} />
-        <label className="row"><input type="checkbox" checked={form.recurring} onChange={check('recurring')} /> Take it every month (otherwise next payroll only)</label>
-        <label className="row"><input type="checkbox" checked={form.enabled} onChange={check('enabled')} /> Active (applies to new payroll drafts)</label>
-        {fields.recurring && <small className="field-error">{fields.recurring}</small>}
+        <label className="row full settings-check"><input type="checkbox" checked={form.recurring} onChange={check('recurring')} /> Monthly (unchecked: next payroll only)</label>
+        <label className="row full settings-check"><input type="checkbox" checked={form.enabled} onChange={check('enabled')} /> Active for new drafts</label>
+        {fields.recurring && <small className="field-error full">{fields.recurring}</small>}
       </form>
     </Modal>
   );

@@ -48,13 +48,11 @@ function TaxBase({ settings, onSaved }) {
   }
   return (
     <div className="stack">
-      <h2>Taxable income</h2>
-      <div className="row">
-        <Field as="select" label="Income tax is calculated on" value={value} options={TAX_BASE_OPTIONS} error={error}
+      <div className="row settings-inline">
+        <Field as="select" label="Taxable income base" value={value} options={TAX_BASE_OPTIONS} error={error}
           onChange={(e) => { setValue(e.target.value); setError(''); }} />
         <Button variant="primary" busy={busy} disabled={value === settings.taxBase} onClick={save}>Save tax base</Button>
       </div>
-      <p className="muted">Recalculate drafts to apply changes.</p>
     </div>
   );
 }
@@ -88,14 +86,18 @@ function BracketEditor({ saved, onSaved, serverProblems }) {
 
   return (
     <div className="stack">
-      <h2>Income tax brackets</h2>
+      <div className="row between"><h2>Income tax brackets</h2>      <div className="row settings-actions">
+        <Button size="sm" disabled={rows.length >= MAX_BRACKETS} onClick={() => edit(addBracketRow(rows))}><Plus size={16} aria-hidden="true" /> Add bracket</Button>
+        <Button size="sm" disabled={!changed || busy} onClick={discard}>Discard</Button>
+        <Button size="sm" variant="primary" busy={busy} disabled={!changed} onClick={save}>Save brackets</Button>
+      </div></div>
       {serverProblems.length > 0 && !changed && (
         <div className="form-error" role="alert">The saved table cannot be used for payroll yet: {serverProblems.join('; ')}.</div>
       )}
-      <div className="table-wrap">
+      <div className="table-wrap" role="region" aria-label="Income tax brackets" tabIndex={0}>
         <table className="table bracket-table">
           <thead>
-            <tr><th>#</th><th>From</th><th>To <span className="muted">(blank = no limit)</span></th><th>Rate %</th><th>Fixed deduction</th><th><span className="sr-only">Remove</span></th></tr>
+            <tr><th>#</th><th>From</th><th>To</th><th>Rate %</th><th>Fixed deduction</th><th><span className="sr-only">Remove</span></th></tr>
           </thead>
           <tbody>
             {rows.map((r, i) => (
@@ -116,12 +118,7 @@ function BracketEditor({ saved, onSaved, serverProblems }) {
         </table>
       </div>
       {view.problems.length > 0 && <ul className="form-error" role="alert">{view.problems.map((p) => <li key={p}>{p}</li>)}</ul>}
-      <div className="row">
-        <Button disabled={rows.length >= MAX_BRACKETS} onClick={() => edit(addBracketRow(rows))}><Plus size={16} aria-hidden="true" /> Add bracket</Button>
-        <span className="grow" />
-        <Button disabled={!changed || busy} onClick={discard}>Discard changes</Button>
-        <Button variant="primary" busy={busy} disabled={!changed} onClick={save}>Save brackets</Button>
-      </div>
+
     </div>
   );
 }
@@ -131,15 +128,14 @@ function Preview({ items }) {
   const [text, setText] = useState('');
   const r = previewFor(text, items);
   return (
-    <div className="stack">
-      <h2>Try an income</h2>
+    <details className="tax-preview"><summary>Tax preview · saved brackets</summary><div className="stack">
       <Field label="Monthly taxable income" inputMode="decimal" value={text} onChange={(e) => setText(e.target.value)}
         error={r.kind === 'error' ? r.message : ''} placeholder="e.g. 2,500" />
-      <p role="status" className="muted">
+      {(r.kind === 'tax' || r.kind === 'none') && <p role="status" className="muted">
         {r.kind === 'tax' && <>Bracket {r.position}: income tax is <strong>{formatMoney(r.taxMinor)}</strong>.</>}
         {r.kind === 'none' && 'No saved bracket matches this income.'}
-        {r.kind === 'empty' && 'Type an income to see the tax from the saved table.'}
-      </p>
-    </div>
+        
+      </p>}
+    </div></details>
   );
 }
