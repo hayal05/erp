@@ -770,8 +770,9 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .management-account-options button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: inherit; text-align: left; cursor: pointer; }
 .management-account-options button:hover { background: var(--surface-2); }
 
-/* Employee navigation becomes a sidebar above tablet widths; one nav preserves state and badges. */
-@media screen and (min-width: 1025px) {
+/* Mouse-based desktops use a sidebar, including smaller/zoomed laptop viewports.
+   Touch-first tablets and phones keep bottom navigation, including landscape tablets. */
+@media screen and (min-width: 769px) and (hover: hover) and (pointer: fine) {
   html:has(.portal-shell), body:has(.portal-shell) { height: 100%; overflow: hidden; overflow: clip; overscroll-behavior: none; }
   #root:has(.portal-shell) { height: 100%; min-height: 0; overflow: hidden; overflow: clip; }
   .portal-shell {
