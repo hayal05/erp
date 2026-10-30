@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { HttpError } from '../middleware/error.js';
 import { audit } from './audit.js';
-import { checkQrToken } from './qrToken.js';
+import { checkQrToken, alreadyScannedError } from './qrToken.js';
 import { isPhotoId, photos as defaultPhotos } from './cloudinary.js';
 import { config } from '../config.js';
 import { PRESENT, classifyForEmployee } from './attendanceStatus.js';
@@ -50,30 +50,21 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const statusAfterCheckOut = (record) =>
   record.status === 'incomplete' ? (record.late_minutes > 0 ? 'late' : 'present') : record.status;
 
-// The 2.14 transaction (spec 7 step 4). Everything below commits or rolls back together:
-//   1. lock the token row (FOR UPDATE) and validate it again: a second scan with the same token waits here, then sees used_at
-//   2. lock the employee's record for the work date and decide check-in / check-out (services nextAction)
-//   3. consume the token (used_at, used_by_employee_id)
-//   4. write the record, with the DB clock as the timestamp (never the browser's)
-//   5. audit row
-// A failure anywhere (refusal, constraint, crash) rolls back, so the token stays usable until it expires.
-// Lock order is always token -> record, so two scans cannot deadlock each other.
-// Inputs: employeeId/userId (the signed-in employee), token (plain, from the QR), workDate 'YYYY-MM-DD' (company
-// timezone), photoId (Cloudinary public id, already uploaded: task 2.15), and for a check-in the status:
-//   classify(db, {employeeId, workDate}) -> {status, lateMinutes}   (task 2.16: the shift + the DB clock, run inside the
-//       transaction and only when this scan turns out to be a check-in; the route passes classifyForEmployee)
-//   checkIn {status, lateMinutes}   fixed result, used when no classify is given (tests); default present / 0.
+// Shared token lock -> employee receipt -> attendance row -> audit, all in one transaction.
+// The unique (token, employee) receipt prevents a retry from becoming a check-out.
+// Different employees share the token lock and can commit independently. QR replacement
+// takes an exclusive lock, so it cannot invalidate a token midway through a commit.
 export async function applyScan({ employeeId, userId, token, workDate, photoId, checkIn = PRESENT, classify = null, run = defaultRun }) {
   if (!DATE_RE.test(String(workDate))) throw new HttpError(500, 'Invalid work date', 'server_error');
   if (!isPhotoId(photoId)) throw new HttpError(500, 'Invalid photo reference', 'server_error');
 
   return run(async (db) => {
     const tok = await checkQrToken(db, token, { lock: true });
+    const { rows: receipts } = await db.query(
+      `INSERT INTO attendance_token_scans (token_id, employee_id) VALUES ($1, $2)
+       ON CONFLICT (token_id, employee_id) DO NOTHING RETURNING token_id`, [tok.id, employeeId]);
+    if (!receipts.length) throw alreadyScannedError();
     const { action, record } = await decideAction(db, employeeId, workDate, { lock: true });
-
-    const { rowCount } = await db.query(
-      `UPDATE attendance_tokens SET used_at = now(), used_by_employee_id = $2 WHERE id = $1 AND used_at IS NULL`, [tok.id, employeeId]);
-    if (rowCount !== 1) throw new HttpError(409, 'This QR code was already used. Wait for a new one on the tablet.', 'token_used');
 
     const status = action === ACTION.CHECK_IN && classify ? await classify(db, { employeeId, workDate }) : checkIn;
 
@@ -119,7 +110,7 @@ export function companyTime(instant, timeZone = config.company.timezone) {
 
 // Upload-before-commit (spec 7 step 4), the whole submit:
 //   0. cheap refusal check first (already done today, on leave): no upload for a scan that cannot succeed
-//   1. upload the selfie. If this fails nothing else happens: no attendance, token untouched (callers see 502/503)
+//   1. upload the selfie. If this fails nothing else happens: no attendance, no scan receipt (callers see 502/503)
 //   2. applyScan (the transaction). If it fails for ANY reason the uploaded photo is deleted, then the original error is rethrown
 // A failed delete never hides the original error. Log only a one-way reference for later orphan reconciliation;
 // never log the private photo identifier. Retention/deletion guidance covers uploads left behind by a crash.

@@ -69,3 +69,10 @@ test('stripDataUrl removes only the data: prefix', () => {
   assert.equal(stripDataUrl('/9j/AAAA'), '/9j/AAAA');
   assert.equal(stripDataUrl(null), '');
 });
+
+
+test('a repeated shared QR stops retries and points to attendance history', () => {
+  const view=describeScanError(err(409,'token_already_scanned'));
+  assert.equal(view.next,'stop');
+  assert.match(view.message,/history/);
+});

@@ -58,7 +58,7 @@ Notes:
 
 ### Trying the QR attendance flow
 
-1. Sign in as HR on a tablet (or a second browser window) → **QR Attendance** → **Generate New QR**. Codes live 45 seconds and work once. **Lock** hides the rest of the HR interface for that session until HR re-enters their password.
+1. Sign in as HR on a tablet (or a second browser window) → **QR Attendance** → **Generate New QR**. Codes live 45 seconds and can be used by all employees during that window, once per employee. A repeat with the same code cannot check that employee out; check-out requires a new code. Generating again expires the previous code from that HR session. **Lock** hides the rest of the HR interface for that session until HR re-enters their password.
 2. An employee opens the code with their own phone, signs in if asked, takes a front-camera selfie and submits. The first scan of a day is a check-in, the second a check-out.
 3. Browsers only give camera access on **HTTPS** (or `localhost`). A phone on your Wi-Fi cannot use `http://192.168...`; use the deployed HTTPS site or an HTTPS tunnel for real device checks.
 

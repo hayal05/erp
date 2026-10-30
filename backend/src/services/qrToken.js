@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { HttpError } from '../middleware/error.js';
 
-// QR attendance tokens (spec 7 step 1): crypto-random, single-use, short-lived, tied to the
+// QR attendance tokens (spec 7 step 1): crypto-random, shared across employees, short-lived, tied to the
 // issuing HR session. Only an HMAC of the token is stored, so a database leak cannot be replayed.
 export const TOKEN_TTL_SECONDS = 45;
 
@@ -43,9 +43,9 @@ export function tokenProblem(row) {
   return null;
 }
 
-// Read-only check (does NOT consume): the token exists, is unused, unexpired, and the HR session that issued it still
-// exists, has not expired, and belongs to an active HR user. Consumption happens inside the attendance transaction (2.14),
-// which must repeat this lookup with FOR UPDATE: a check here does not reserve the token.
+// The token remains usable by other employees until expiry or replacement. Legacy consumed
+// tokens stay invalid. A shared lock prevents regeneration/deletion during a scan transaction
+// without serializing different employees scanning the same displayed code.
 export async function checkQrToken(db, token, { lock = false } = {}) {
   const { rows: [row] } = await db.query(
     `SELECT t.id, t.issued_by_session_id,
@@ -55,8 +55,18 @@ export async function checkQrToken(db, token, { lock = false } = {}) {
        FROM attendance_tokens t
        LEFT JOIN sessions s ON s.id = t.issued_by_session_id
        LEFT JOIN users u ON u.id = s.user_id
-      WHERE t.token_hash = $1${lock ? ' FOR UPDATE OF t' : ''}`, [hashQrToken(token)]);
+      WHERE t.token_hash = $1${lock ? ' FOR SHARE OF t' : ''}`, [hashQrToken(token)]);
   const problem = tokenProblem(row);
   if (problem) throw problem;
   return { id: row.id, issuedBySessionId: row.issued_by_session_id };
+}
+
+// Cheap replay check before uploading; the transaction also enforces this with a unique key.
+export const alreadyScannedError = () => new HttpError(409,
+  'You already recorded attendance with this QR code. Check your attendance history. Use a new code when checking out.',
+  'token_already_scanned');
+export async function assertQrNotScanned(db, tokenId, employeeId) {
+  const { rows } = await db.query(
+    'SELECT 1 FROM attendance_token_scans WHERE token_id = $1 AND employee_id = $2', [tokenId, employeeId]);
+  if (rows.length) throw alreadyScannedError();
 }

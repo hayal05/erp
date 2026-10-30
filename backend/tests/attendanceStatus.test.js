@@ -138,7 +138,7 @@ function fakeTx(record = null) {
     log.push({ sql, params });
     if (/FROM attendance_tokens/.test(text)) return { rows: [{ id: 1, issued_by_session_id: 's1', used: false, expired: false, issuer_ok: true }] };
     if (/FROM attendance_records/.test(text)) return { rows: record ? [record] : [] };
-    if (/UPDATE attendance_tokens/.test(text)) return { rowCount: 1, rows: [] };
+    if (/INSERT INTO attendance_token_scans/.test(text)) return { rows: [{token_id:1}] };
     if (/INSERT INTO audit_logs/.test(text)) return { rows: [{ id: 1 }] };
     return { rows: [{ id: 9, status: 'late' }] };
   } };
@@ -154,7 +154,7 @@ test('applyScan: a first check-in stores the classified status and late minutes'
   assert.deepEqual(seen, [[true, { employeeId: 7, workDate: MON }]]);
   const insert = log.find((c) => /^INSERT INTO attendance_records/.test(c.sql));
   assert.deepEqual(insert.params, [7, MON, PHOTO, 'late', 25]);
-  // classification happens after the token is consumed's lock but before the write
+  // classification happens after the shared token lock and employee receipt, before the write
   const idx = (re) => log.findIndex((c) => re.test(c.sql));
   assert.ok(idx(/^INSERT INTO attendance_records/) > idx(/FROM attendance_records.*FOR UPDATE/));
 });

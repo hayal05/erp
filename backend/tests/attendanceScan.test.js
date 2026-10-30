@@ -21,6 +21,7 @@ before(async () => {
   const { rows: [shift] } = await query(`INSERT INTO shifts (name, start_time, end_time) VALUES ('Day','09:00','17:00') RETURNING id`);
   const mk = async (email, role) => (await query(`INSERT INTO users (email, full_name, password_hash, role) VALUES ($1,$1,'x',$2) RETURNING id`, [email, role])).rows[0];
   hr = await mk('hr@x.test', 'hr');
+  await query("INSERT INTO access_grants(user_id,access_role) VALUES($1,'admin')",[hr.id]);
   const mkEmp = async (email, code) => {
     const u = await mk(email, 'employee');
     const { rows: [e] } = await query(`INSERT INTO employees (employee_code, user_id, start_date, shift_id) VALUES ($1,$2,'2026-01-05',$3) RETURNING id`, [code, u.id, shift.id]);
@@ -45,16 +46,15 @@ const scan = (e, t, n = 1, extra = {}) => applyScan({ employeeId: e.id, userId: 
 const tokenUsed = async (t) => { const { hashQrToken } = await import('../src/services/qrToken.js'); return (await query(`SELECT used_at, used_by_employee_id FROM attendance_tokens WHERE token_hash = $1`, [hashQrToken(t)])).rows[0]; };
 const count = async (table) => (await query(`SELECT count(*)::int n FROM ${table}`)).rows[0].n;
 
-test('check-in: writes the record with the DB clock, stores the photo id, consumes the token, audits', { skip }, async () => {
+test('check-in: writes the record with the DB clock, stores the photo id, records the employee receipt, audits', { skip }, async () => {
   const t = await token();
   const out = await scan(e1, t, 1);
   assert.equal(out.action, 'check_in');
   assert.equal(out.record.status, 'present');
   assert.equal(out.record.check_in_photo_id, photo(1));
   assert.ok(Math.abs(new Date(out.record.check_in_at) - Date.now()) < 10_000);
-  const used = await tokenUsed(t);
-  assert.ok(used.used_at);
-  assert.equal(String(used.used_by_employee_id), String(e1.id));
+  assert.equal((await tokenUsed(t)).used_at, null);
+  assert.equal(await count('attendance_token_scans'), 1);
   assert.equal((await query(`SELECT count(*)::int n FROM audit_logs WHERE action = 'attendance.check_in'`)).rows[0].n, 1);
 });
 
@@ -70,11 +70,12 @@ test('second scan with another token is the check-out on the same row; a third i
   assert.equal((await tokenUsed(t3)).used_at, null); // refusal rolled back: token still usable
 });
 
-test('a used token cannot be replayed', { skip }, async () => {
+test('a shared token accepts a second employee but refuses a repeat by the first', { skip }, async () => {
   const t = await token();
   await scan(e1, t, 1);
-  await assert.rejects(scan(e2, t, 2), (e) => e.code === 'token_used');
-  assert.equal(await count('attendance_records'), 1);
+  await assert.rejects(scan(e1, t, 2), (e) => e.code === 'token_already_scanned');
+  assert.equal((await scan(e2, t, 2)).action, 'check_in');
+  assert.equal(await count('attendance_records'), 2);
 });
 
 test('token is consumed only on commit: a failure while writing the record rolls the consumption back', { skip }, async () => {
@@ -115,13 +116,11 @@ test('an incomplete row with a check-in is completed by the check-out and return
   assert.equal(out.record.status, 'present');
 });
 
-test('concurrency: two simultaneous scans with the SAME token (two people) -> exactly one succeeds', { skip }, async () => {
+test('concurrency: two simultaneous scans with the SAME token (two people) -> both succeed', { skip }, async () => {
   const t = await token();
   const results = await Promise.allSettled([scan(e1, t, 1), scan(e2, t, 2)]);
-  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
-  const lost = results.find((r) => r.status === 'rejected');
-  assert.equal(lost.reason.code, 'token_used');
-  assert.equal(await count('attendance_records'), 1);
+  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 2);
+  assert.equal(await count('attendance_records'), 2);
 });
 
 test('concurrency: two simultaneous check-ins by ONE person (different tokens) -> one record, the loser keeps its token', { skip }, async () => {
@@ -183,4 +182,13 @@ test('classifyForEmployee on a day that is not a work day: present, 0 minutes, p
     const out = await applyScan({ employeeId: e1.id, userId: e1.userId, token: await token(), workDate: '2026-10-24', photoId: photo(2), classify: classifyForEmployee });
     assert.deepEqual([out.record.status, out.record.late_minutes], ['present', 0]); // 2026-10-24 is a Saturday
   } finally { await query(`UPDATE shifts SET work_days = '{1,2,3,4,5}'`); }
+});
+
+test('concurrency: duplicate submissions by one employee on the same QR never check out', { skip }, async () => {
+  const t = await token();
+  const results = await Promise.allSettled([scan(e1,t,1),scan(e1,t,2)]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal(results.find(r=>r.status==='rejected').reason.code,'token_already_scanned');
+  assert.equal(await count('attendance_token_scans'),1);
+  assert.equal((await query('SELECT check_out_at FROM attendance_records')).rows[0].check_out_at,null);
 });

@@ -173,7 +173,7 @@ test('embedded PostgreSQL #7/#8/#10: expired/replayed tokens rejected and first 
   const bad=await emp.post('/api/attendance/scan').send({token:expired,photo:scanPhoto});assert.equal(bad.status,410,JSON.stringify(bad.body));assert.equal(uploads,0);
   const live=(await hr.post('/api/qr/tokens').send({})).body.token;
   const first=await emp.post('/api/attendance/scan').send({token:live,photo:scanPhoto});assert.equal(first.status,201,JSON.stringify(first.body));assert.equal(first.body.action,'check_in');assert.ok(first.body.checkInAt);assert.equal(first.body.checkOutAt,null);
-  const replay=await emp.post('/api/attendance/scan').send({token:live,photo:scanPhoto});assert.equal(replay.status,409);assert.equal(replay.body.error.code,'token_used');assert.equal(uploads,1);
+  const replay=await emp.post('/api/attendance/scan').send({token:live,photo:scanPhoto});assert.equal(replay.status,409);assert.equal(replay.body.error.code,'token_already_scanned');assert.equal(uploads,1);
   assert.equal((await q('SELECT count(*)::int n FROM attendance_records')).rows[0].n,1);
   await assert.rejects(q("INSERT INTO attendance_records(employee_id,work_date,status,check_out_at) VALUES($1,'2026-01-06','incomplete',now())",[otherId]),/attendance_out_needs_in/);
  }finally{scanDeps.photos=original;}

@@ -37,6 +37,7 @@ before(async () => {
   for (const [c, name, role, code] of [[HR, 'Hana HR', 'hr'], [A, 'Ann A', 'employee', 'E-1'], [B, 'Bob B', 'employee', 'E-2']]) {
     const { rows: [u] } = await query(`INSERT INTO users (email, full_name, password_hash, role) VALUES ($1,$2,$3,$4) RETURNING id`,
       [c.email, name, await hashPassword(c.password), role]);
+    if(role==='hr') await query("INSERT INTO access_grants(user_id,access_role) VALUES($1,'admin')",[u.id]);
     if (code) await query(`INSERT INTO employees (employee_code, user_id, start_date, shift_id) VALUES ($1,$2,'2026-01-05',$3)`, [code, u.id, shift.id]);
   }
 });
@@ -76,31 +77,27 @@ test('#7 issuing a new QR also ends the previous one from the same session', { s
   assert.equal(errorCode(await scan(ann, { token: first, photo: PHOTO })), 'token_expired');
 });
 
-// ---- #8 Consumed tokens cannot be reused
-test('#8 a used token is refused for the same person and for someone else; one record, one photo', { skip }, async () => {
+// Shared QR: per-employee replay protection, not global consumption.
+test('#8 a shared QR accepts multiple employees but not a repeated employee', { skip }, async () => {
   const hr = await signIn(app, HR), ann = await signIn(app, A), bob = await signIn(app, B);
   const token = await newToken(hr);
   assert.equal((await scan(ann, { token, photo: PHOTO })).status, 201);
-  for (const who of [ann, bob]) {
-    const again = await scan(who, { token, photo: PHOTO });
-    assert.equal(again.status, 409);
-    assert.equal(errorCode(again), 'token_used');
-  }
-  assert.equal((await records()).length, 1);
-  assert.equal(store.uploaded.length, 1);
-  const used = (await query('SELECT used_by_employee_id FROM attendance_tokens')).rows[0];
-  assert.equal(String(used.used_by_employee_id), String((await records())[0].employee_id)); // the token remembers who used it
+  const again = await scan(ann, { token, photo: PHOTO });
+  assert.equal(again.status, 409);
+  assert.equal(errorCode(again), 'token_already_scanned');
+  assert.equal((await scan(bob, { token, photo: PHOTO })).status, 201);
+  assert.equal((await records()).length, 2);
+  assert.equal(store.uploaded.length, 2);
+  assert.equal((await query('SELECT count(*)::int n FROM attendance_token_scans')).rows[0].n,2);
 });
 
-// ---- #9 Concurrent requests do not duplicate attendance
-test('#9 two people scanning the same token at once: exactly one succeeds', { skip }, async () => {
+test('#9 two people scanning the same token at once: both succeed', { skip }, async () => {
   const hr = await signIn(app, HR), ann = await signIn(app, A), bob = await signIn(app, B);
   const token = await newToken(hr);
   const results = await Promise.all([scan(ann, { token, photo: PHOTO }), scan(bob, { token, photo: PHOTO })]);
-  assert.deepEqual(results.map((r) => r.status).sort(), [201, 409]);
-  assert.equal((await records()).length, 1);
-  assert.equal((await query('SELECT count(*)::int n FROM attendance_tokens WHERE used_at IS NOT NULL')).rows[0].n, 1);
-  assert.equal(store.uploaded.length - store.deleted.length, 1); // the loser's photo was cleaned up
+  assert.deepEqual(results.map(r=>r.status), [201,201]);
+  assert.equal((await records()).length, 2);
+  assert.equal(store.uploaded.length-store.deleted.length,2);
 });
 
 test('#9 one person scanning twice at once with two tokens: a single check-in row, never two', { skip }, async () => {
