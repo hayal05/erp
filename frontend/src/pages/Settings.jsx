@@ -2,7 +2,7 @@ import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {workspacePath} from '../api/workspaces.js';
 import {useLocation} from 'react-router-dom';
 import {usePermission} from '../api/auth.jsx';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 import Button from '../components/Button.jsx';
@@ -19,17 +19,22 @@ import { saveErrorView, shiftRow } from './settingsView.js';
 // (Payroll settings join this page in Phase 4.)
 export default function Settings() {
   const [section,setSection]=useState('holidays');
+  const settingsRef=useRef(null),focusSection=useRef(false);
+  const chooseSection=value=>{if(value!==section){focusSection.current=true;setSection(value);}};
+  useEffect(()=>{
+    if(focusSection.current){settingsRef.current?.querySelector(`[data-settings-section="${section}"] [aria-pressed="true"]`)?.focus();focusSection.current=false;}
+  },[section]);
+  const tabs=<div className="row settings-section-tabs" role="group" aria-label="Settings sections"><Button size="sm" variant={section==='holidays'?'primary':'default'} aria-pressed={section==='holidays'} onClick={()=>chooseSection('holidays')}>Holidays</Button><Button size="sm" variant={section==='schedules'?'primary':'default'} aria-pressed={section==='schedules'} onClick={()=>chooseSection('schedules')}>Schedules</Button></div>;
   return (
-    <section className="stack general-settings-page">
+    <section ref={settingsRef} className="stack general-settings-page">
       <div className="row between"><h1>Settings</h1><WorkspaceLink className="btn sm" to="/hr/settings/payroll">Payroll settings</WorkspaceLink></div>
-      <div className="row" role="group" aria-label="Settings sections"><Button size="sm" variant={section==='holidays'?'primary':'default'} aria-pressed={section==='holidays'} onClick={()=>setSection('holidays')}>Holidays</Button><Button size="sm" variant={section==='schedules'?'primary':'default'} aria-pressed={section==='schedules'} onClick={()=>setSection('schedules')}>Schedules</Button></div>
-      <div hidden={section!=='holidays'}><Holidays /></div>
-      <div hidden={section!=='schedules'}><Schedules /></div>
+      <div data-settings-section="holidays" hidden={section!=='holidays'}><Holidays tabs={tabs}/></div>
+      <div data-settings-section="schedules" hidden={section!=='schedules'}><Schedules tabs={tabs}/></div>
     </section>
   );
 }
 
-function Holidays() {
+function Holidays({tabs}) {
   const pageRefresh = usePageRefresh();
   const canManage=usePermission('organization.manage');
   const toast = useToast();
@@ -71,9 +76,10 @@ function Holidays() {
 
   return (
     <div className="stack settings-table-section">
-      <div className="row end settings-section-actions">
+      <div className="row between settings-section-actions" role="region" aria-label="Settings toolbar" tabIndex={0}>
         <h2 className="sr-only">Holidays</h2>
-        <div className="row">
+        {tabs}
+        <div className="row settings-row-actions">
           {years.length > 0 && <Field hideLabel label="Year" as="select" options={years} value={year ?? data.year} onChange={(e) => setYear(Number(e.target.value))} />}
           {canManage && <Button size="sm" variant="primary" onClick={() => setDialog({ holiday: null })} disabled={!data.year}><Plus size={16} aria-hidden="true" /> Add holiday</Button>}
         </div>
@@ -94,7 +100,7 @@ function Holidays() {
   );
 }
 
-function Schedules() {
+function Schedules({tabs}) {
   const pageRefresh = usePageRefresh();
   const canManage=usePermission('organization.manage');
   const [list, setList] = useState({ items: [] });
@@ -125,8 +131,9 @@ function Schedules() {
 
   return (
     <div className="stack settings-table-section">
-      <div className="row end settings-section-actions">
+      <div className="row between settings-section-actions" role="region" aria-label="Settings toolbar" tabIndex={0}>
         <h2 className="sr-only">Working schedules</h2>
+        {tabs}
         {canManage && <Button size="sm" variant="primary" onClick={() => setDialog({ shift: null })}><Plus size={16} aria-hidden="true" /> Add schedule</Button>}
       </div>
       <Table caption="Working schedules" columns={columns.filter(c=>canManage||c.key!=='act')} rows={list.items.map(shiftRow)} loading={state.loading} error={state.error} onRetry={refresh}
