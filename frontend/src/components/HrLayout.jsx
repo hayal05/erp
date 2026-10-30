@@ -1,7 +1,7 @@
 import {PageRefreshProvider} from '../api/pageRefresh.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { Briefcase, ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
+import { ChevronDown, Briefcase, ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
 import AuditBottomBar from './AuditBottomBar.jsx';
 import {auditScope} from '../api/auditScope.js';
 import ApprovalNotice from './ApprovalNotice.jsx';
@@ -9,7 +9,7 @@ import WorkspaceSwitcher from './WorkspaceSwitcher.jsx';
 import {canOpenPath,workspacePath,workspaceArea,isAdmin} from '../api/workspaces.js';
 import { useAuth } from '../api/auth.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
-import { HR_NAV, QR_PATH, ROLE_LABEL, formatClock, initials, layoutMode } from './hrNav.js';
+import { HR_NAV, QR_PATH, formatClock, initials, layoutMode } from './hrNav.js';
 
 const ICONS = { vacancies: Briefcase, approvals: ShieldCheck, access: ShieldCheck, settlements: Landmark, announcements: Megaphone, dashboard: LayoutDashboard, employees: Users, departments: Building2, attendance: CalendarCheck, qr: QrCode, leave: CalendarDays, payroll: Wallet, settings: Settings };
 
@@ -27,7 +27,7 @@ function useClock() {
 export default function HrLayout() {
   const { user, locked, logout } = useAuth();
   const { pathname } = useLocation();
-  const mainRef = useRef(null);
+  const mainRef = useRef(null), accountRef = useRef(null);
   useEffect(() => { mainRef.current?.scrollTo(0, 0); }, [pathname]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sectionVisit, setSectionVisit] = useState(0);
@@ -35,17 +35,38 @@ export default function HrLayout() {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     setSectionVisit(n => n + 1); // Refresh even when the active sidebar section is clicked again.
     setMenuOpen(false);
+    if(accountRef.current)accountRef.current.open=false;
   };
   const now = useClock();
   const audit = auditScope(pathname,user);
 
-  useEffect(() => { setMenuOpen(false); }, [pathname]); // close the phone drawer after navigating
+  useEffect(() => { setMenuOpen(false); if(accountRef.current)accountRef.current.open=false; }, [pathname]); // close the phone drawer after navigating
   useEffect(() => {
     if (!menuOpen) return undefined;
     const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [menuOpen]);
+
+  useEffect(() => {
+    const outside = event => {
+      if(accountRef.current && !accountRef.current.contains(event.target))accountRef.current.open=false;
+    };
+    const escape = event => {
+      if(event.key==='Escape' && accountRef.current?.open){
+        accountRef.current.open=false;
+        accountRef.current.querySelector('summary')?.focus();
+      }
+    };
+    document.addEventListener('pointerdown',outside);
+    document.addEventListener('focusin',outside);
+    document.addEventListener('keydown',escape);
+    return()=>{
+      document.removeEventListener('pointerdown',outside);
+      document.removeEventListener('focusin',outside);
+      document.removeEventListener('keydown',escape);
+    };
+  },[]);
 
   // Locked tablet (§6.1): no sidebar, no admin controls, QR page only. Survives refresh because the lock
   // comes from the server session (/auth/me), not from component state.
@@ -65,10 +86,16 @@ export default function HrLayout() {
         <time className="clock muted" dateTime={now.toISOString()}>{formatClock(now)}</time>
         <ThemeToggle />
         <WorkspaceSwitcher />
-        <div className="user-chip" title={user.fullName}>
-          <span className="avatar" aria-hidden="true">{initials(user.fullName)}</span>
-          <span className="user-text"><strong>{user.fullName}</strong><small className="muted">{workspaceArea(pathname)==='finance'?'Finance':isAdmin(user)?'Admin':'HR'}</small></span>
-        </div>
+        <details className="management-account" ref={accountRef}>
+          <summary className="user-chip" title={user.fullName} aria-label={`Account: ${user.fullName}`}>
+            <span className="avatar" aria-hidden="true">{initials(user.fullName)}</span>
+            <span className="user-text"><strong>{user.fullName}</strong><small className="muted">{workspaceArea(pathname)==='finance'?'Finance':isAdmin(user)?'Admin':'HR'}</small></span>
+            <ChevronDown size={16} aria-hidden="true" />
+          </summary>
+          <div className="management-account-options">
+            <button type="button" onClick={()=>{accountRef.current.open=false;logout();}}><LogOut size={18} aria-hidden="true" /> Log out</button>
+          </div>
+        </details>
       </header>
 
       <aside id="hr-nav" className={`sidebar${menuOpen ? ' open' : ''}`}>
@@ -82,7 +109,6 @@ export default function HrLayout() {
             );
           })}
         </nav>
-        <button type="button" className="nav-item logout" onClick={logout}><LogOut size={18} aria-hidden="true" /><span>Log out</span></button>
       </aside>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
