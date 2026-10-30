@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
 import { useEffect, useState } from 'react';
@@ -8,6 +9,7 @@ import { get, put } from '../api/client.js';
 import { useToast } from '../components/Toast.jsx';
 import { profileForm, profilePayload } from './salaryProfileForm.js';
 export default function SalaryProfileDialog({ employee, onClose }) {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('salary_profiles.manage');
   const toast = useToast();
   const [form, setForm] = useState(null), [error, setError] = useState(''), [fields, setFields] = useState({}), [busy, setBusy] = useState(false), [retry, setRetry] = useState(0);
@@ -16,7 +18,7 @@ export default function SalaryProfileDialog({ employee, onClose }) {
     setError('');
     get(`/salary-profiles/${employee.id}`, {}, { signal: ctrl.signal }).then((p) => setForm(profileForm(p))).catch((e) => { if (e.name !== 'AbortError') setError(e.message); });
     return () => ctrl.abort();
-  }, [employee.id, retry]);
+  }, [employee.id, retry, pageRefresh]);
   async function submit(e) {
     e.preventDefault();
     if (!canManage || busy || !form) return;

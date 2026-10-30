@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
 import { useEffect,useState } from 'react';
@@ -11,6 +12,7 @@ import { formatMoney } from '../api/money.js';
 import { payable,paymentPayload,settlementLabel } from './settlementView.js';
 const SIZE=12,DETAIL_SIZE=20;
 function useList(path,params,reload){
+  const pageRefresh = usePageRefresh();
   const [data,setData]=useState({items:[],total:0,summary:[],loading:true,error:''});
   const query=JSON.stringify(params);
   useEffect(()=>{
@@ -18,7 +20,7 @@ function useList(path,params,reload){
     get(path,JSON.parse(query),{signal:ctrl.signal}).then(r=>{if(!ctrl.signal.aborted)setData({...r,loading:false,error:''});})
       .catch(e=>{if(!ctrl.signal.aborted)setData({items:[],total:0,summary:[],loading:false,error:e.message});});
     return()=>ctrl.abort();
-  },[path,query,reload]);return data;
+  },[path,query,reload, pageRefresh]);return data;
 }
 export default function Settlements(){
   const [page,setPage]=useState(1),[view,setView]=useState('unsettled'),[reload,setReload]=useState(0),[selected,setSelected]=useState(null);
@@ -26,7 +28,7 @@ export default function Settlements(){
   const money=(key,header)=>({key,header,align:'num',render:r=>formatMoney(r[key])});
   const balance=(kind,key,header)=>({key,header,align:'num',render:r=><button type="button" className="salary-cell" onClick={()=>setSelected({period:r,kind})} aria-label={`View ${settlementLabel(kind)} payable for ${r.month}`}>{formatMoney(r[key])}</button>});
   return <section className="stack">
-    <div className="row between"><h1>Settlements</h1><Button onClick={refresh} disabled={data.loading}>Refresh</Button></div>
+    <div className="row between"><h1>Settlements</h1></div>
     {!data.loading&&!data.error&&data.summary?.map(s=><div className="card stack" key={s.currency||'currency'}><strong>Outstanding · {s.currency||'Currency not recorded'}</strong><div className="row"><span>Income tax: <strong>{formatMoney(s.incomeTaxBalanceMinor)}</strong></span><span>Pension: <strong>{formatMoney(s.pensionBalanceMinor)}</strong></span></div></div>)}
     <Field as="select" label="Show" value={view} options={[{value:'unsettled',label:'Unsettled months'},{value:'all',label:'All paid payroll months'}]} onChange={e=>{setView(e.target.value);setPage(1);}} />
     <Table caption="Monthly tax and pension payable" columns={[
@@ -40,6 +42,7 @@ export default function Settlements(){
   </section>;
 }
 function SettlementDetails({period,kind,onClose,onRecorded}){
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('settlements.manage');
   const [current,setCurrent]=useState(null),[error,setError]=useState(''),[reload,setReload]=useState(0),[page,setPage]=useState(1),[historyPage,setHistoryPage]=useState(1),[recording,setRecording]=useState(false),[busy,setBusy]=useState(false);
   const employees=useList(`/payroll/periods/${period.id}/entries`,{page,pageSize:DETAIL_SIZE},reload);
@@ -49,7 +52,7 @@ function SettlementDetails({period,kind,onClose,onRecorded}){
     const ctrl=new AbortController();setCurrent(null);setError('');
     get(`/settlements/${period.id}`,{},{signal:ctrl.signal}).then(r=>{if(!ctrl.signal.aborted)setCurrent(r);}).catch(e=>{if(!ctrl.signal.aborted)setError(e.message);});
     return()=>ctrl.abort();
-  },[period.id,reload]);
+  },[period.id,reload, pageRefresh]);
   const label=settlementLabel(kind),amounts=current?payable(current,kind):null;
   const money=(key,header)=>({key,header,align:'num',render:r=>formatMoney(r[key])});
   const cols=[{key:'employeeCode',header:'Employee ID'},{key:'employeeName',header:'Employee name'},...(kind==='income_tax'?[money('taxableIncomeMinor','Taxable income'),money('incomeTaxMinor','Income tax withheld')]

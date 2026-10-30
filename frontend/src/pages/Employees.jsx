@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
@@ -20,6 +21,7 @@ function useDebounced(value, ms = 300) {
 }
 
 export default function Employees() {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('employees.manage');
   const toast = useToast();
   const [filters, setFilters] = useState({ search: '', status: '', departmentId: '' });
@@ -41,7 +43,7 @@ export default function Employees() {
       .then(([d, s]) => setLookups({ departments: d.items, shifts: s.items }))
       .catch((e) => { if (e.name !== 'AbortError') toast.error(`Could not load departments and shifts: ${e.message}`); });
     return () => ctrl.abort();
-  }, [toast, reload]);
+  }, [toast, reload, pageRefresh]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -50,7 +52,7 @@ export default function Employees() {
       .then((res) => { setData(res); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') setState({ loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [page, search, filters.status, filters.departmentId, reload]);
+  }, [page, search, filters.status, filters.departmentId, reload, pageRefresh]);
 
   const setFilter = (k) => (e) => { setFilters((f) => ({ ...f, [k]: e.target.value })); setPage(1); };
 

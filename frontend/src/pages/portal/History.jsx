@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../../api/pageRefresh.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import Button from '../../components/Button.jsx';
 import Field from '../../components/Field.jsx';
@@ -10,6 +11,7 @@ const PAGE_SIZE = 20;
 // Employee's own attendance history (spec 3, 7 step 5). The server returns only the signed-in person's rows (GET /attendance/mine);
 // times are company-timezone HH:MM strings shown as they are. No photos here: selfies are for HR review only.
 export default function History() {
+  const pageRefresh = usePageRefresh();
   const [range, setRange] = useState({ from: '', to: '' });
   const [page, setPage] = useState(1);
   const [data, setData] = useState({ items: [], total: 0 });
@@ -27,7 +29,7 @@ export default function History() {
       .then((res) => { setData(res); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') setState({ loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [page, range, rangeBad, reload]);
+  }, [page, range, rangeBad, reload, pageRefresh]);
 
   const setDate = (k) => (e) => { setRange((r) => ({ ...r, [k]: e.target.value })); setPage(1); };
   const filtered = Boolean(range.from || range.to);

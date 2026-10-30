@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import {PageRefreshProvider} from '../../api/pageRefresh.jsx';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { CalendarCheck, CalendarDays, FileText, Home, LogOut, UserRound, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../api/auth.jsx';
 import WorkspaceSwitcher from '../../components/WorkspaceSwitcher.jsx';
@@ -14,6 +15,12 @@ const ICONS = { profile: UserRound, home: Home, attendance: CalendarCheck, leave
 export default function PortalLayout() {
   const { user, logout } = useAuth();
   const account = useRef(null);
+  const { pathname } = useLocation();
+  const [sectionVisit, setSectionVisit] = useState(0);
+  const visitSection = event => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    setSectionVisit(n => n + 1);
+  };
   useEffect(() => {
     const closeOutside = (event) => {
       if (account.current && !account.current.contains(event.target)) account.current.open = false;
@@ -34,7 +41,7 @@ export default function PortalLayout() {
     };
   }, []);
   return (
-    <div className="portal-shell">
+    <PageRefreshProvider version={sectionVisit}><div className="portal-shell">
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="portal-top">
         <span className="brand">Natra</span>
@@ -54,13 +61,13 @@ export default function PortalLayout() {
         {PORTAL_NAV.map((item) => {
           const Icon = ICONS[item.key];
           return (
-            <NavLink key={item.key} to={item.to} end={item.end} className={({ isActive }) => `tab${isActive ? ' active' : ''}`}>
+            <NavLink key={item.key} to={item.to} end={item.end} onClick={visitSection} className={({ isActive }) => `tab${isActive ? ' active' : ''}`}>
               <Icon size={22} aria-hidden="true" /><span>{item.label}</span>
             </NavLink>
           );
         })}
       </nav>
-    </div>
+    </div></PageRefreshProvider>
   );
 }
 

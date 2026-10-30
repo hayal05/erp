@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {useEffect,useState} from 'react';
 import {usePermission,useAuth} from '../api/auth.jsx';
 import {get,post} from '../api/client.js';
@@ -15,6 +16,7 @@ export default function AccessManagement(){
  return <AccessList />;
 }
 function AccessList(){
+  const pageRefresh = usePageRefresh();
  const canManage=usePermission('access.manage');
  const [search,setSearch]=useState(''),[query,setQuery]=useState(''),[page,setPage]=useState(1),[reload,setReload]=useState(0),[selected,setSelected]=useState(null);
  const [data,setData]=useState({items:[],total:0,loading:true,error:''});const refresh=()=>setReload(n=>n+1);
@@ -23,11 +25,11 @@ function AccessList(){
   get('/access-management/employees',{page,pageSize:SIZE,search:query},{signal:ctrl.signal})
    .then(r=>{if(!ctrl.signal.aborted)setData({...r,loading:false,error:''});})
    .catch(e=>{if(!ctrl.signal.aborted)setData({items:[],total:0,loading:false,error:e.message});});return()=>ctrl.abort();
- },[page,query,reload]);
- return <section className="stack"><h1>Access Management</h1>
-  <form className="row" onSubmit={e=>{e.preventDefault();setQuery(search.trim());setPage(1);}}><Field label="Name, username, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /><Button type="submit">Search</Button><Button onClick={refresh} disabled={data.loading}>Refresh</Button></form>
+ },[page,query,reload, pageRefresh]);
+ return <section className="stack access-management-page"><h1>Access Management</h1>
+  <form className="row" onSubmit={e=>{e.preventDefault();setQuery(search.trim());setPage(1);}}><Field label="Name, username, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /><Button type="submit">Search</Button></form>
   <Table caption="Employee access" columns={[
-   {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'email',header:'Contact email'},{key:'department',header:'Department'},{key:'position',header:'Position'},
+   {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'department',header:'Department'},{key:'position',header:'Position'},
    {key:'active',header:'Account',render:r=>r.active?'Active':'Inactive'},
    {key:'accessRoles',header:'Additional access',render:r=>r.accessRoles.map(roleName).join(', ')||'Employee only'},
    {key:'actions',header:'Actions',render:r=><Button size="sm" onClick={()=>setSelected(r)}>{canManage?'Manage access':'View access'}</Button>},
@@ -37,6 +39,7 @@ function AccessList(){
  </section>;
 }
 function AccessDialog({employee,onClose,onChanged}){
+  const pageRefresh = usePageRefresh();
  const canManage=usePermission('access.manage');
  const [page,setPage]=useState(1),[reload,setReload]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),[revoke,setRevoke]=useState(null),[reason,setReason]=useState(''),[role,setRole]=useState('hr');
  const [history,setHistory]=useState({items:[],total:0,loading:true,error:''}),[active,setActive]=useState(employee.accessRoles);const toast=useToast();
@@ -45,7 +48,7 @@ function AccessDialog({employee,onClose,onChanged}){
   const ctrl=new AbortController();setHistory(h=>({...h,loading:true,error:''}));
   get(`/access-management/employees/${employee.id}/history`,{page,pageSize:HISTORY_SIZE},{signal:ctrl.signal}).then(r=>{if(!ctrl.signal.aborted){setHistory({...r,loading:false,error:''});setActive(r.accessRoles);}})
    .catch(e=>{if(!ctrl.signal.aborted)setHistory({items:[],total:0,loading:false,error:e.message});});return()=>ctrl.abort();
- },[employee.id,page,reload]);
+ },[employee.id,page,reload, pageRefresh]);
  async function grant(e){
   e.preventDefault();if(busy)return;setBusy(true);setError('');
   try{await post(`/access-management/employees/${employee.id}/grants`,{role});setActive(a=>[...new Set([...a,role])]);setPage(1);refresh();onChanged();toast.success(`${roleName(role)} access granted`);}

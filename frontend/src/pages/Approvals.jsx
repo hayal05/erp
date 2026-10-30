@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import Skeleton from '../components/Skeleton.jsx';
 import {useEffect,useState,useRef} from 'react';
 import {get,post} from '../api/client.js';
@@ -9,13 +10,15 @@ function ProposedValues({value}){
 }
 const when=value=>value?new Date(value).toLocaleString():'—';
 export default function Approvals(){
+  const pageRefresh = usePageRefresh();
  const {user}=useAuth(),detailRef=useRef(null);
+ const [loading,setLoading]=useState(true);
  const [view,setView]=useState('pending'),[page,setPage]=useState(1),[data,setData]=useState(null),[selected,setSelected]=useState(null),[reason,setReason]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[version,setVersion]=useState(0),[notice,setNotice]=useState('');
  useEffect(()=>{
-  const ctrl=new AbortController();setData(null);setError('');setSelected(null);
-  get('/change-requests',{view,page},{signal:ctrl.signal}).then(setData).catch(e=>{if(e.name!=='AbortError')setError(e.message);});
+  const ctrl=new AbortController();setLoading(true);setError('');setSelected(null);
+  get('/change-requests',{view,page},{signal:ctrl.signal}).then(r=>{if(!ctrl.signal.aborted)setData(r);}).catch(e=>{if(!ctrl.signal.aborted){setData(null);setError(e.message);}}).finally(()=>{if(!ctrl.signal.aborted)setLoading(false);});
   return ()=>ctrl.abort();
- },[view,page,version]);
+ },[view,page,version, pageRefresh]);
  useEffect(()=>{if(selected){detailRef.current?.focus();}},[selected]);
  const decide=async action=>{
   setBusy(true);setError('');setNotice('');
@@ -23,10 +26,10 @@ export default function Approvals(){
   catch(e){setError(e.message);}finally{setBusy(false);}
  };
  return <section><h1>Approvals</h1>
-  <div className="toolbar"><label>Show <select value={view} onChange={e=>{setView(e.target.value);setPage(1);}} disabled={busy}><option value="pending">Pending</option><option value="mine">My requests</option><option value="all">All requests</option></select></label><button onClick={()=>setVersion(v=>v+1)} disabled={busy}>Refresh</button></div>
+  <div className="toolbar"><label>Show <select value={view} onChange={e=>{setView(e.target.value);setPage(1);}} disabled={busy}><option value="pending">Pending</option><option value="mine">My requests</option><option value="all">All requests</option></select></label></div>
   {error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status">{notice}</p>}
-  {!data?(error?null:<Skeleton variant="table" columns={7} label="Loading requests…" />):<><div className="table-wrap"><table><thead><tr><th>Request</th><th>Area</th><th>Change</th><th>Requested by</th><th>Requested on</th><th>Status</th><th>Review</th></tr></thead><tbody>
-  {data.items.map(row=><tr key={row.id}><td>#{row.id}</td><td>{row.department.toUpperCase()}</td><td>{changeLabel(row.method,row.path)}</td><td>{row.requester_name}{Number(row.requester_id)===user.id?' (you)':''}</td><td>{when(row.requested_at)}</td><td>{row.status}</td><td><button disabled={busy} onClick={()=>{setSelected(row);setReason('');setError('');}}>Details</button></td></tr>)}
+  {!data?(error?null:<Skeleton variant="table" columns={7} label="Loading requests…" />):<><div className="table-wrap" aria-busy={loading||undefined}><table><thead><tr><th>Request</th><th>Area</th><th>Change</th><th>Requested by</th><th>Requested on</th><th>Status</th><th>Review</th></tr></thead><tbody>
+  {data.items.map(row=><tr key={row.id}><td>#{row.id}</td><td>{row.department.toUpperCase()}</td><td>{changeLabel(row.method,row.path)}</td><td>{row.requester_name}{Number(row.requester_id)===user.id?' (you)':''}</td><td>{when(row.requested_at)}</td><td>{row.status}</td><td><button disabled={busy||loading} onClick={()=>{setSelected(row);setReason('');setError('');}}>Details</button></td></tr>)}
   {!data.items.length&&<tr><td colSpan={7}>No requests found.</td></tr>}</tbody></table></div>
   <div className="toolbar"><button disabled={busy||page<=1} onClick={()=>setPage(p=>p-1)}>Previous</button><span>Page {page} of {Math.max(1,Math.ceil(data.total/data.pageSize))} · {data.total} requests</span><button disabled={busy||page*data.pageSize>=data.total} onClick={()=>setPage(p=>p+1)}>Next</button></div></>}
   {selected&&<article className="card" ref={detailRef} tabIndex={-1} aria-label={`Request ${selected.id} details`}><h2>Request #{selected.id}</h2><p>{changeLabel(selected.method,selected.path)} · {selected.status}</p><p>Requested by {selected.requester_name} on {when(selected.requested_at)}</p>

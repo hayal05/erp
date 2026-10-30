@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import Button from '../components/Button.jsx';
@@ -14,6 +15,7 @@ const empOption = (e) => ({ value: e.id, label: `${e.fullName} (${e.employeeCode
 // HR leave (spec 10): the approval queue (pending first) and each employee's yearly entitlements.
 // Decisions and balance changes are always confirmed in a dialog; the server counts days and refuses overlaps and overspending.
 export default function Leave() {
+  const pageRefresh = usePageRefresh();
   const toast = useToast();
   const [tab, setTab] = useState('requests');
   const [lookups, setLookups] = useState({ departments: [], employees: [] });
@@ -24,7 +26,7 @@ export default function Leave() {
       .then(([d, e]) => setLookups({ departments: d.items, employees: e.items }))
       .catch((e) => { if (e.name !== 'AbortError') toast.error(`Could not load the filter lists: ${e.message}`); });
     return () => ctrl.abort();
-  }, [toast]);
+  }, [toast, pageRefresh]);
 
   return (
     <section className="stack">
@@ -41,6 +43,7 @@ export default function Leave() {
 }
 
 function Requests({ lookups }) {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('leave.manage');
   const toast = useToast();
   const [filters, setFilters] = useState(NO_FILTERS);
@@ -58,7 +61,7 @@ function Requests({ lookups }) {
       .then((r) => { setData(r); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') { setState({ loading: false, error: e.message }); toast.error(`Could not load requests: ${e.message}`); } });
     return () => ctrl.abort();
-  }, [page, filters, reload, toast]);
+  }, [page, filters, reload, toast, pageRefresh]);
 
   const setFilter = (k) => (e) => { setFilters((f) => ({ ...f, [k]: e.target.value })); setPage(1); };
   const thisYear = new Date().getFullYear(); // display only: the list of years offered
@@ -106,6 +109,7 @@ function Requests({ lookups }) {
 }
 
 function Entitlements({ employees }) {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('leave.manage');
   const toast = useToast();
   const [employeeId, setEmployeeId] = useState('');
@@ -125,7 +129,7 @@ function Entitlements({ employees }) {
       .then((r) => { setData(r); if (year === null) setYear(r.year); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') { setState({ loading: false, error: e.message }); toast.error(`Could not load balances: ${e.message}`); } });
     return () => ctrl.abort();
-  }, [employeeId, year, reload, toast]);
+  }, [employeeId, year, reload, toast, pageRefresh]);
 
   const years = data.year ? [data.year - 1, data.year, data.year + 1].map((y) => ({ value: y, label: String(y) })) : [];
   const columns = [

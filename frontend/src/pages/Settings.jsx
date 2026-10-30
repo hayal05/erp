@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {workspacePath} from '../api/workspaces.js';
 import {useLocation} from 'react-router-dom';
 import {usePermission} from '../api/auth.jsx';
@@ -28,6 +29,7 @@ export default function Settings() {
 }
 
 function Holidays() {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('organization.manage');
   const toast = useToast();
   const [year, setYear] = useState(null); // null = the server's current company year
@@ -45,7 +47,7 @@ function Holidays() {
       .then((r) => { setData(r); if (year === null) setYear(r.year); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') setState({ loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [year, reload]);
+  }, [year, reload, pageRefresh]);
 
   async function remove() {
     setRemoving((r) => ({ ...r, busy: true }));
@@ -92,6 +94,7 @@ function Holidays() {
 }
 
 function Schedules() {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('organization.manage');
   const [list, setList] = useState({ items: [] });
   const [state, setState] = useState({ loading: true, error: '' });
@@ -106,7 +109,7 @@ function Schedules() {
       .then((r) => { setList(r); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') setState({ loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [reload]);
+  }, [reload, pageRefresh]);
 
   const columns = [
     { key: 'name', header: 'Schedule', render: (s) => <strong>{s.name}</strong> },

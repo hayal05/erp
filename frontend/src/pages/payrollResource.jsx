@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import Skeleton from '../components/Skeleton.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import Button from '../components/Button.jsx';
@@ -6,6 +7,7 @@ import { get } from '../api/client.js';
 // Loads one GET endpoint for a payroll settings tab: { data, loading, error, reload }. Stale responses are aborted when the
 // path changes or the tab unmounts. `path` null = nothing to load yet.
 export function useResource(path, query) {
+  const pageRefresh = usePageRefresh();
   const [state, setState] = useState({ data: null, loading: !!path, error: '' });
   const [n, setN] = useState(0);
   const reload = useCallback(() => setN((x) => x + 1), []);
@@ -19,7 +21,7 @@ export function useResource(path, query) {
       .catch((e) => { if (e.name !== 'AbortError') setState({ data: null, loading: false, error: e.message || 'Could not load' }); });
     return () => ctrl.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, key, n]);
+  }, [path, key, n, pageRefresh]);
   return { ...state, reload };
 }
 

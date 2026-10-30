@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
@@ -18,6 +19,7 @@ const NO_FILTERS = { from: '', to: '', employeeId: '', departmentId: '', status:
 // Selfie viewer. The signed link is requested when HR opens the photo (each view is audited on the server), kept only in this
 // component's state, and dropped on close: it expires in minutes and must not be cached or stored.
 function PhotoViewer({ view, onClose }) {
+  const pageRefresh = usePageRefresh();
   const { record, kind } = view;
   const [state, setState] = useState({ status: 'loading', url: '' });
   const [attempt, setAttempt] = useState(0);
@@ -32,7 +34,7 @@ function PhotoViewer({ view, onClose }) {
         setState({ status: 'error', url: '', message: e.status === 503 ? 'Photo storage is not available right now.' : e.message });
       });
     return () => ctrl.abort();
-  }, [record.id, kind, attempt]);
+  }, [record.id, kind, attempt, pageRefresh]);
 
   const title = `${record.fullName} · ${KIND_LABEL[kind]} selfie · ${formatWorkDate(record.workDate)}`;
   return (
@@ -52,6 +54,7 @@ function PhotoViewer({ view, onClose }) {
 }
 
 export default function Attendance() {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('attendance.manage');
   const toast = useToast();
   const [view, setView] = useState('today');
@@ -71,7 +74,7 @@ export default function Attendance() {
       .then(([d, e]) => setLookups({ departments: d.items, employees: e.items }))
       .catch((e) => { if (e.name !== 'AbortError') toast.error(`Could not load the filter lists: ${e.message}`); });
     return () => ctrl.abort();
-  }, [toast]);
+  }, [toast, pageRefresh]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -80,7 +83,7 @@ export default function Attendance() {
       .then((res) => { if (ctrl.signal.aborted) return; setData(res); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') setState({ loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [page, filters, view, reload]);
+  }, [page, filters, view, reload, pageRefresh]);
 
   const setFilter = (k) => (e) => { setFilters((f) => ({ ...f, [k]: e.target.value })); setPage(1); };
   const rangeBad = filters.from && filters.to && filters.from > filters.to;

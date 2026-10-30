@@ -13,14 +13,14 @@ export default function Table({ columns, rows = [], rowKey = 'id', caption, load
   return (
     // tabIndex: a scrollable region must be reachable by keyboard
     <div className="table-wrap" role="region" aria-label={caption} tabIndex={0} aria-busy={loading || undefined}>
-      {loading && !error && <span className="sr-only" role="status">Loading {caption || 'records'}…</span>}
+      {loading && !rows.length && !error && <span className="sr-only" role="status">Loading {caption || 'records'}…</span>}
       <table className="table">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
           <tr>{columns.map((c) => <th key={c.key} scope="col" className={c.align === 'num' ? 'num' : c.className}>{c.header}</th>)}</tr>
         </thead>
         <tbody>
-          {loading && !error ? <SkeletonRows columns={span} rows={Math.min(rows.length || 5, 5)} /> : state ? (
+          {loading && !rows.length && !error ? <SkeletonRows columns={span} rows={Math.min(rows.length || 5, 5)} /> : state ? (
             <tr><td colSpan={span} className={`state ${state.cls}`}>{state.node}</td></tr>
           ) : rows.map((row) => (
             <tr key={row[rowKey]} className={onRowClick ? 'clickable' : undefined} onClick={onRowClick ? () => onRowClick(row) : undefined}>

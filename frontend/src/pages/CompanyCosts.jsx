@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {workspacePath,workspaceArea} from '../api/workspaces.js';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -8,6 +9,7 @@ import { get } from '../api/client.js';
 import { formatMoney } from '../api/money.js';
 const SIZE = 12, DETAIL_SIZE = 25;
 export default function CompanyCosts() {
+  const pageRefresh = usePageRefresh();
   const {pathname}=useLocation();
   const [page, setPage] = useState(1), [retry, setRetry] = useState(0), [detail, setDetail] = useState(null);
   const [state, setState] = useState({ items: [], total: 0, loading: true, error: '' });
@@ -17,7 +19,7 @@ export default function CompanyCosts() {
       .then(r => { if (!ctrl.signal.aborted) setState({ ...r, loading: false, error: '' }); })
       .catch(e => { if (!ctrl.signal.aborted) setState({ items: [], total: 0, loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [page, retry]);
+  }, [page, retry, pageRefresh]);
   const totalButton = (r, kind) => <button type="button" className="salary-cell" onClick={() => setDetail({ period: r, kind })}
     aria-label={`View ${kind === 'salary' ? 'salary paid' : 'company pension'} details for ${r.month}`}>{formatMoney(kind === 'salary' ? r.salaryPaidMinor : r.companyPensionMinor)}</button>;
   return <section className="card stack" aria-labelledby="company-costs-title">
@@ -34,6 +36,7 @@ export default function CompanyCosts() {
   </section>;
 }
 function CostDetails({ period, kind, onClose }) {
+  const pageRefresh = usePageRefresh();
   const [page, setPage] = useState(1), [retry, setRetry] = useState(0);
   const [state, setState] = useState({ items: [], total: 0, loading: true, error: '' });
   useEffect(() => {
@@ -42,7 +45,7 @@ function CostDetails({ period, kind, onClose }) {
       .then(r => { if (!ctrl.signal.aborted) setState({ ...r, loading: false, error: '' }); })
       .catch(e => { if (!ctrl.signal.aborted) setState({ items: [], total: 0, loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [period.id, page, retry]);
+  }, [period.id, page, retry, pageRefresh]);
   const salary = kind === 'salary';
   const money = (key, header) => ({ key, header, align: 'num', render: r => formatMoney(r[key]) });
   const columns = [{ key: 'employeeCode', header: 'Employee ID' }, { key: 'employeeName', header: 'Employee name' },

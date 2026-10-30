@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {workspacePath} from '../api/workspaces.js';
 import {useLocation} from 'react-router-dom';
 import {usePermission} from '../api/auth.jsx';
@@ -31,6 +32,7 @@ export default function DepartmentDetail() {
 }
 
 function Detail({ id }) {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('organization.manage');
   const toast = useToast();
   const [department, setDepartment] = useState({ status: 'loading', value: null, error: '' });
@@ -54,7 +56,7 @@ function Detail({ id }) {
         setDepartment((d) => (e.status === 404 ? { status: 'missing', value: null, error: '' } : d.value ? d : { status: 'error', value: null, error: e.message }));
       });
     return () => ctrl.abort();
-  }, [id, reload]);
+  }, [id, reload, pageRefresh]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -63,7 +65,7 @@ function Detail({ id }) {
       .then((res) => { setData(res); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') setState({ loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [id, page, search, reload]);
+  }, [id, page, search, reload, pageRefresh]);
 
   async function remove() {
     const { position } = confirm;
