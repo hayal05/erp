@@ -107,7 +107,7 @@ export default function Scan() {
   // Success is checked before the token: the token was just removed from history state.
   if (step === 'done' && done) {
     return (
-      <section className="stack">
+      <section className="stack portal-scan-page">
         <h1>{done.heading}</h1>
         <div className="card stack scan-done" role="status">
           <p className="scan-done-title"><CheckCircle2 size={28} aria-hidden="true" /> <strong>{done.name}</strong></p>
@@ -128,7 +128,7 @@ export default function Scan() {
   }
   if (step === 'failed' && failure) {
     return (
-      <section className="stack">
+      <section className="stack portal-scan-page">
         <h1>Not recorded</h1>
         <div className="card stack">
           <p className="form-error" role="alert">{failure.message}</p>
@@ -140,7 +140,7 @@ export default function Scan() {
 
   if (!token) {
     return (
-      <section className="stack">
+      <section className="stack portal-scan-page">
         <h1>Scan to check in</h1>
         <div className="card stack">
           <QrCode size={28} aria-hidden="true" />
@@ -150,12 +150,11 @@ export default function Scan() {
     );
   }
   return (
-    <section className="stack">
+    <section className="stack portal-scan-page">
       <h1>Check in or out</h1>
       <div className="card stack">
         {step === 'idle' || step === 'starting' ? (
           <>
-            <p>Take a selfie, then confirm to submit.</p>
             <Button variant="primary" busy={step === 'starting'} onClick={startCamera}><Camera size={18} aria-hidden="true" /> Open camera</Button>
           </>
         ) : null}
@@ -168,14 +167,13 @@ export default function Scan() {
         {(step === 'captured' || step === 'sending') && photo ? (
           <>
             <div className="selfie-frame"><img className="selfie-img" src={photo.url} alt="Your selfie, ready to confirm" /></div>
-            <p className="muted">Photo size: {photo.kb} KB</p>
             <div className="row">
               <Button onClick={startCamera} disabled={step === 'sending'}><RotateCcw size={18} aria-hidden="true" /> Retake</Button>
               <Button variant="primary" onClick={submit} busy={step === 'sending'} disabled={failure?.next === 'retake'}>
                 <Send size={18} aria-hidden="true" /> {failure ? 'Try again' : 'Use this photo'}
               </Button>
             </div>
-            {step === 'sending' ? <p className="muted" role="status">Sending… please wait.</p> : null}
+            {step === 'sending' ? <p className="muted" role="status">Sending…</p> : null}
           </>
         ) : null}
         {failure && step === 'captured' ? <p className="form-error" role="alert">{failure.message}</p> : null}

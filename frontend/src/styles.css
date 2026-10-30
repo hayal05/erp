@@ -706,3 +706,32 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .applicant-review-actions .field { width: 220px; max-width: 100%; }
 .profile-back { justify-self: start; }
 @media (max-width: 400px) { .applicant-review .profile-facts { grid-template-columns: minmax(0,1fr); } }
+
+/* Employee pages favor flat sections and readable mobile controls. */
+.portal-content h1, .portal-content h2 { margin: 0; }
+.portal-home-page > .row h1 { font-size: 1.25rem; }
+.portal-profile-page .profile-facts { grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-sm); }
+.portal-profile-page .profile-facts dd { margin-top: 2px; }
+.portal-profile-facts, .portal-experience { padding-bottom: var(--space-sm); border-bottom: 1px solid var(--border); }
+.portal-position-history > summary, .portal-leave-request > summary, .portal-leave-note > summary { cursor: pointer; color: var(--accent); min-height: var(--tap); align-content: center; }
+.portal-position-history > .stack, .portal-leave-request > form { margin-top: var(--space-sm); }
+.portal-position-history .table { min-width: 560px; }
+.portal-attendance-page .table { min-width: 480px; }
+.portal-attendance-status { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.portal-attendance-page .toolbar { max-width: 440px; }
+.portal-leave-page > .row > .field { width: 110px; }
+.portal-leave-page .leave-balances { gap: var(--space-sm); }
+.portal-leave-page .leave-balances .card { padding: 10px; gap: 2px; }
+.portal-leave-page .leave-balances .card > strong { font-size: .85rem; }
+.portal-leave-page .leave-balances .card > small { font-size: .75rem; }
+.portal-leave-request { border-block: 1px solid var(--border); padding-block: var(--space-xs); }
+.portal-leave-request summary { font-weight: 600; }
+.portal-leave-request form > .btn { justify-self: start; }
+.portal-leave-page .table { min-width: 540px; }
+.portal-leave-note { max-width: 260px; }
+.portal-leave-note p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; }
+.portal-payslips-page .table { min-width: 440px; }
+.portal-scan-page .scan-summary { grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-sm); }
+.portal-scan-page .scan-summary > div { padding-bottom: 6px; font-size: .9rem; flex-wrap: wrap; }
+.portal-scan-page .scan-summary > div:last-child { grid-column: 1 / -1; }
+@media (max-width: 360px) { .portal-profile-page .profile-facts { grid-template-columns: minmax(0,1fr); } }

@@ -40,25 +40,22 @@ export default function History() {
     { key: 'checkIn', header: 'In', className: 'nowrap' },
     { key: 'checkOut', header: 'Out', className: 'nowrap' },
     { key: 'status', header: 'Status', render: (r) => (
-      <>
-        <Badge tone={r.tone}>{r.status}</Badge>
-        {r.corrected && <><br /><small className="muted">Adjusted by HR</small></>}
-      </>
+      <span className="portal-attendance-status"><Badge tone={r.tone}>{r.status}</Badge>{r.corrected && <small className="muted">Adjusted by HR</small>}</span>
     ) },
   ];
 
   return (
-    <section className="stack">
+    <section className="stack portal-attendance-page">
       <div className="row between">
         <h1>My attendance</h1>
-        {filtered && <Button onClick={() => { setRange({ from: '', to: '' }); setPage(1); }}>Clear dates</Button>}
+        {filtered && <Button size="sm" onClick={() => { setRange({ from: '', to: '' }); setPage(1); }}>Clear dates</Button>}
       </div>
       <div className="toolbar toolbar-2">
         <Field label="From" type="date" value={range.from} onChange={setDate('from')} />
         <Field label="To" type="date" value={range.to} onChange={setDate('to')} error={rangeBad ? 'Must be on or after the start date' : undefined} />
       </div>
       <Table caption="My attendance records" columns={columns} rows={rows} loading={state.loading} error={state.error} onRetry={refresh}
-        empty={filtered ? 'No attendance records in these dates' : 'No attendance recorded yet. Scan the office QR code to check in.'} />
+        empty={filtered ? 'No attendance records in these dates' : 'No attendance recorded yet.'} />
       <Pager page={page} pageSize={PAGE_SIZE} total={rangeBad ? 0 : data.total} onPage={setPage} disabled={state.loading} />
     </section>
   );

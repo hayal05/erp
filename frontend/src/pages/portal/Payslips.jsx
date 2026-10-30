@@ -12,8 +12,8 @@ export default function Payslips(){
  const resource=useResource('/payslips',{page,pageSize:PAGE_SIZE});
  const columns=[{key:'month',header:'Month'},{key:'status',header:'Status',render:r=><Badge tone="ok">{r.status==='paid'?'Paid':'Approved'}</Badge>},
   {key:'netMinor',header:'Net salary',align:'num',render:r=>`${formatMoney(r.netMinor)} ${r.currencyCode}`},
-  {key:'view',header:'Payslip',render:r=><Link to={`/portal/payslips/${r.id}`} aria-label={`View payslip for ${r.month}`}>View</Link>}];
- return <section className="stack"><h1>My payslips</h1><p className="muted">Your approved and paid payrolls are available here.</p>
+  {key:'view',header:'Payslip',render:r=><Link className="btn sm" to={`/portal/payslips/${r.id}`} aria-label={`View payslip for ${r.month}`}>View</Link>}];
+ return <section className="stack portal-payslips-page"><h1>My payslips</h1>
   <Table caption="My payslips" columns={columns} rows={resource.data?.items??[]} loading={resource.loading} error={resource.error} onRetry={resource.reload} empty="No payslips released yet."/>
   <Pager page={page} pageSize={PAGE_SIZE} total={resource.data?.total??0} onPage={setPage} disabled={resource.loading}/>
  </section>;
@@ -27,7 +27,7 @@ export function Payslip(){
 function PayslipBody({id}){
  const {data,loading,error,reload}=useResource(`/payslips/${id}`);
  return <section className="stack">
-  <div className="row between no-print"><Link to="/portal/payslips">Back to payslips</Link>{data&&<Button onClick={()=>window.print()}>Print payslip</Button>}</div>
+  <div className="row between no-print"><Link className="btn sm" to="/portal/payslips">← Payslips</Link>{data&&<Button size="sm" onClick={()=>window.print()}>Print payslip</Button>}</div>
   {!data?<ResourceState loading={loading} error={error} onRetry={reload}/>:<article className="payslip-paper card stack" aria-label={`Payslip for ${data.period.month}`}>
    <header><p className="muted">{data.companyName}</p><h1>Payslip · {data.period.month}</h1><h2>{data.entry.employeeName}</h2></header>
    {data.paidOn&&<p>Payment date: {data.paidOn}</p>}
