@@ -80,7 +80,7 @@ test('section audit feeds enforce domain permissions and never expose raw detail
 });
 test('persistent footer summaries identify the latest modifying and approving actors in a section',async()=>{
  const r=await hr.get('/api/audit-history?area=payroll');assert.equal(r.status,200,JSON.stringify(r.body));
- assert.equal(r.body.summary.modified.actor,'hr');assert.equal(r.body.summary.approved.actor,'Main Admin');
+ assert.equal(r.body.summary.modified.actor,'hr');assert.equal(r.body.summary.approved.actor,'root@audit.test');
  assert.ok(r.body.summary.modified.at);assert.equal(r.body.summary.approved.type,'payroll_period');
  assert.ok(r.body.items.some(x=>x.action==='change.approve'));
 });
@@ -95,20 +95,42 @@ test('approval activity is restricted to the user or an authorized reviewer of i
 
 test('footer approval belongs to the latest modification, never an older or unrelated record',async()=>{
  const create=async name=>(await admin.post('/api/departments').send({name})).body.id;
- const d=await create('Footer first record');
+ const recordHR=id=>q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES((SELECT id FROM users WHERE username='hr@audit.test'),'department.update','department',$1)",[String(id)]);
+ const d=await create('Footer first record');await recordHR(d);
  await q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES($1,'change.approve','department',$2)",[root,String(d)]);
- let r=await admin.get('/api/audit-history?area=departments');assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.summary.approved.actor,'Main Admin');
- const other=await create('Footer second record');
+ let r=await admin.get('/api/audit-history?area=departments');assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.summary.approved.actor,'root@audit.test');
+ const other=await create('Footer second record');await recordHR(other);
  r=await admin.get('/api/audit-history?area=departments');assert.equal(r.body.summary.modified.id,String(other));assert.equal(r.body.summary.approved,null);
  await q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES($1,'change.approve','department',$2)",[root,String(other)]);
- await admin.patch(`/api/departments/${other}`).send({name:'Modified after approval'});
+ await admin.patch(`/api/departments/${other}`).send({name:'Modified after approval'});await recordHR(other);
  r=await admin.get('/api/audit-history?area=departments');assert.equal(r.body.summary.approved,null);
  // PostgreSQL timestamps are shared within a transaction: audit ID breaks ties.
  await db.exec('BEGIN');
  try{
-  await q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES($1,'department.update','department',$2)",[root,String(other)]);
+  await recordHR(other);
   await q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES($1,'change.approve','department',$2)",[root,String(other)]);
   await db.exec('COMMIT');
  }catch(e){await db.exec('ROLLBACK');throw e;}
- r=await admin.get('/api/audit-history?area=departments');assert.equal(r.body.summary.approved.actor,'Main Admin');
+ r=await admin.get('/api/audit-history?area=departments');assert.equal(r.body.summary.approved.actor,'root@audit.test');
+});
+
+
+test('General Admin immediate changes show the same login username and date in both footer records',async()=>{
+ const created=await admin.post('/api/departments').send({name:'Immediate Admin change'});assert.equal(created.status,201);
+ const changed=await admin.patch(`/api/departments/${created.body.id}`).send({name:'Updated immediately'});assert.equal(changed.status,200);
+ const count=(await q('SELECT count(*)::int n FROM audit_logs')).rows[0].n;
+ const r=await admin.get('/api/audit-history?area=departments');assert.equal(r.status,200,JSON.stringify(r.body));
+ assert.equal(r.body.summary.modified.actor,'root@audit.test');
+ assert.deepEqual(r.body.summary.approved,r.body.summary.modified);
+ assert.equal((await q('SELECT count(*)::int n FROM audit_logs')).rows[0].n,count,'reading does not fabricate approval events');
+});
+
+test('Admin self-authorization uses the grant at the time of modification, not the actor current access',async()=>{
+ const modify=()=>q("INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id) VALUES($1,'employee.update','employee',$2)",[person.userId,String(person.id)]);
+ await modify();
+ await q("INSERT INTO access_grants(user_id,access_role,granted_by_user_id,granted_at) VALUES($1,'admin',$2,clock_timestamp()+interval '1 microsecond')",[person.userId,root]);
+ let r=await admin.get('/api/audit-history?area=employees');assert.equal(r.body.summary.modified.actor,'plain');assert.equal(r.body.summary.approved,null,'promotion must not authorize an older change');
+ await modify();
+ await q("UPDATE access_grants SET revoked_at=greatest(clock_timestamp(),(SELECT max(occurred_at)+interval '1 microsecond' FROM audit_logs WHERE actor_user_id=$1)),revoked_by_user_id=$2,revoke_reason='End temporary access' WHERE user_id=$1 AND access_role='admin' AND revoked_at IS NULL",[person.userId,root]);
+ r=await admin.get('/api/audit-history?area=employees');assert.equal(r.body.summary.modified.actor,'plain@audit.test');assert.deepEqual(r.body.summary.approved,r.body.summary.modified,'later revocation preserves the original immediate authorization');
 });
