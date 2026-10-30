@@ -24,7 +24,7 @@ function AccessList(){
    .then(r=>{if(!ctrl.signal.aborted)setData({...r,loading:false,error:''});})
    .catch(e=>{if(!ctrl.signal.aborted)setData({items:[],total:0,loading:false,error:e.message});});return()=>ctrl.abort();
  },[page,query,reload]);
- return <section className="stack"><h1>Access Management</h1>
+ return <section className="stack access-management-page"><h1>Access Management</h1>
   <form className="row" onSubmit={e=>{e.preventDefault();setQuery(search.trim());setPage(1);}}><Field label="Name, username, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /><Button type="submit">Search</Button><Button onClick={refresh} disabled={data.loading}>Refresh</Button></form>
   <Table caption="Employee access" columns={[
    {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'email',header:'Contact email'},{key:'department',header:'Department'},{key:'position',header:'Position'},
