@@ -58,7 +58,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
   async function submit(e) {
     e.preventDefault();
     if (busy) return;
-    const problems = validateForm(form, mode);
+    const problems = validateForm(form, mode, employee);
     setFields(problems);
     setError('');
     if (Object.keys(problems).length) return;
@@ -93,7 +93,8 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
         {error && <div className="form-error full" role="alert">{error}</div>}
         <Field label="Employee ID" maxLength={40} autoComplete="off" {...bind('employeeCode')} />
         <Field label="Full name" maxLength={120} autoComplete="off" {...bind('fullName')} />
-        <Field label="Email (used to sign in)" type="email" maxLength={254} autoComplete="off" inputMode="email" autoCapitalize="none" {...bind('email')} />
+        <Field label="Username (used to sign in)" required minLength={3} maxLength={254} autoComplete="off" autoCapitalize="none" {...bind('username')} />
+        <Field label="Email (optional contact)" type="email" maxLength={254} autoComplete="off" inputMode="email" autoCapitalize="none" {...bind('email')} />
         <Field label="Phone" type="tel" maxLength={30} autoComplete="off" {...bind('phone')} />
         <Field as="select" label="Department" placeholder="No department" options={departments.map((d) => ({ value: d.id, label: d.name }))}
           value={form.departmentId} error={fields.departmentId} onChange={(e) => { setForm((f) => changeDepartment(f, e.target.value, employee)); setFields((x) => ({ ...x, departmentId: undefined, positionId: undefined })); }} />

@@ -17,7 +17,7 @@ let hr, sales, ops, n = 0;
 const POSITION = (over = {}) => ({ name: 'Cashier', basicMinor: 500000, allowanceMinor: 100000, ...over });
 const audit = async (action, id) => (await query('SELECT * FROM audit_logs WHERE action = $1 AND entity_id = $2', [action, String(id)])).rows;
 const create = (dept, body) => hr.post(`/api/departments/${dept}/positions`).send(body);
-const hire = async (departmentId) => { n += 1; return (await hr.post('/api/employees').send({ employeeCode: `P${n}`, fullName: `Pos ${n}`, email: `p${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', departmentId })).body; };
+const hire = async (departmentId) => { n += 1; return (await hr.post('/api/employees').send({ employeeCode: `P${n}`, fullName: `Pos ${n}`, username: `p${n}@natra.test`, email: `p${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', departmentId })).body; };
 
 before(async () => {
   if (skip) return;

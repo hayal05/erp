@@ -160,7 +160,7 @@ async function createTwoEmployees() {
   const hr = await signIn(app, HR);
   const make = async (n) => {
     const creds = { email: `staff${n}@natra.test`, password: 'staff-password-123' };
-    const res = await hr.post('/api/employees').send({ employeeCode: `S${n}`, fullName: `Staff ${n}`, email: creds.email, startDate: '2026-01-05', password: creds.password });
+    const res = await hr.post('/api/employees').send({ employeeCode: `S${n}`, fullName: `Staff ${n}`, username: creds.email, email: creds.email, startDate: '2026-01-05', password: creds.password });
     assert.equal(res.status, 201, JSON.stringify(res.body));
     const employee = await signIn(app, creds);
     const privatePassword = `staff-private-password-${n}`;

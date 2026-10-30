@@ -34,7 +34,7 @@ export async function loadSession(req, res, next) {
       `SELECT s.id, s.user_id, s.csrf_token, s.locked,
               s.expires_at <= now() AS expired,
               EXTRACT(EPOCH FROM (now() - s.last_seen_at)) * 1000 AS idle_ms,
-              u.role, u.email, u.full_name, u.is_active, u.must_change_password,
+              u.role, u.username, u.email, u.full_name, u.is_active, u.must_change_password,
               EXISTS(SELECT 1 FROM employees e WHERE e.user_id=u.id AND e.status<>'active') AS employee_inactive,
               ARRAY(SELECT g.access_role FROM access_grants g WHERE g.user_id=u.id AND g.revoked_at IS NULL ORDER BY g.access_role) AS access_roles
          FROM sessions s JOIN users u ON u.id = s.user_id
@@ -49,7 +49,7 @@ export async function loadSession(req, res, next) {
     if (Number(r.idle_ms) > TOUCH_AFTER_MS) await query('UPDATE sessions SET last_seen_at = now() WHERE id = $1', [r.id]);
 
     req.session = { id: r.id, userId: Number(r.user_id), csrfToken: r.csrf_token, locked: r.locked };
-    req.user = withAccess({ id: Number(r.user_id), role: r.role, email: r.email, fullName: r.full_name, mustChangePassword: !!r.must_change_password }, r.access_roles);
+    req.user = withAccess({ id: Number(r.user_id), role: r.role, username:r.username,email: r.email, fullName: r.full_name, mustChangePassword: !!r.must_change_password }, r.access_roles);
     next();
   } catch (err) {
     next(err);

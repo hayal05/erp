@@ -83,7 +83,7 @@ test('session events: 401 unauthenticated and 423 screen_locked notify the liste
   await assert.rejects(get('/x'));
   reply(423, { error: { code: 'screen_locked', message: 'Locked' } });
   await assert.rejects(get('/x'));
-  reply(401, { error: { code: 'invalid_credentials', message: 'Invalid email or password' } });
+  reply(401, { error: { code: 'invalid_credentials', message: 'Invalid username or password' } });
   await assert.rejects(post('/auth/login', {}));
   reply(403, { error: { code: 'forbidden', message: 'no' } });
   await assert.rejects(get('/x'));

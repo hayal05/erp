@@ -30,7 +30,7 @@ before(async () => {
 after(async () => { if (!skip) await query(TRUNCATE_ALL); await pool.end(); });
 
 const audit = async (action, id) => (await query('SELECT * FROM audit_logs WHERE action = $1 AND entity_id = $2', [action, String(id)])).rows;
-const hire = (departmentId, shiftId) => { n += 1; return hr.post('/api/employees').send({ employeeCode: `O${n}`, fullName: `Org ${n}`, email: `o${n}@natra.test`,
+const hire = (departmentId, shiftId) => { n += 1; return hr.post('/api/employees').send({ employeeCode: `O${n}`, fullName: `Org ${n}`, username: `o${n}@natra.test`, email: `o${n}@natra.test`,
   startDate: '2026-03-01', password: 'initial-password-1', departmentId, shiftId }); };
 
 test('departments and shifts are HR-only: 401 anonymous, 403 employees', { skip }, async () => {

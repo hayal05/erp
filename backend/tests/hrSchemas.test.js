@@ -9,7 +9,7 @@ const { translateDbError, validationError, isFkViolation } = await import('../sr
 const { diffFields } = await import('../src/services/audit.js');
 const { HttpError } = await import('../src/middleware/error.js');
 
-const goodEmployee = { employeeCode: 'EMP-001', fullName: ' Abebe Kebede ', email: 'Abebe@Natra.test', startDate: '2026-01-15', password: 'a-long-password' };
+const goodEmployee = { employeeCode: 'EMP-001', fullName: ' Abebe Kebede ', username: 'Abebe@Natra.test', email: 'Abebe@Natra.test', startDate: '2026-01-15', password: 'a-long-password' };
 
 test('intList: sorted, unique, bounded whole numbers', () => {
   const rule = { d: v.intList({ min: 1, max: 7, minItems: 1, maxItems: 7 }) };
@@ -28,7 +28,7 @@ test('employee create: required fields, defaults, trimming and dropped unknown k
   assert.equal(value.shiftId, undefined);
   for (const k of ['role', 'status', 'userId']) assert.equal(k in value, false, k); // no mass assignment
   const missing = parse(employeeCreate, {}).errors;
-  assert.deepEqual(Object.keys(missing).sort(), ['email', 'employeeCode', 'fullName', 'password', 'startDate']);
+  assert.deepEqual(Object.keys(missing).sort(), ['employeeCode', 'fullName', 'password', 'startDate','username']);
 });
 
 test('employee create: the password is not trimmed', () => {
@@ -97,10 +97,10 @@ test('setClause only emits whitelisted columns that are present, numbered from $
 });
 
 test('translateDbError maps known constraints to field errors and leaves the rest alone', () => {
-  const unique = translateDbError({ code: '23505', constraint: 'users_email_key' });
+  const unique = translateDbError({ code: '23505', constraint: 'users_username_key' });
   assert.ok(unique instanceof HttpError);
   assert.equal(unique.status, 409);
-  assert.deepEqual(Object.keys(unique.details.fields), ['email']);
+  assert.deepEqual(Object.keys(unique.details.fields), ['username']);
   assert.deepEqual(Object.keys(translateDbError({ code: '23505', constraint: 'employees_code_key' }).details.fields), ['employeeCode']);
   assert.equal(translateDbError({ code: '23503', constraint: 'employees_department_id_fkey' }).status, 400);
   assert.deepEqual(Object.keys(translateDbError({ code: '23514', constraint: 'shifts_same_day' }).details.fields), ['endTime']);

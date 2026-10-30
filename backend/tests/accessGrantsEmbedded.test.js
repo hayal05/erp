@@ -109,7 +109,7 @@ test('HR grants enable HR operations and draft preparation but cannot approve, p
  const staff=await signInWithReviewer(app,{email:'emp@access.test',password:'password-123'},reviewer);
  let r=await staff.post('/api/departments').send({name:'HR managed'});assert.equal(r.status,201,JSON.stringify(r.body));const departmentId=r.body.id;
  r=await staff.post('/api/shifts').send({name:'HR shift',startTime:'09:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:5});assert.equal(r.status,201,JSON.stringify(r.body));const shiftId=r.body.id;
- r=await staff.post('/api/employees').send({employeeCode:'HR-NEW',fullName:'New Employee',email:'new@hr.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId,departmentId});assert.equal(r.status,201,JSON.stringify(r.body));const id=r.body.id;
+ r=await staff.post('/api/employees').send({employeeCode:'HR-NEW',fullName:'New Employee',username: 'new@hr.test', email:'new@hr.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId,departmentId});assert.equal(r.status,201,JSON.stringify(r.body));const id=r.body.id;
  r=await staff.put(`/api/salary-profiles/${id}`).send({basicMinor:200000,allowanceMinor:10000,allowanceTaxable:true,allowancePensionable:false,pensionApplies:true});assert.equal(r.status,200,JSON.stringify(r.body));
  assert.equal((await staff.patch(`/api/employees/${id}`).send({phone:'0911111111'})).status,200);
  assert.equal((await staff.get('/api/attendance-records?view=today')).status,200);

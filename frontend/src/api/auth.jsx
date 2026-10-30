@@ -67,8 +67,8 @@ export function AuthProvider({ children }) {
     return () => { disposed = true; window.removeEventListener('focus', sync); document.removeEventListener('visibilitychange', sync); };
   }, [userId, apply]);
 
-  const login = useCallback(async (email, password) => {
-    const data = await post('/auth/login', { email, password }); // throws ApiError on 400/401/429
+  const login = useCallback(async (username, password) => {
+    const data = await post('/auth/login', { username, password }); // throws ApiError on 400/401/429
     apply(data);
     return data.user;
   }, [apply]);

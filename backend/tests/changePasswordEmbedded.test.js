@@ -23,6 +23,7 @@ before(async()=>{
  shift=(await q("INSERT INTO shifts(name,start_time,end_time,work_days) VALUES('Day','09:00','17:00','{1,2,3,4,5}') RETURNING id")).rows[0].id;
  for(const role of ['hr','employee']){
   const u=(await q('INSERT INTO users(email,full_name,password_hash,role) VALUES($1,$2,$3,$4) RETURNING id',[`${role}@pw.test`,role,await hashPassword(oldPassword),role])).rows[0].id;
+  if(role==='hr')await q("INSERT INTO access_grants(user_id,access_role) VALUES($1,'admin')",[u]);
   if(role==='employee'){userId=u;await q("INSERT INTO employees(employee_code,user_id,start_date,shift_id) VALUES('E-1',$1,'2026-01-01',$2)",[u,shift]);}
  }
  await db.exec(await fs.readFile(new URL('008_employee_password_change.sql',dir),'utf8'));
@@ -31,7 +32,7 @@ before(async()=>{
 after(async()=>db.close());
 test('migration marks existing employees and new HR-created accounts use temporary passwords',async()=>{
  assert.equal(employee.user.mustChangePassword,true);assert.equal(hr.user.mustChangePassword,false);
- const r=await hr.agent.post('/api/employees').set('X-CSRF-Token',hr.csrf).send({employeeCode:'E-2',fullName:'New Person',email:'new@pw.test',password:oldPassword,startDate:'2026-10-01',employmentType:'full_time',shiftId:Number(shift)});
+ const r=await hr.agent.post('/api/employees').set('X-CSRF-Token',hr.csrf).send({employeeCode:'E-2',fullName:'New Person',username: 'new@pw.test', email:'new@pw.test',password:oldPassword,startDate:'2026-10-01',employmentType:'full_time',shiftId:Number(shift)});
  assert.equal(r.status,201,JSON.stringify(r.body));assert.equal((await login('new@pw.test',oldPassword)).user.mustChangePassword,true);
 });
 test('temporary sessions can only access password, session and logout endpoints',async()=>{

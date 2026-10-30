@@ -27,7 +27,7 @@ const PACKAGE = (p) => ({ basicMinor: p.basicMinor, allowanceMinor: p.allowanceM
 
 const audit = async (action, id) => (await query('SELECT * FROM audit_logs WHERE action = $1 AND entity_id = $2 ORDER BY id', [action, String(id)])).rows;
 const newPosition = async (departmentId, body) => { const res = await hr.post(`/api/departments/${departmentId}/positions`).send(body); assert.equal(res.status, 201, JSON.stringify(res.body)); return res.body; };
-const hire = (o = {}) => { n += 1; return hr.post('/api/employees').send({ employeeCode: `Q${n}`, fullName: `Qa ${n}`, email: `q${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', ...o }); };
+const hire = (o = {}) => { n += 1; return hr.post('/api/employees').send({ employeeCode: `Q${n}`, fullName: `Qa ${n}`, username: `q${n}@natra.test`, email: `q${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', ...o }); };
 const hired = async (o) => { const res = await hire(o); assert.equal(res.status, 201, JSON.stringify(res.body)); return res.body; };
 const salary = async (employeeId) => { const { saved, employeeId: _id, ...rest } = (await hr.get(`/api/salary-profiles/${employeeId}`)).body; return { saved, ...rest }; };
 const packageOf = async (employeeId) => { const { saved, ...rest } = await salary(employeeId); assert.equal(saved, true); return rest; };
@@ -56,7 +56,7 @@ test('employees with a position: employee role is denied on create and update, a
   const emp = await signIn(app, EMP);
   const start = (await query('SELECT count(*)::int AS n FROM employees')).rows[0].n;
   n += 1;
-  const body = { employeeCode: `Q${n}`, fullName: 'Nope', email: `q${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', departmentId: sales, positionId: cashier };
+  const body = { employeeCode: `Q${n}`, fullName: 'Nope', username: `q${n}@natra.test`, email: `q${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', departmentId: sales, positionId: cashier };
   assert.equal((await emp.post('/api/employees').send(body)).status, 403);
   assert.equal((await request(app).post('/api/employees').send(body)).status, 401);
   const target = await hired({ departmentId: sales, positionId: cashier });
@@ -105,7 +105,7 @@ test('create rejects an unknown position (400), another department\'s position o
 
 test('create is all-or-nothing: if saving the salary fails, no login, employee, audit row or salary is left', { skip }, async () => {
   n += 1;
-  const body = { employeeCode: `Q${n}`, fullName: 'Rolled Back', email: `q${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', departmentId: sales, positionId: cashier };
+  const body = { employeeCode: `Q${n}`, fullName: 'Rolled Back', username: `q${n}@natra.test`, email: `q${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', departmentId: sales, positionId: cashier };
   await query(`CREATE FUNCTION test_fail_salary() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced failure'; END $$`);
   await query('CREATE TRIGGER test_fail_salary BEFORE INSERT ON salary_profiles FOR EACH ROW EXECUTE FUNCTION test_fail_salary()');
   let status;
@@ -119,7 +119,7 @@ test('create is all-or-nothing: if saving the salary fails, no login, employee, 
   assert.equal((await query('SELECT count(*)::int AS n FROM users WHERE email = $1', [body.email])).rows[0].n, 0);
   assert.equal((await query('SELECT count(*)::int AS n FROM employees WHERE employee_code = $1', [body.employeeCode])).rows[0].n, 0);
   assert.equal((await query(`SELECT count(*)::int AS n FROM audit_logs WHERE details->>'employeeCode' = $1`, [body.employeeCode])).rows[0].n, 0);
-  assert.equal((await hire({ departmentId: sales, positionId: cashier, employeeCode: body.employeeCode, email: body.email })).status, 201); // the code and email are free again
+  assert.equal((await hire({ departmentId: sales, positionId: cashier, employeeCode: body.employeeCode, username: body.email, email: body.email })).status, 201); // the code and email are free again
 });
 
 test('changing position with "Apply new position salary" replaces the salary, retitles, and audits before and after', { skip }, async () => {

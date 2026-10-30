@@ -18,7 +18,7 @@ let n = 0;
 
 const newEmployee = (o = {}) => {
   n += 1;
-  return { employeeCode: `E${String(n).padStart(3, '0')}`, fullName: `Person ${n}`, email: `p${n}@natra.test`,
+  return { employeeCode: `E${String(n).padStart(3, '0')}`, fullName: `Person ${n}`, username: `p${n}@natra.test`, email: `p${n}@natra.test`,
     startDate: '2026-02-01', password: 'initial-password-1', ...o };
 };
 const create = async (o) => { const res = await hr.post('/api/employees').send(newEmployee(o)); assert.equal(res.status, 201, JSON.stringify(res.body)); return res.body; };
@@ -106,10 +106,10 @@ test('create validation: weak password, bad references and malformed fields are 
   assert.ok(fieldsOf(res).includes('email') && fieldsOf(res).includes('employeeCode') && fieldsOf(res).includes('startDate'));
 });
 
-test('duplicate email or employee ID is 409 (case-insensitive) and leaves no orphan login', { skip }, async () => {
+test('duplicate username or employee ID is 409 (case-insensitive) and leaves no orphan login', { skip }, async () => {
   const first = await create();
-  let res = await hr.post('/api/employees').send(newEmployee({ email: first.email.toUpperCase() }));
-  assert.deepEqual([res.status, errorCode(res), ...fieldsOf(res)], [409, 'conflict', 'email']);
+  let res = await hr.post('/api/employees').send(newEmployee({ username: first.username.toUpperCase() }));
+  assert.deepEqual([res.status, errorCode(res), ...fieldsOf(res)], [409, 'conflict', 'username']);
   const dup = newEmployee({ employeeCode: first.employeeCode.toLowerCase() });
   res = await hr.post('/api/employees').send(dup);
   assert.deepEqual([res.status, ...fieldsOf(res)], [409, 'employeeCode']);
@@ -171,8 +171,8 @@ test('update changes only the fields sent, can clear optional fields, and is aud
   const res = await hr.patch(`/api/employees/${e.id}`).send({ jobTitle: 'Senior Clerk', departmentId: dept.id, phone: null, fullName: 'Renamed Person' });
   assert.equal(res.status, 200);
   assert.deepEqual(
-    { jobTitle: res.body.jobTitle, departmentId: res.body.departmentId, phone: res.body.phone, fullName: res.body.fullName, email: res.body.email, employeeCode: res.body.employeeCode },
-    { jobTitle: 'Senior Clerk', departmentId: dept.id, phone: null, fullName: 'Renamed Person', email: e.email, employeeCode: e.employeeCode });
+    { jobTitle: res.body.jobTitle, departmentId: res.body.departmentId, phone: res.body.phone, fullName: res.body.fullName, username: res.body.email, email: res.body.email, employeeCode: res.body.employeeCode },
+    { jobTitle: 'Senior Clerk', departmentId: dept.id, phone: null, fullName: 'Renamed Person', username: e.email, email: e.email, employeeCode: e.employeeCode });
   const rows = await auditRows('employee.update', e.id);
   assert.equal(rows.length, 1);
   assert.deepEqual(Object.keys(rows[0].details.changes).sort(), ['departmentId', 'fullName', 'jobTitle', 'phone']);
@@ -187,7 +187,7 @@ test('update rejects empty bodies, duplicates, bad references and protected fiel
   const a = await create();
   const b = await create();
   assert.deepEqual([(await hr.patch(`/api/employees/${a.id}`).send({})).status], [400]);
-  assert.equal((await hr.patch(`/api/employees/${a.id}`).send({ email: b.email })).status, 409);
+  assert.equal((await hr.patch(`/api/employees/${a.id}`).send({ username: b.username })).status, 409);
   assert.equal((await hr.patch(`/api/employees/${a.id}`).send({ employeeCode: b.employeeCode.toLowerCase() })).status, 409);
   assert.deepEqual(fieldsOf(await hr.patch(`/api/employees/${a.id}`).send({ shiftId: 999999 })), ['shiftId']);
   assert.equal((await hr.patch('/api/employees/999999').send({ jobTitle: 'x' })).status, 404);

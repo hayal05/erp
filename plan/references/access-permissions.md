@@ -134,7 +134,7 @@ share a serialized lock-row update. Updating its revision also forces conflictin
 repeatable-read transactions to retry rather than using an obsolete Admin count.
 Inactive users/employees do not count as an alternative usable Admin.
 
-HR cannot change login email or activate/deactivate accounts with active privileged
+HR cannot change login usernames or activate/deactivate accounts with active privileged
 grants; Admin must perform those actions. HR may still maintain job facts and ordinary
 employee status. Session loading rejects inactive employee records even if a user's
 is_active flag was not synchronized. Existing per-request grants enforce revocation;
@@ -269,3 +269,16 @@ access-management pages retain it according to the current user's permissions.
 Hidden footers perform no audit fetch and reserve no footer space. Existing record
 history cards remain available where provided. Active-section re-click refresh and
 the compact two-row layout continue on pages that display the footer.
+
+
+## Separate login usernames
+
+Migration 013 adds a unique case-insensitive username independent of nullable contact
+email. Employee registration requires HR/Admin to set it, with existing approval
+and account safeguards preserved. Privileged-account username edits remain Admin-only;
+contact email is ordinary employee contact information. Session/password/profile,
+employee search and Access Management responses include username. Employee contact
+email can be empty/shared and is never queried for authentication. Original email
+login names are backfilled as usernames; the legacy login JSON key is supported only
+as an alternative spelling of username. Admin seed/recovery supports an explicit
+SEED_ADMIN_USERNAME with the original email-based setup as a fallback.

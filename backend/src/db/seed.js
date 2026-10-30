@@ -9,18 +9,20 @@ const PLACEHOLDER_PASSWORD = 'change-me-now';
 
 // Creates the first HR administrator. Safe to re-run: an existing HR user is left untouched
 // unless resetPassword is set (the recovery path, since the MVP has no email reset flow).
-export async function seedAdmin({ email, password, name = 'HR Administrator', resetPassword = false }) {
+export async function seedAdmin({ username, email, password, name = 'HR Administrator', resetPassword = false }) {
+  username=String(username||email||'').trim().toLowerCase();
+  if(username.length<3||username.length>254||/\s/.test(username))throw new Error('SEED_ADMIN_USERNAME must be 3–254 characters without spaces');
   email = String(email || '').trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('SEED_ADMIN_EMAIL is not a valid email');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('SEED_ADMIN_EMAIL is not a valid email');
   if (config.isProd && password === PLACEHOLDER_PASSWORD) throw new Error('Refusing to seed the placeholder password in production');
   const hash = await hashPassword(password); // validates strength; computed before opening a transaction
 
   return withTransaction(async (db) => {
     const log = (id, action) => audit(db, { action, entityType: 'user', entityId: id, details: { via: 'seed script' } });
 
-    const { rows: [existing] } = await db.query('SELECT id, role FROM users WHERE lower(email) = $1 FOR UPDATE', [email]);
+    const { rows: [existing] } = await db.query('SELECT id, role FROM users WHERE lower(username) = $1 FOR UPDATE', [username]);
     if (existing) {
-      if (existing.role !== 'hr') throw new Error('A non-HR user already uses that email');
+      if (existing.role !== 'hr') throw new Error('A non-HR user already uses that username');
       if (!resetPassword) return { id: existing.id, created: false, passwordReset: false };
       await db.query('UPDATE users SET password_hash = $1, is_active = true WHERE id = $2', [hash, existing.id]);
       await db.query('DELETE FROM sessions WHERE user_id = $1', [existing.id]); // force re-login everywhere
@@ -28,8 +30,8 @@ export async function seedAdmin({ email, password, name = 'HR Administrator', re
       return { id: existing.id, created: false, passwordReset: true };
     }
     const { rows: [user] } = await db.query(
-      `INSERT INTO users (email, full_name, password_hash, role) VALUES ($1, $2, $3, 'hr') RETURNING id`,
-      [email, name, hash]);
+      `INSERT INTO users (email, full_name, password_hash, role,username) VALUES ($1, $2, $3, 'hr',$4) RETURNING id`,
+      [email||null, name, hash,username]);
     await db.query("INSERT INTO access_grants(user_id,access_role) VALUES($1,'admin')", [user.id]);
     await log(user.id, 'user.create');
     return { id: user.id, created: true, passwordReset: false };
@@ -39,6 +41,7 @@ export async function seedAdmin({ email, password, name = 'HR Administrator', re
 // CLI: `npm run seed` or `npm run seed -- --reset-password`
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   seedAdmin({
+    username:process.env.SEED_ADMIN_USERNAME,
     email: process.env.SEED_ADMIN_EMAIL,
     password: process.env.SEED_ADMIN_PASSWORD,
     name: process.env.SEED_ADMIN_NAME || undefined,
