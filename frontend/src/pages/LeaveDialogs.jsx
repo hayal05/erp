@@ -41,12 +41,12 @@ export function DecisionDialog({ request, decision, onClose, onDone }) {
         <Button variant={approving ? 'primary' : 'danger'} type="submit" form="leave-decision-form" busy={busy}>{approving ? 'Approve' : 'Reject'}</Button>
       </>}>
       <form id="leave-decision-form" className="stack" onSubmit={submit} noValidate>
-        <p><strong>{request.employee}</strong> ({request.code})<br />{request.type} · {request.dates} · {request.days} {request.days === 1 ? 'day' : 'days'}</p>
-        {request.reason && <p className="muted">Employee&apos;s reason: {request.reason}</p>}
+        <div className="leave-request-summary"><div className="leave-person"><strong>{request.employee}</strong><small className="muted">{request.code}</small></div><div className="leave-request-meta"><span>{request.type}</span><span>{request.dates}</span><strong>{request.days} {request.days === 1 ? 'day' : 'days'}</strong></div></div>
+        {request.reason && <p className="leave-request-reason"><span className="muted">Reason: </span>{request.reason}</p>}
         {error && <div className="form-error" role="alert">{error}</div>}
-        <Field as="textarea" rows={3} maxLength={500} label={approving ? 'Note to the employee (optional)' : 'Reason for rejecting (required)'}
+        <Field as="textarea" rows={3} maxLength={500} label={approving ? 'Note (optional)' : 'Rejection reason'} required={!approving}
           value={remarks} onChange={(e) => { setRemarks(e.target.value); setFields({}); }} error={fields.remarks}
-          hint={approving ? 'Approving takes the days off the balance.' : 'The employee will see this.'} />
+          hint="Visible to the employee." />
       </form>
     </Modal>
   );
@@ -86,17 +86,17 @@ export function EntitlementDialog({ employee, balance, year, onClose, onSaved })
         <Button variant="primary" type="submit" form="leave-balance-form" busy={busy}>Save change</Button>
       </>}>
       <form id="leave-balance-form" className="stack" onSubmit={submit} noValidate>
-        <p><strong>{employee.fullName}</strong> ({employee.employeeCode}) · {balance.name} · {year}<br />
-          <span className="muted">Now: entitlement {balance.entitled}, HR adjustment {balance.adjusted}, used {balance.used}, pending {balance.pending}.</span></p>
+        <div className="leave-request-summary"><div className="leave-person"><strong>{employee.fullName}</strong><small className="muted">{employee.employeeCode}</small></div><span className="muted">{balance.name} · {year}</span></div>
+        <dl className="leave-balance-summary">{[['Entitlement',balance.entitled],['Adjustment',balance.adjusted],['Used',balance.used],['Pending',balance.pending]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
         {error && <div className="form-error" role="alert">{error}</div>}
-        <div className="toolbar toolbar-2">
-          <Field label="Set yearly entitlement" inputMode="numeric" maxLength={3} autoComplete="off" value={form.entitledDays} onChange={set('entitledDays')}
-            error={fields.entitledDays} hint="Days for the year. Leave blank to keep it." />
-          <Field label="Add or remove days" inputMode="numeric" maxLength={4} autoComplete="off" value={form.adjustDays} onChange={set('adjustDays')}
-            error={fields.adjustDays} hint="For example 2 or -1." />
+        <div className="form-grid">
+          <Field label="Yearly entitlement" inputMode="numeric" maxLength={3} autoComplete="off" value={form.entitledDays} onChange={set('entitledDays')}
+            error={fields.entitledDays} hint="Blank: keep current." />
+          <Field label="Adjust days" inputMode="numeric" maxLength={4} autoComplete="off" value={form.adjustDays} onChange={set('adjustDays')}
+            error={fields.adjustDays} placeholder="e.g. 2 or -1" />
         </div>
-        {preview && <p className="muted" aria-live="polite">After this change: {preview.text}.</p>}
-        <Field as="textarea" rows={3} maxLength={500} label="Reason (required)" value={form.reason} onChange={set('reason')} error={fields.reason} />
+        {preview && <p className="muted" aria-live="polite">After change: {preview.text}.</p>}
+        <Field as="textarea" rows={3} maxLength={500} label="Reason" required value={form.reason} onChange={set('reason')} error={fields.reason} />
       </form>
     </Modal>
   );
