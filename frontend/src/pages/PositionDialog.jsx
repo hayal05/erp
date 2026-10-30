@@ -49,16 +49,16 @@ export default function PositionDialog({ departmentId, position, onClose, onSave
       <form id="position-form" className="form-grid" onSubmit={submit} noValidate>
         {error && <div className="form-error full" role="alert">{error}</div>}
         <Field className="full" label="Position name" maxLength={POSITION_NAME_MAX} autoComplete="off" value={form.name} error={fields.name} onChange={set('name')} />
-        <Field label="Basic salary (monthly)" inputMode="decimal" autoComplete="off" value={form.basic} error={fields.basic} onChange={set('basic')} />
-        <Field label="Allowance (monthly)" inputMode="decimal" autoComplete="off" value={form.allowance} error={fields.allowance} onChange={set('allowance')} />
-        <div className="stack full">
-          <label><input type="checkbox" checked={form.allowanceTaxable} onChange={check('allowanceTaxable')} /> Allowance is taxable</label>
-          <label><input type="checkbox" checked={form.allowancePensionable} onChange={check('allowancePensionable')} /> Allowance is pensionable</label>
-          <label><input type="checkbox" checked={form.pensionApplies} onChange={check('pensionApplies')} /> Pension applies to employees in this position</label>
+        <Field label="Monthly basic salary" inputMode="decimal" autoComplete="off" value={form.basic} error={fields.basic} onChange={set('basic')} />
+        <Field label="Monthly allowance" inputMode="decimal" autoComplete="off" value={form.allowance} error={fields.allowance} onChange={set('allowance')} />
+        <fieldset className="salary-profile-flags full"><legend>Tax &amp; pension</legend>
+          <label><input type="checkbox" checked={form.allowanceTaxable} onChange={check('allowanceTaxable')} /> Taxable allowance</label>
+          <label><input type="checkbox" checked={form.allowancePensionable} onChange={check('allowancePensionable')} /> Pensionable allowance</label>
+          <label><input type="checkbox" checked={form.pensionApplies} onChange={check('pensionApplies')} /> Employee pension</label>
           <small className="muted">Allowance flags require matching payroll base settings.</small>
-          {total && <p aria-live="polite">Basic plus allowance: <strong>{total}</strong></p>}
-          <p className="muted">Existing salaries stay unchanged. Renaming updates job titles.</p>
-        </div>
+        </fieldset>
+        {total && <div className="position-total full" aria-live="polite"><span>Monthly total</span><strong>{total}</strong></div>}
+        <small className="muted full">Existing salaries stay unchanged. Renaming updates job titles.</small>
       </form>
     </Modal>
   );

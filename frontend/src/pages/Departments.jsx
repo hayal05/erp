@@ -79,15 +79,14 @@ export default function Departments() {
   const view = confirm ? deleteView(confirm.department) : null;
 
   return (
-    <section className="stack">
-      <div className="row between">
+    <section className="stack organization-page departments-page">
+      <div className="row between organization-heading">
         <h1>Departments</h1>
-        {canManage && <Button variant="primary" onClick={() => setDialog({ department: null })}><Plus size={16} aria-hidden="true" /> Add department</Button>}
-      </div>
-
-      <div className="toolbar">
-        <Field label="Search" type="search" placeholder="Department name" value={searchText} maxLength={100}
-          onChange={(e) => { setSearchText(e.target.value); setPage(1); }} />
+        <div className="organization-controls">
+          <Field label="Search departments" type="search" placeholder="Department name" value={searchText} maxLength={100}
+            onChange={(e) => { setSearchText(e.target.value); setPage(1); }} />
+          {canManage && <Button size="sm" variant="primary" onClick={() => setDialog({ department: null })}><Plus size={16} aria-hidden="true" /> Add department</Button>}
+        </div>
       </div>
 
       <Table caption="Departments" columns={columns.filter(c=>canManage||c.key!=='actions')} rows={data.items.map(departmentRow)} loading={state.loading} error={state.error} onRetry={refresh}
