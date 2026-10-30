@@ -49,10 +49,9 @@ export default function OtherTaxesTab() {
     <div className="stack">
       <div className="row between">
         <h2>Other taxes</h2>
-        <Button variant="primary" disabled={!data} onClick={() => setDialog({ tax: null })}><Plus size={16} aria-hidden="true" /> Add tax</Button>
+        <Button size="sm" variant="primary" disabled={!data} onClick={() => setDialog({ tax: null })}><Plus size={16} aria-hidden="true" /> Add tax</Button>
       </div>
       <Table caption="Other taxes" columns={columns} rows={data?.items ?? []} loading={loading} error={error} onRetry={reload} empty="No other taxes set up" />
-      <p className="muted">Recalculate drafts to apply changes.</p>
 
       {dialog && data && <OtherTaxDialog key={dialog.tax?.id ?? 'new'} tax={dialog.tax} bases={data.bases} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); reload(); }} />}
       <Modal open={!!removing} title="Delete this tax?" onClose={() => !removing?.busy && setRemoving(null)}
@@ -92,12 +91,12 @@ function OtherTaxDialog({ tax, bases, onClose, onSaved }) {
   return (
     <Modal open title={tax ? 'Edit tax' : 'Add tax'} onClose={() => !busy && onClose()}
       footer={<><Button onClick={onClose} disabled={busy}>Cancel</Button><Button variant="primary" type="submit" form="other-tax-form" busy={busy}>Save</Button></>}>
-      <form id="other-tax-form" className="stack" onSubmit={submit} noValidate>
-        {error && <div className="form-error" role="alert">{error}</div>}
-        <Field label="Name" maxLength={100} autoComplete="off" value={form.name} onChange={set('name')} error={fields.name} />
+      <form id="other-tax-form" className="form-grid" onSubmit={submit} noValidate>
+        {error && <div className="form-error full" role="alert">{error}</div>}
+        <Field className="full" label="Name" maxLength={100} autoComplete="off" value={form.name} onChange={set('name')} error={fields.name} />
         <Field label="Rate (%)" inputMode="decimal" value={form.rate} onChange={set('rate')} error={fields.rate} />
         <Field as="select" label="Calculated on" value={form.base} options={baseOptions(bases)} placeholder="Choose…" onChange={set('base')} error={fields.base} />
-        <label className="row"><input type="checkbox" checked={form.enabled} onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))} /> Active (applies to new payroll drafts)</label>
+        <label className="row full settings-check"><input type="checkbox" checked={form.enabled} onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))} /> Active for new drafts</label>
       </form>
     </Modal>
   );

@@ -604,3 +604,27 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .salary-breakdown { gap: var(--space-xs); }
 .salary-breakdown h3, .salary-breakdown > .row > strong { font-size: .9rem; }
 @media (max-width: 700px) { .salary-summary-main { grid-template-columns: minmax(0,1fr); } }
+
+/* Payroll settings use a flat panel with compact grouped editors. */
+.payroll-settings-page h1, .payroll-settings-panel h2, .payroll-settings-panel h3 { margin: 0; }
+.payroll-settings-panel h2 { font-size: 1rem; }
+.payroll-settings-panel .table { min-width: 640px; }
+.payroll-settings-panel .table .row { flex-wrap: nowrap; }
+.payroll-settings-panel .bracket-input { min-height: var(--tap); }
+.settings-inline { align-items: end; }
+.settings-inline .field { width: 320px; max-width: 100%; }
+.settings-actions { gap: 6px; }
+.pension-settings-grid { display: grid; grid-template-columns: minmax(0,160px) minmax(0,160px) minmax(0,320px); gap: var(--space-sm); }
+.tax-preview { border-top: 1px solid var(--border); padding-top: var(--space-sm); }
+.tax-preview > summary { cursor: pointer; color: var(--accent); min-height: var(--tap); align-content: center; }
+.tax-preview > .stack { max-width: 360px; margin-top: var(--space-sm); }
+.tax-preview [role="status"]:empty { display: none; }
+.attendance-policy-settings { padding-bottom: var(--space-md); border-bottom: 1px solid var(--border); }
+.settings-check { min-height: var(--tap); }
+.deduction-picker { display: grid; grid-template-columns: minmax(0,240px) minmax(0,360px); gap: var(--space-sm); align-items: end; }
+.deduction-name { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+@media (max-width: 700px) {
+  .pension-settings-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .pension-settings-grid .field:last-child { grid-column: 1 / -1; }
+  .deduction-picker { grid-template-columns: minmax(0,1fr); }
+}
