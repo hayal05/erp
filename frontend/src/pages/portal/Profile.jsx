@@ -40,19 +40,19 @@ export default function Profile() {
   const facts = [['Employee ID', profile.employeeCode], ['Department', profile.department], ['Position', profile.position],
     ['Username',profile.username], ['Email', profile.email], ['Phone', profile.phone], ['Employment type', employmentLabel(profile.employmentType)],
     ['Status', profile.status], ['Joined', formatWorkDate(profile.startDate)], ['Time employed', tenure(profile.startDate, profile.today)], ['Shift', profile.shift]];
-  return <section className="stack">
-    <h1>My profile</h1>
-    <div className="card stack"><h2>{profile.fullName}</h2><dl className="profile-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not provided'}</dd></div>)}</dl>
-      <p className="muted">Contact HR to update these details.</p></div>
-    <div className="card stack"><div className="row between"><h2>Work experience</h2>{!editing && <Button onClick={() => { setSummary(profile.experienceSummary); setSaveError(''); setEditing(true); }}>Edit experience</Button>}</div>
+  return <section className="stack portal-profile-page">
+    <div className="row between"><h1>My profile</h1><strong>{profile.fullName}</strong></div>
+    <div className="stack portal-profile-facts"><dl className="profile-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not provided'}</dd></div>)}</dl>
+      <small className="muted">Changes: contact HR.</small></div>
+    <section className="stack portal-experience"><div className="row between"><h2>Work experience</h2>{!editing && <Button size="sm" onClick={() => { setSummary(profile.experienceSummary); setSaveError(''); setEditing(true); }}>Edit</Button>}</div>
       {editing ? <form className="stack" onSubmit={save}>
-        <Field as="textarea" label="Experience summary" value={summary} maxLength={5000} rows={6} disabled={busy} onChange={e => setSummary(e.target.value)} />
-        <small className="muted">Previous employers, roles and dates. {summary.length}/5000</small>
+        <Field as="textarea" label="Experience summary" value={summary} maxLength={5000} rows={4} placeholder="Previous employers, roles and dates" disabled={busy} onChange={e => setSummary(e.target.value)} />
+        <small className="muted">{summary.length}/5000</small>
         {saveError && <p role="alert" className="form-error">{saveError}</p>}
         <div className="row"><Button disabled={busy} onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" variant="primary" busy={busy}>Save experience</Button></div>
-      </form> : <p className="profile-summary">{profile.experienceSummary || 'No experience summary added yet.'}</p>}
-    </div>
-    <div className="card stack"><h2>Position history</h2><p className="muted">History starts when tracking began. Starting-record dates are not appointment dates.</p>
+      </form> : <p className="profile-summary">{profile.experienceSummary || 'No experience added.'}</p>}
+    </section>
+    <details className="portal-position-history"><summary>Position history</summary><div className="stack"><small className="muted">Recorded dates reflect tracking, not appointment dates.</small>
       <Table caption="Your position history" columns={[
         { key: 'recordedOn', header: 'Recorded', render: r => formatWorkDate(r.recordedOn) },
         { key: 'department', header: 'Department', render: r => r.department || 'Not assigned' },
@@ -60,6 +60,6 @@ export default function Profile() {
         { key: 'baseline', header: 'Record', render: r => r.baseline ? 'Starting record' : 'Assignment update' },
       ]} rows={history.items} loading={history.loading} error={history.error} onRetry={() => setRetry(n => n + 1)} empty="No position history recorded yet" />
       <Pager page={page} pageSize={SIZE} total={history.total} onPage={setPage} disabled={history.loading} />
-    </div>
+    </div></details>
   </section>;
 }

@@ -82,7 +82,7 @@ export default function Leave() {
     { key: 'status', header: 'Status', render: (r) => (
       <>
         <Badge tone={r.tone}>{r.status}</Badge>
-        {r.remarks && <><br /><small className="muted">HR: {r.remarks}</small></>}
+        {r.remarks && <details className="portal-leave-note"><summary>HR note</summary><p>{r.remarks}</p></details>}
       </>
     ) },
     { key: 'act', header: '', render: (r) => r.canCancel && (
@@ -92,10 +92,10 @@ export default function Leave() {
   const years = balances.year ? [balances.year - 1, balances.year, balances.year + 1].map((y) => ({ value: y, label: String(y) })) : [];
 
   return (
-    <section className="stack">
+    <section className="stack portal-leave-page">
       <div className="row between">
         <h1>Leave</h1>
-        {years.length > 0 && <Field label="Year" as="select" options={years} value={year ?? balances.year} onChange={(e) => setYear(Number(e.target.value))} />}
+        {years.length > 0 && <Field hideLabel label="Year" as="select" options={years} value={year ?? balances.year} onChange={(e) => setYear(Number(e.target.value))} />}
       </div>
 
       <ul className="leave-balances" aria-label={`Leave balances for ${balances.year ?? 'this year'}`}>
@@ -108,8 +108,7 @@ export default function Leave() {
         ))}
       </ul>
 
-      <form className="card stack" onSubmit={submit} noValidate aria-label="Request leave">
-        <h2>Request leave</h2>
+      <details className="portal-leave-request"><summary>Request leave</summary><form className="stack" onSubmit={submit} noValidate aria-label="Request leave">
         {errors.message && <p className="form-error" role="alert">{errors.message}</p>}
         <Field as="select" label="Leave type" value={form.leaveTypeId} onChange={set('leaveTypeId')} placeholder="Choose…"
           options={types.map((t) => ({ value: t.id, label: t.name }))} error={errors.fields.leaveTypeId} />
@@ -117,10 +116,10 @@ export default function Leave() {
           <Field label="From" type="date" value={form.startDate} onChange={set('startDate')} error={errors.fields.startDate} />
           <Field label="To" type="date" value={form.endDate} onChange={set('endDate')} error={errors.fields.endDate} />
         </div>
-        <Field as="textarea" rows={3} label="Reason" value={form.reason} onChange={set('reason')} maxLength={500} error={errors.fields.reason}
+        <Field as="textarea" rows={2} label="Reason" value={form.reason} onChange={set('reason')} maxLength={500} error={errors.fields.reason}
           hint="Working days only. HR approval required." />
         <Button type="submit" variant="primary" busy={busy}>Send request</Button>
-      </form>
+      </form></details>
 
       <h2>My requests</h2>
       <Table caption="My leave requests" columns={columns} rows={list.items.map(requestRow)} loading={state.loading} error={state.error} onRetry={refresh}

@@ -79,13 +79,9 @@ function PortalNavigation({visitSection}){
 export function PortalHome() {
   const { user } = useAuth();
   return (
-    <section className="stack">
-      <h1>Hello, {firstName(user.fullName)}</h1>
+    <section className="stack portal-home-page">
+      <div className="row between"><h1>Hello, {firstName(user.fullName)}</h1><Link className="btn sm" to="/portal/scan">Check in / out</Link></div>
       <AnnouncementFeed />
-      <div className="card stack">
-        <strong>Check in or out</strong>
-        <p className="muted">Scan the office QR code, then take a selfie.</p>
-      </div>
     </section>
   );
 }
