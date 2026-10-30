@@ -96,7 +96,7 @@ export default function Employees() {
       </div>
 
       <div className="toolbar">
-        <Field label="Search" type="search" placeholder="Name, username, email or ID" value={filters.search} onChange={setFilter('search')} maxLength={100} />
+        <Field className="employee-search" label="Search" type="search" placeholder="Name, username, email or ID" value={filters.search} onChange={setFilter('search')} maxLength={100} />
         <Field as="select" label="Department" placeholder="All departments" value={filters.departmentId} onChange={setFilter('departmentId')}
           options={lookups.departments.map((d) => ({ value: d.id, label: d.name }))} />
         <Field as="select" label="Status" placeholder="All statuses" value={filters.status} onChange={setFilter('status')}
