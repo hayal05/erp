@@ -68,7 +68,7 @@ export default function Employees() {
 
   const columns = [
     { key: 'employeeCode', header: 'ID', className: 'nowrap' },
-    { key: 'fullName', header: 'Name', render: (r) => <><strong>{r.fullName}</strong><br /><small className="muted">{r.username}</small></> },
+    { key: 'fullName', header: 'Name', render: (r) => <strong>{r.fullName}</strong> },
     { key: 'departmentName', header: 'Department', render: (r) => r.departmentName ?? '—' },
     { key: 'jobTitle', header: 'Title', render: (r) => r.jobTitle ?? '—' },
     { key: 'employmentType', header: 'Type', className: 'nowrap', render: (r) => TYPE_LABEL[r.employmentType] },
