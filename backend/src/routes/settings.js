@@ -15,7 +15,7 @@ import { holidayCreate, holidayListQuery, holidayUpdate, idParams } from '../ser
 // schedule are the shifts API (/api/shifts, `workDays`). Both feed the leave day count (services/workdays.js).
 // A holiday change only affects requests made AFTER it: a request keeps the day count it was created with (3.1 decision).
 const router = Router();
-router.use(noStore, requirePermission('organization.manage'));
+router.use(noStore, requirePermission('organization.read'));
 router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 
 const SELECT = `SELECT id, to_char(holiday_date, 'YYYY-MM-DD') AS holiday_date, name FROM holidays`;

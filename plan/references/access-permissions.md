@@ -17,6 +17,8 @@ Unknown permissions fail at route registration. Unknown grants fail closed.
   approve and pay payroll, manage payroll settings and deductions, costs and settlements.
 - Admin: all business permissions, including issuing access and access audit history.
 - HR and Finance can both be granted. Each keeps employee self-service access.
+- Both administrative roles may view all management sidebar sections. Their write
+  responsibilities stay separated; access issuing/revocation stays General-Admin-only.
 - Audit permissions are separated into HR, Finance and access-management domains;
   the audit-bar implementation must enforce record and field visibility as well.
 
@@ -282,3 +284,32 @@ email can be empty/shared and is never queried for authentication. Original emai
 login names are backfilled as usernames; the legacy login JSON key is supported only
 as an alternative spelling of username. Admin seed/recovery supports an explicit
 SEED_ADMIN_USERNAME with the original email-based setup as a fallback.
+
+
+## Shared administrative view access
+
+HR and Finance now share read capabilities for Dashboard, organization/settings,
+attendance and QR status, announcements (including drafts/archive), payroll and costs,
+settlements, Access Management directory/history and protected approval proposals.
+The sidebar opens these sections in the user's existing workspace. Department,
+dashboard and settings links retain the current workspace prefix.
+
+Separate read/write guards keep Finance from changing HR facts and HR from changing
+Finance settings, recording payments or approving/paying payroll. Shared Access
+Management reads never permit grants/revocations; those remain General-Admin-only.
+Cross-department proposals show protected previews but canReview and every decision
+still require a different authorized reviewer in the proposal's department or Admin.
+Ordinary employees retain only their existing self-service and published announcements.
+
+Read-only pages retain filters, tabs, pagination and detail views. Add/edit/delete,
+leave decisions, entitlement changes, financial mutations and access issuing controls
+are hidden or disabled as appropriate. Read-only employee/salary dialogs have no Save
+action. Audit footers continue to be omitted on pages the current user cannot modify;
+existing audit domains are not widened by the new view grants.
+
+Finance's QR view reports issuance/expiry status without exposing bearer tokens or
+allowing generation, locking or unlocking. HR/Admin keep the operational QR display.
+Read-only dialogs correctly skip disabled controls when choosing/trapping focus.
+
+Permissions are computed from current grants per request. No migration or environment
+change is needed; reload the application to obtain updated sidebar permissions.

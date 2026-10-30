@@ -1,6 +1,9 @@
+import {workspacePath} from '../api/workspaces.js';
+import {useLocation} from 'react-router-dom';
+import {usePermission} from '../api/auth.jsx';
 import AuditBar from '../components/AuditBar.jsx';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus } from 'lucide-react';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -20,7 +23,7 @@ function useDebounced(value, ms = 300) {
   return v;
 }
 
-const Back = () => <p><Link to="/hr/departments"><ArrowLeft size={14} aria-hidden="true" /> All departments</Link></p>;
+const Back = () => <p><WorkspaceLink to="/hr/departments"><ArrowLeft size={14} aria-hidden="true" /> All departments</WorkspaceLink></p>;
 
 export default function DepartmentDetail() {
   const id = departmentIdFromParam(useParams().id);
@@ -29,6 +32,7 @@ export default function DepartmentDetail() {
 }
 
 function Detail({ id }) {
+  const canManage=usePermission('organization.manage');
   const toast = useToast();
   const [department, setDepartment] = useState({ status: 'loading', value: null, error: '' });
   const [searchText, setSearchText] = useState('');
@@ -112,7 +116,7 @@ function Detail({ id }) {
           <h1>{dept ? dept.name : 'Department'}</h1>
           {dept && <p className="muted">{plural(dept.positionCount, 'position')} · {plural(dept.employeeCount, 'employee')}</p>}
         </div>
-        <Button variant="primary" onClick={() => setDialog({ position: null })} disabled={!dept}><Plus size={16} aria-hidden="true" /> Add position</Button>
+        {canManage && <Button variant="primary" onClick={() => setDialog({ position: null })} disabled={!dept}><Plus size={16} aria-hidden="true" /> Add position</Button>}
       </div>
 
       <h2>Positions and salary</h2>
@@ -123,17 +127,17 @@ function Detail({ id }) {
           onChange={(e) => { setSearchText(e.target.value); setPage(1); }} />
       </div>
 
-      <Table caption="Positions and salary" columns={columns} rows={data.items.map(positionRow)} loading={state.loading} error={state.error} onRetry={refresh}
+      <Table caption="Positions and salary" columns={columns.filter(c=>canManage||c.key!=='actions')} rows={data.items.map(positionRow)} loading={state.loading} error={state.error} onRetry={refresh}
         empty={search ? 'No positions match this search' : 'No positions yet. Add the first one.'} />
       <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPage={setPage} disabled={state.loading} />
 
       <AuditBar type="department" id={id} />
-      {dialog && (
+      {canManage && dialog && (
         <PositionDialog key={dialog.position?.id ?? 'new'} departmentId={id} position={dialog.position}
           onClose={() => setDialog(null)} onSaved={() => { setDialog(null); refresh(); }} />
       )}
 
-      <Modal open={!!confirm} title="Delete position?" onClose={() => !confirm?.busy && setConfirm(null)}
+      <Modal open={canManage&&!!confirm} title="Delete position?" onClose={() => !confirm?.busy && setConfirm(null)}
         footer={<>
           <Button onClick={() => setConfirm(null)} disabled={confirm?.busy}>{view?.blocked ? 'Close' : 'Cancel'}</Button>
           {!view?.blocked && <Button variant="danger" busy={confirm?.busy} onClick={remove}>Delete position</Button>}
@@ -148,3 +152,5 @@ function Detail({ id }) {
     </section>
   );
 }
+
+function WorkspaceLink({to,...props}){const {pathname}=useLocation();return <RouterLink to={workspacePath(to,pathname)} {...props}/>;}

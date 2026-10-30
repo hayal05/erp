@@ -26,7 +26,7 @@ const ensureExpiry = b => {
 };
 router.get('/', validate({ ...pageSchema, status: v.enum({ values: statuses }) }, 'query'), wrap(async (req,res) => {
   // Employee query parameters can never widen visibility to drafts, archived or expired notices.
-  const employee = !hasPermission(req.user,'announcements.manage');
+  const employee = !hasPermission(req.user,'announcements.admin_read');
   const where = employee ? "WHERE status='published' AND (expires_on IS NULL OR expires_on >= (now() AT TIME ZONE $1)::date)"
     : req.query.status ? 'WHERE status=$2' : '';
   const base = [config.company.timezone, ...(!employee && req.query.status ? [req.query.status] : [])];

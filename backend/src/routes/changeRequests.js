@@ -12,18 +12,18 @@ const columns=`c.id,c.requester_id,c.department,c.permission,c.method,c.path,c.p
  u.full_name AS requester_name,r.full_name AS reviewer_name`;
 const joins='FROM change_requests c JOIN users u ON u.id=c.requester_id LEFT JOIN users r ON r.id=c.reviewer_id';
 const idOf=req=>{const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<1)throw new HttpError(400,'Invalid request ID','validation');return id;};
-const visible=(user,row)=>Number(row.requester_id)===user.id||canReview(user,row);
+const visible=(user,row)=>hasPermission(user,'approvals.read');
 const present=(user,row)=>({...row,id:Number(row.id),canReview:row.status==='pending'&&canReview(user,row),canCancel:row.status==='pending'&&Number(row.requester_id)===user.id});
 export default function changeRequestRoutes(operations){
  const router=Router();router.use(noStore,requirePermission('approvals.read'));
  router.get('/',wrap(async(req,res)=>{
   const view=req.query.view??'pending',page=Math.max(1,Number(req.query.page)||1),limit=20;
   if(!['pending','all','mine'].includes(view)||!Number.isSafeInteger(page)||page>1000000)throw new HttpError(400,'Invalid filter','validation');
-  const roles=hasPermission(req.user,'access.manage')?['hr','finance']:(req.user.accessRoles??[]).filter(r=>['hr','finance'].includes(r));
-  const where=`WHERE (c.requester_id=$1 OR (c.department=ANY($2::text[]) AND c.permission=ANY($3::text[])))${view==='pending'?" AND c.status='pending'":view==='mine'?' AND c.requester_id=$1':''}`;
-  const params=[req.user.id,roles,req.user.permissions??[]];
+  const roles=['hr','finance'];
+  const where=`WHERE (c.requester_id=$1 OR (c.department=ANY($2::text[])))${view==='pending'?" AND c.status='pending'":view==='mine'?' AND c.requester_id=$1':''}`;
+  const params=[req.user.id,roles];
   const {rows:[count]}=await query(`SELECT count(*)::int AS n FROM change_requests c ${where}`,params);
-  const {rows}=await query(`SELECT ${columns} ${joins} ${where} ORDER BY c.id DESC LIMIT $4 OFFSET $5`,[...params,limit,(page-1)*limit]);
+  const {rows}=await query(`SELECT ${columns} ${joins} ${where} ORDER BY c.id DESC LIMIT $3 OFFSET $4`,[...params,limit,(page-1)*limit]);
   res.json({items:rows.map(r=>present(req.user,r)),page,pageSize:limit,total:count.n});
  }));
  router.get('/:id',wrap(async(req,res)=>{

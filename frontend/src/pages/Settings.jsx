@@ -1,6 +1,9 @@
+import {workspacePath} from '../api/workspaces.js';
+import {useLocation} from 'react-router-dom';
+import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
 import Modal from '../components/Modal.jsx';
@@ -17,7 +20,7 @@ export default function Settings() {
   return (
     <section className="stack">
       <h1>Settings</h1>
-      <p><Link to="/hr/settings/payroll">Payroll settings</Link> <span className="muted">(income tax, pension, other taxes, deductions)</span></p>
+      <p><WorkspaceLink to="/hr/settings/payroll">Payroll settings</WorkspaceLink> <span className="muted">(income tax, pension, other taxes, deductions)</span></p>
       <Holidays />
       <Schedules />
     </section>
@@ -25,6 +28,7 @@ export default function Settings() {
 }
 
 function Holidays() {
+  const canManage=usePermission('organization.manage');
   const toast = useToast();
   const [year, setYear] = useState(null); // null = the server's current company year
   const [data, setData] = useState({ year: null, items: [] });
@@ -68,15 +72,15 @@ function Holidays() {
         <h2>Holidays</h2>
         <div className="row">
           {years.length > 0 && <Field label="Year" as="select" options={years} value={year ?? data.year} onChange={(e) => setYear(Number(e.target.value))} />}
-          <Button variant="primary" onClick={() => setDialog({ holiday: null })} disabled={!data.year}><Plus size={16} aria-hidden="true" /> Add holiday</Button>
+          {canManage && <Button variant="primary" onClick={() => setDialog({ holiday: null })} disabled={!data.year}><Plus size={16} aria-hidden="true" /> Add holiday</Button>}
         </div>
       </div>
-      <Table caption={`Holidays in ${data.year ?? 'the year'}`} columns={columns} rows={data.items} loading={state.loading} error={state.error} onRetry={refresh}
+      <Table caption={`Holidays in ${data.year ?? 'the year'}`} columns={columns.filter(c=>canManage||c.key!=='act')} rows={data.items} loading={state.loading} error={state.error} onRetry={refresh}
         empty="No holidays set for this year" />
 
-      {dialog && <HolidayDialog key={dialog.holiday?.id ?? 'new'} holiday={dialog.holiday} year={data.year} onClose={() => setDialog(null)}
+      {canManage && dialog && <HolidayDialog key={dialog.holiday?.id ?? 'new'} holiday={dialog.holiday} year={data.year} onClose={() => setDialog(null)}
         onSaved={(h) => { setDialog(null); if (Number(h.date.slice(0, 4)) !== data.year) setYear(Number(h.date.slice(0, 4))); else refresh(); }} />}
-      <Modal open={!!removing} title="Delete this holiday?" onClose={() => !removing?.busy && setRemoving(null)}
+      <Modal open={canManage&&!!removing} title="Delete this holiday?" onClose={() => !removing?.busy && setRemoving(null)}
         footer={<>
           <Button onClick={() => setRemoving(null)} disabled={removing?.busy}>Keep it</Button>
           <Button variant="danger" busy={removing?.busy} onClick={remove}>Delete holiday</Button>
@@ -88,6 +92,7 @@ function Holidays() {
 }
 
 function Schedules() {
+  const canManage=usePermission('organization.manage');
   const [list, setList] = useState({ items: [] });
   const [state, setState] = useState({ loading: true, error: '' });
   const [dialog, setDialog] = useState(null); // null | { shift: null | {…} }
@@ -118,13 +123,15 @@ function Schedules() {
     <div className="stack">
       <div className="row between">
         <h2>Working schedules</h2>
-        <Button variant="primary" onClick={() => setDialog({ shift: null })}><Plus size={16} aria-hidden="true" /> Add schedule</Button>
+        {canManage && <Button variant="primary" onClick={() => setDialog({ shift: null })}><Plus size={16} aria-hidden="true" /> Add schedule</Button>}
       </div>
-      <Table caption="Working schedules" columns={columns} rows={list.items.map(shiftRow)} loading={state.loading} error={state.error} onRetry={refresh}
+      <Table caption="Working schedules" columns={columns.filter(c=>canManage||c.key!=='act')} rows={list.items.map(shiftRow)} loading={state.loading} error={state.error} onRetry={refresh}
         empty="No schedules yet. Add one before adding employees." />
       <p className="muted">Schedules set working days, hours and lateness.</p>
 
-      {dialog && <ShiftDialog key={dialog.shift?.id ?? 'new'} shift={dialog.shift} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); refresh(); }} />}
+      {canManage && dialog && <ShiftDialog key={dialog.shift?.id ?? 'new'} shift={dialog.shift} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); refresh(); }} />}
     </div>
   );
 }
+
+function WorkspaceLink({to,...props}){const {pathname}=useLocation();return <RouterLink to={workspacePath(to,pathname)} {...props}/>;}

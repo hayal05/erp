@@ -63,14 +63,14 @@ test('first-install seed creates explicit admin access and rerunning it does not
  assert.equal((await q("SELECT count(*)::int AS n FROM access_grants WHERE user_id=$1 AND access_role='admin'",[first.id])).rows[0].n,1);
 });
 
-test('Access Management is Admin-only and grants access to registered employees without creating accounts',async()=>{
+test('Access Management is readable by administrators and only Admin grants access to registered employees without creating accounts',async()=>{
  const {signIn}=await import('./hrClient.js');const admin=await signIn(app,{email:'root@access.test',password:'password-123'});
  const user=(await q("INSERT INTO users(email,full_name,password_hash,role) VALUES('target@access.test','Target',$1,'employee') RETURNING id",[await hashPassword('password-123')])).rows[0].id;
  const shift=(await q("INSERT INTO shifts(name,start_time,end_time,work_days) VALUES('Target shift','09:00','17:00','{1,2,3,4,5}') RETURNING id")).rows[0].id;
  const target=(await q("INSERT INTO employees(employee_code,user_id,start_date,shift_id) VALUES('TARGET-1',$1,'2026-01-01',$2) RETURNING id",[user,shift])).rows[0].id;
  const base=`/api/access-management/employees/${target}`;
  assert.equal((await request(app).get('/api/access-management/employees')).status,401);
- assert.equal((await employee.get('/api/access-management/employees')).status,403); // HR+Finance is not Admin
+ assert.equal((await employee.get('/api/access-management/employees')).status,200); // HR+Finance may view; only Admin can issue access
  assert.equal((await admin.get('/api/access-management/employees?search=TARGET-1')).body.total,1);
  let r=await admin.post(base+'/grants').send({role:'hr',grantedByUserId:employeeId});assert.equal(r.status,201,JSON.stringify(r.body));const hrGrant=r.body.id;
  assert.equal((await admin.post(base+'/grants').send({role:'hr'})).status,200);
@@ -79,7 +79,7 @@ test('Access Management is Admin-only and grants access to registered employees 
  assert.equal((await admin.post(`/api/access-management/employees/999999/grants`).send({role:'hr'})).status,404);
  const targetClient=await signIn(app,{email:'target@access.test',password:'password-123'});
  const profile=(await targetClient.get('/api/auth/me')).body.user;assert.equal(profile.role,'employee');assert.deepEqual(profile.accessRoles,['finance','hr']);
- assert.equal((await targetClient.get('/api/access-management/employees')).status,403);
+ assert.equal((await targetClient.get('/api/access-management/employees')).status,200);
  assert.equal((await targetClient.post(base+'/grants').send({role:'hr'})).status,403);
  r=await admin.get(base+'/history?pageSize=1');assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.total,2);assert.equal(r.body.items.length,1);assert.deepEqual(r.body.accessRoles,['finance','hr']);
  assert.equal((await q('SELECT granted_by_user_id FROM access_grants WHERE id=$1',[hrGrant])).rows[0].granted_by_user_id,rootId);
@@ -129,9 +129,9 @@ test('HR grants enable HR operations and draft preparation but cannot approve, p
  assert.equal((await staff.post(`/api/payroll/periods/${periodId}/regenerate`).send({})).status,200);
  assert.equal((await staff.post(`/api/payroll/periods/${periodId}/approve`).send({})).status,403);
  assert.equal((await staff.post(`/api/payroll/periods/${periodId}/pay`).send({paidOn:'2026-07-31'})).status,403);
- assert.equal((await staff.get('/api/settlements')).status,403);
- assert.equal((await staff.get('/api/payroll-costs')).status,403);
- assert.equal((await staff.get('/api/access-management/employees')).status,403);
+ assert.equal((await staff.get('/api/settlements')).status,200);
+ assert.equal((await staff.get('/api/payroll-costs')).status,200);
+ assert.equal((await staff.get('/api/access-management/employees')).status,200);
  assert.equal((await staff.post('/api/qr/lock').send({})).status,200);
  assert.equal((await staff.get('/api/employees')).status,423);
  assert.equal((await staff.post('/api/qr/unlock').send({password:'password-123'})).status,200);
@@ -156,8 +156,8 @@ test('Finance reviews and settles HR payroll without editing HR records or prepa
  assert.equal((await finance.patch(`/api/employees/${entry.employeeId}`).send({phone:'0999999999'})).status,403);
  assert.equal((await finance.put(`/api/salary-profiles/${entry.employeeId}`).send({})).status,403);
  assert.equal((await finance.patch('/api/attendance-records/1').send({})).status,403);
- assert.equal((await finance.get('/api/access-management/employees')).status,403);
- assert.equal((await finance.get('/api/dashboard')).status,403);
+ assert.equal((await finance.get('/api/access-management/employees')).status,200);
+ assert.equal((await finance.get('/api/dashboard')).status,200);
  let r=await finance.patch('/api/payroll-settings/calculation').send({companyPensionRate:11});assert.equal(r.status,200,JSON.stringify(r.body));
  const stale=await finance.post(`/api/payroll/periods/${period}/approve`).send({});assert.equal(stale.status,409); // changed inputs require HR regeneration
  assert.equal((await finance.post(`/api/change-requests/${stale.requestId}/cancel`).send({})).status,200); // immutable proposal must be resubmitted after regeneration

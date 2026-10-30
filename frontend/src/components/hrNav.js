@@ -13,7 +13,7 @@ export const HR_NAV = [
   { key: 'settlements', label: 'Settlements', to: '/hr/settlements' },
   { key: 'announcements', label: 'Announcements', to: '/hr/announcements' },
   { key: 'approvals', label: 'Approvals', to: '/hr/approvals' },
-  { key: 'access', label: 'Access Management', to: '/hr/access-management', permission: 'access.manage' },
+  { key: 'access', label: 'Access Management', to: '/hr/access-management', permission: 'access.read' },
   { key: 'settings', label: 'Settings', to: '/hr/settings' },
 ];
 

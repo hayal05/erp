@@ -1,3 +1,4 @@
+import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import Button from '../components/Button.jsx';
@@ -19,6 +20,7 @@ function useDebounced(value, ms = 300) {
 }
 
 export default function Employees() {
+  const canManage=usePermission('employees.manage');
   const toast = useToast();
   const [filters, setFilters] = useState({ search: '', status: '', departmentId: '' });
   const [page, setPage] = useState(1);
@@ -74,11 +76,11 @@ export default function Employees() {
     { key: 'status', header: 'Status', render: (r) => <Badge tone={r.status === 'active' ? 'ok' : 'neutral'}>{r.status === 'active' ? 'Active' : 'Inactive'}</Badge> },
     { key: 'actions', header: <span className="sr-only">Actions</span>, className: 'nowrap', render: (r) => (
       <span className="row">
-        <Button size="sm" onClick={() => setDialog({ employee: r })} aria-label={`Edit ${r.fullName}`}>Edit</Button>
+        <Button size="sm" onClick={() => setDialog({ employee: r })} aria-label={`${canManage?'Edit':'View'} ${r.fullName}`}>{canManage?'Edit':'View'}</Button>
         <Button size="sm" onClick={() => setSalaryEmployee(r)} aria-label={`Salary for ${r.fullName}`}>Salary</Button>
-        {r.status === 'active'
+        {canManage && (r.status === 'active'
           ? <Button size="sm" variant="danger" onClick={() => setConfirm({ employee: r, reason: '', busy: false })} aria-label={`Deactivate ${r.fullName}`}>Deactivate</Button>
-          : <Button size="sm" onClick={() => changeStatus(r, 'activate')} aria-label={`Activate ${r.fullName}`}>Activate</Button>}
+          : <Button size="sm" onClick={() => changeStatus(r, 'activate')} aria-label={`Activate ${r.fullName}`}>Activate</Button>)}
       </span>
     ) },
   ];
@@ -87,8 +89,8 @@ export default function Employees() {
     <section className="stack">
       <div className="row between">
         <h1>Employees</h1>
-        <Button variant="primary" onClick={() => setDialog({ employee: null })} disabled={!lookups.shifts.length}
-          title={lookups.shifts.length ? undefined : 'Create a shift first (Settings)'}><Plus size={16} aria-hidden="true" /> Add employee</Button>
+        {canManage && <Button variant="primary" onClick={() => setDialog({ employee: null })} disabled={!lookups.shifts.length}
+          title={lookups.shifts.length ? undefined : 'Create a shift first (Settings)'}><Plus size={16} aria-hidden="true" /> Add employee</Button>}
       </div>
 
       <div className="toolbar">
@@ -110,7 +112,7 @@ export default function Employees() {
 
       {salaryEmployee && <SalaryProfileDialog key={salaryEmployee.id} employee={salaryEmployee} onClose={() => setSalaryEmployee(null)} />}
 
-      <Modal open={!!confirm} title="Deactivate employee?" onClose={() => !confirm?.busy && setConfirm(null)}
+      <Modal open={canManage&&!!confirm} title="Deactivate employee?" onClose={() => !confirm?.busy && setConfirm(null)}
         footer={<>
           <Button onClick={() => setConfirm(null)} disabled={confirm?.busy}>Cancel</Button>
           <Button variant="danger" busy={confirm?.busy} onClick={() => { setConfirm((c) => ({ ...c, busy: true })); changeStatus(confirm.employee, 'deactivate', confirm.reason.trim()); }}>Deactivate</Button>

@@ -1,4 +1,6 @@
-import {Link} from 'react-router-dom';
+import {workspacePath} from '../api/workspaces.js';
+import {useLocation} from 'react-router-dom';
+import {Link as RouterLink} from 'react-router-dom';
 import Button from '../components/Button.jsx';
 import Table,{Badge} from '../components/Table.jsx';
 import {formatMoney} from '../api/money.js';
@@ -20,14 +22,16 @@ function DashboardContent({data:d}){
  return <>
   <p className="muted">{d.date} · {d.timeZone}. Refresh to update these figures.</p>
   <div className="dashboard-main-stats">
-   <article className="card stack"><h2>Total employees</h2><strong className="dashboard-number">{s.totalEmployees}</strong><Link to="/hr/employees">View employees</Link></article>
-   <article className="card stack"><h2>Payroll · {p.month}</h2><strong className="dashboard-number">{p.totalMinor===null?'—':formatMoney(p.totalMinor)}</strong><span className="muted">{p.status?`${p.currencyCode} net salary · ${p.status} · ${p.employeeCount} employees`:'No payroll generated this month'}</span><Link to={`/hr/payroll?month=${p.month}`}>View payroll</Link></article>
-   <article className="card stack"><h2>Present today</h2><strong className="dashboard-number">{s.presentToday}</strong><span className="muted">Includes late arrivals and employees with an incomplete check-out.</span><Link to="/hr/attendance">View attendance</Link></article>
+   <article className="card stack"><h2>Total employees</h2><strong className="dashboard-number">{s.totalEmployees}</strong><WorkspaceLink to="/hr/employees">View employees</WorkspaceLink></article>
+   <article className="card stack"><h2>Payroll · {p.month}</h2><strong className="dashboard-number">{p.totalMinor===null?'—':formatMoney(p.totalMinor)}</strong><span className="muted">{p.status?`${p.currencyCode} net salary · ${p.status} · ${p.employeeCount} employees`:'No payroll generated this month'}</span><WorkspaceLink to={`/hr/payroll?month=${p.month}`}>View payroll</WorkspaceLink></article>
+   <article className="card stack"><h2>Present today</h2><strong className="dashboard-number">{s.presentToday}</strong><span className="muted">Includes late arrivals and employees with an incomplete check-out.</span><WorkspaceLink to="/hr/attendance">View attendance</WorkspaceLink></article>
   </div>
   <div className="dashboard-small-stats">
    {[['Late today',s.lateToday],['Absent today',s.absentToday],['On leave today',s.onLeaveToday],['Pending leave',s.pendingLeave]].map(([label,n])=><article className="card" key={label}><h2>{label}</h2><strong className="dashboard-number">{n}</strong></article>)}
   </div>
-  <section className="stack"><div className="row between"><h2>Recent attendance</h2><Link to="/hr/attendance">All attendance</Link></div><Table caption="Recent attendance" columns={attendance} rows={d.recentAttendance} empty="No attendance records yet."/></section>
-  <section className="stack"><div className="row between"><h2>Pending leave requests</h2><Link to="/hr/leave">Review leave requests</Link></div><Table caption="Pending leave requests" columns={leaves} rows={d.pendingLeave} empty="No pending leave requests."/></section>
+  <section className="stack"><div className="row between"><h2>Recent attendance</h2><WorkspaceLink to="/hr/attendance">All attendance</WorkspaceLink></div><Table caption="Recent attendance" columns={attendance} rows={d.recentAttendance} empty="No attendance records yet."/></section>
+  <section className="stack"><div className="row between"><h2>Pending leave requests</h2><WorkspaceLink to="/hr/leave">View leave requests</WorkspaceLink></div><Table caption="Pending leave requests" columns={leaves} rows={d.pendingLeave} empty="No pending leave requests."/></section>
  </>;
 }
+
+function WorkspaceLink({to,...props}){const {pathname}=useLocation();return <RouterLink to={workspacePath(to,pathname)} {...props}/>;}

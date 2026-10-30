@@ -2,6 +2,7 @@
 // Task 2 will populate user.accessRoles from persisted grants on every authenticated request.
 export const ACCESS_ROLES = Object.freeze(['hr', 'finance', 'admin']);
 export const PERMISSIONS = Object.freeze([
+  'dashboard.read','organization.read','attendance.qr.read','announcements.admin_read','settlements.read','access.read',
   'self.profile', 'self.attendance', 'self.leave', 'self.payslips',
   'employees.read', 'employees.manage', 'organization.manage', 'salary_profiles.manage',
   'attendance.read', 'attendance.manage', 'attendance.qr', 'leave.read', 'leave.manage',
@@ -11,13 +12,16 @@ export const PERMISSIONS = Object.freeze([
   'approvals.read', 'access.manage', 'audit.hr', 'audit.finance', 'audit.access',
 ]);
 const employeePermissions = Object.freeze(['self.profile', 'self.attendance', 'self.leave', 'self.payslips', 'announcements.read']);
+const sharedManagementReads=['dashboard.read','organization.read','attendance.qr.read','announcements.admin_read','company_costs.read','settlements.read','access.read'];
 const hrPermissions = Object.freeze([
+  ...sharedManagementReads,
   'employees.read', 'employees.manage', 'organization.manage', 'salary_profiles.manage',
   'attendance.read', 'attendance.manage', 'attendance.qr', 'leave.read', 'leave.manage',
   'announcements.read', 'announcements.manage', 'payroll.read', 'payroll.prepare',
   'payroll_settings.read', 'deductions.read', 'audit.hr', 'approvals.read',
 ]);
 const financePermissions = Object.freeze([
+  ...sharedManagementReads,
   'employees.read', 'attendance.read', 'leave.read', 'announcements.read', 'payroll.read',
   'payroll.approve', 'payroll.pay', 'payroll_settings.read', 'payroll_settings.manage',
   'deductions.read', 'deductions.manage', 'company_costs.read', 'settlements.manage', 'audit.finance', 'approvals.read',

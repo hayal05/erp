@@ -1,3 +1,4 @@
+import {usePermission} from '../api/auth.jsx';
 import AuditBar from '../components/AuditBar.jsx';
 import { useEffect,useState } from 'react';
 import Button from '../components/Button.jsx';
@@ -40,6 +41,7 @@ export default function Settlements(){
   </section>;
 }
 function SettlementDetails({period,kind,onClose,onRecorded}){
+  const canManage=usePermission('settlements.manage');
   const [current,setCurrent]=useState(null),[error,setError]=useState(''),[reload,setReload]=useState(0),[page,setPage]=useState(1),[historyPage,setHistoryPage]=useState(1),[recording,setRecording]=useState(false),[busy,setBusy]=useState(false);
   const employees=useList(`/payroll/periods/${period.id}/entries`,{page,pageSize:DETAIL_SIZE},reload);
   const history=useList(`/settlements/${period.id}/payments`,{kind,page:historyPage,pageSize:DETAIL_SIZE},reload);
@@ -59,8 +61,8 @@ function SettlementDetails({period,kind,onClose,onRecorded}){
         <p>{current.currency} · {current.employeeCount} employees · Payroll paid on {current.paidOn}</p>
         <div className="row"><span>Due: <strong>{formatMoney(amounts.due)}</strong></span><span>Settled: <strong>{formatMoney(amounts.paid)}</strong></span><span>Outstanding: <strong>{formatMoney(amounts.balance)}</strong></span></div>
         {kind==='pension'&&<p className="muted">Employee pension: {formatMoney(current.employeePensionMinor)} + company pension: {formatMoney(current.companyPensionMinor)}.</p>}
-        {amounts.balance>0&&!recording&&<Button variant="primary" onClick={()=>setRecording(true)}>Record payment</Button>}
-        {recording&&<PaymentForm period={current} kind={kind} balance={amounts.balance} onBusy={setBusy} onConflict={()=>{setRecording(false);refresh();onRecorded();}} onCancel={()=>setRecording(false)} onSaved={()=>{setRecording(false);setHistoryPage(1);refresh();onRecorded();}} />}
+        {canManage&&amounts.balance>0&&!recording&&<Button variant="primary" onClick={()=>setRecording(true)}>Record payment</Button>}
+        {canManage&&recording&&<PaymentForm period={current} kind={kind} balance={amounts.balance} onBusy={setBusy} onConflict={()=>{setRecording(false);refresh();onRecorded();}} onCancel={()=>setRecording(false)} onSaved={()=>{setRecording(false);setHistoryPage(1);refresh();onRecorded();}} />}
       </>}
       <h2>Employee breakdown</h2><p className="muted">Saved payroll liabilities for every employee. Partial settlements apply to this month’s total and are not allocated to individual employees.</p>
       <Table caption={`${label} employee breakdown`} columns={cols} rows={employees.items} loading={employees.loading} error={employees.error} onRetry={refresh} empty="No employee entries" />

@@ -1,5 +1,8 @@
+import {workspacePath} from '../api/workspaces.js';
+import {useLocation} from 'react-router-dom';
+import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -19,6 +22,7 @@ function useDebounced(value, ms = 300) {
 }
 
 export default function Departments() {
+  const canManage=usePermission('organization.manage');
   const toast = useToast();
   const [searchText, setSearchText] = useState('');
   const search = useDebounced(searchText);
@@ -56,7 +60,7 @@ export default function Departments() {
   }
 
   const columns = [
-    { key: 'name', header: 'Department', render: (r) => <strong><Link to={`/hr/departments/${r.id}`}>{r.name}</Link></strong> },
+    { key: 'name', header: 'Department', render: (r) => <strong><WorkspaceLink to={`/hr/departments/${r.id}`}>{r.name}</WorkspaceLink></strong> },
     { key: 'positions', header: 'Positions', align: 'num' },
     { key: 'employees', header: 'Employees', align: 'num' },
     { key: 'actions', header: <span className="sr-only">Actions</span>, className: 'nowrap', render: (r) => {
@@ -76,7 +80,7 @@ export default function Departments() {
     <section className="stack">
       <div className="row between">
         <h1>Departments</h1>
-        <Button variant="primary" onClick={() => setDialog({ department: null })}><Plus size={16} aria-hidden="true" /> Add department</Button>
+        {canManage && <Button variant="primary" onClick={() => setDialog({ department: null })}><Plus size={16} aria-hidden="true" /> Add department</Button>}
       </div>
 
       <div className="toolbar">
@@ -84,16 +88,16 @@ export default function Departments() {
           onChange={(e) => { setSearchText(e.target.value); setPage(1); }} />
       </div>
 
-      <Table caption="Departments" columns={columns} rows={data.items.map(departmentRow)} loading={state.loading} error={state.error} onRetry={refresh}
+      <Table caption="Departments" columns={columns.filter(c=>canManage||c.key!=='actions')} rows={data.items.map(departmentRow)} loading={state.loading} error={state.error} onRetry={refresh}
         empty={search ? 'No departments match this search' : 'No departments yet. Add the first one.'} />
       <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPage={setPage} disabled={state.loading} />
 
-      {dialog && (
+      {canManage && dialog && (
         <DepartmentDialog key={dialog.department?.id ?? 'new'} department={dialog.department}
           onClose={() => setDialog(null)} onSaved={() => { setDialog(null); refresh(); }} />
       )}
 
-      <Modal open={!!confirm} title="Delete department?" onClose={() => !confirm?.busy && setConfirm(null)}
+      <Modal open={canManage&&!!confirm} title="Delete department?" onClose={() => !confirm?.busy && setConfirm(null)}
         footer={<>
           <Button onClick={() => setConfirm(null)} disabled={confirm?.busy}>{view?.blocked ? 'Close' : 'Cancel'}</Button>
           {!view?.blocked && <Button variant="danger" busy={confirm?.busy} onClick={remove}>Delete department</Button>}
@@ -108,3 +112,5 @@ export default function Departments() {
     </section>
   );
 }
+
+function WorkspaceLink({to,...props}){const {pathname}=useLocation();return <RouterLink to={workspacePath(to,pathname)} {...props}/>;}

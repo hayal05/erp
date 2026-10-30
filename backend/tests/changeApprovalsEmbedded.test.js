@@ -43,7 +43,7 @@ test('HR changes stay pending, are deduplicated, and need a different HR or Admi
 test('Admin edits are immediate and approval inbox is paginated and department-scoped',async()=>{
  const r=await admin.patch(`/api/departments/${department}`).send({name:'Admin immediate'});assert.equal(r.status,200);
  const result=await hr.get('/api/change-requests?view=all');assert.equal(result.status,200);assert.equal(result.body.pageSize,20);assert.ok(result.body.items.every(x=>x.department==='hr'));
- const other=await fin.get('/api/change-requests?view=all');assert.equal(other.body.items.length,0);
+ const other=await fin.get('/api/change-requests?view=all');assert.ok(other.body.items.length>0);assert.ok(other.body.items.every(x=>!x.canReview));
  assert.equal((await hr.get('/api/change-requests?page=1.5')).status,400);
 });
 test('stale changes are refused; rejection and withdrawal never modify live records',async()=>{

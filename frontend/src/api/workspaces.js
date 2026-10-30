@@ -15,15 +15,14 @@ export function workspaceOptions(user){
 }
 export const workspaceArea=pathname=>pathname==='/finance'||pathname.startsWith('/finance/')?'finance':'hr';
 export const workspacePath=(path,pathname)=>workspaceArea(pathname)==='finance'?path.replace(/^\/hr(?=\/|$)/,'/finance'):path;
-const HR_PATHS=[['/hr/approvals','approvals.read'],['/hr/access-management','access.manage'],['/hr/payroll/company-costs','company_costs.read'],['/hr/settings/payroll','payroll_settings.read'],
- ['/hr/employees','employees.manage'],['/hr/departments','organization.manage'],['/hr/attendance','attendance.manage'],['/hr/qr','attendance.qr'],
- ['/hr/leave','leave.manage'],['/hr/payroll','payroll.read'],['/hr/settlements','settlements.manage'],['/hr/announcements','announcements.manage'],['/hr/settings','organization.manage']];
-const FINANCE_PATHS=['/hr/approvals','/hr/payroll','/hr/payroll/company-costs','/hr/settlements','/hr/settings/payroll'];
+const HR_PATHS=[['/hr/approvals','approvals.read'],['/hr/access-management','access.read'],['/hr/payroll/company-costs','company_costs.read'],['/hr/settings/payroll','payroll_settings.read'],
+ ['/hr/employees','employees.read'],['/hr/departments','organization.read'],['/hr/attendance','attendance.read'],['/hr/qr','attendance.qr.read'],
+ ['/hr/leave','leave.read'],['/hr/payroll','payroll.read'],['/hr/settlements','settlements.read'],['/hr/announcements','announcements.admin_read'],['/hr/settings','organization.read']];
 export function canOpenPath(user,path){
  if(path==='/portal'||path.startsWith('/portal/'))return canUseWorkspace(user,'portal');
  const area=workspaceArea(path);if(!canUseWorkspace(user,area))return false;
  const normalized=path.replace(/^\/finance(?=\/|$)/,'/hr');
  if(normalized==='/hr'||normalized==='/hr/')return true;
  const match=HR_PATHS.find(([prefix])=>normalized===prefix||normalized.startsWith(prefix+'/'));
- return !!match&&allowed(user,match[1])&&(area!=='finance'||FINANCE_PATHS.includes(match[0]));
+ return !!match&&allowed(user,match[1]);
 }

@@ -1,3 +1,4 @@
+import {allowed} from './workspaces.js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { get, post, setCsrfToken, onSessionEvent } from './client.js';
 
@@ -97,3 +98,5 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
   return ctx;
 }
+
+export const usePermission=permission=>allowed(useAuth().user,permission);

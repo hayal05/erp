@@ -6,7 +6,8 @@ import { HttpError,wrap } from '../middleware/error.js';
 import { validate,v } from '../middleware/validate.js';
 import { pageSchema,pageOffset,pageResult,likePattern } from '../services/sql.js';
 import { idParams } from '../services/hrSchemas.js';
-const router=Router();router.use(noStore,requirePermission('access.manage'));
+const router=Router();router.use(noStore,requirePermission('access.read'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('access.manage')(req,res,next));
 const roles=['hr','finance'];
 async function employee(db,id,{lock=false}={}){
  const {rows:[r]}=await db.query(`SELECT e.id,e.user_id,e.status,u.is_active,u.role FROM employees e JOIN users u ON u.id=e.user_id WHERE e.id=$1${lock?' FOR UPDATE OF e,u':''}`,[id]);
