@@ -14,7 +14,7 @@ export async function loadVacancies(db,user,query){
  const where=manage?(query.status?'v.status=$3':'true'):query.view==='mine'?'a.id IS NOT NULL':"v.status='open' AND v.closing_on>=(now() AT TIME ZONE $1)::date";
  const args=[zone,user.id,...(manage&&query.status?[query.status]:[])];
  const from=`${vacancyFrom} LEFT JOIN employees e ON e.user_id=$2 LEFT JOIN vacancy_applications a ON a.vacancy_id=v.id AND a.employee_id=e.id`;
- const extra=manage?',(SELECT count(*)::int FROM vacancy_applications va WHERE va.vacancy_id=v.id) AS "applicationCount"':'';
+ const extra=manage?',(SELECT count(*)::int FROM vacancy_applications va WHERE va.vacancy_id=v.id) AS "applicationCount"':`,(a.id IS NULL AND NOT EXISTS(SELECT 1 FROM vacancy_views seen WHERE seen.vacancy_id=v.id AND seen.employee_id=e.id)) AS unopened`;
  const {rows}=await db.query(`SELECT ${vacancyColumns},a.id AS "applicationId",a.status AS "applicationStatus",a.applied_at AS "appliedAt" ${extra} ${from}
  WHERE ${where} ORDER BY v.created_at DESC,v.id DESC LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,query.pageSize,pageOffset(query)]);
  const {rows:[count]}=await db.query(`SELECT count(*)::int total ${from} WHERE ${where} AND $1::text IS NOT NULL`,args);
@@ -44,6 +44,27 @@ export async function applyForVacancy(db,user,vacancyId){
  const {rows:[row]}=await db.query(`INSERT INTO vacancy_applications(vacancy_id,employee_id,profile_snapshot)
  VALUES($1,$2,$3::jsonb) ON CONFLICT(vacancy_id,employee_id) DO NOTHING RETURNING id,status,applied_at AS "appliedAt"`,[vacancyId,employee.id,JSON.stringify(snapshot)]);
  if(!row)throw new HttpError(409,'You have already applied for this vacancy','already_applied');
+ await db.query('INSERT INTO vacancy_views(vacancy_id,employee_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[vacancyId,employee.id]);
  await audit(db,{actorId:user.id,action:'vacancy.apply',entityType:'vacancy_application',entityId:row.id,details:{vacancyId,status:'applied'}});
  return {...row,id:Number(row.id)};
+}
+
+
+export async function vacancyUnreadCount(db,userId){
+ const {rows:[r]}=await db.query(`SELECT count(*)::int AS "unreadCount" FROM internal_vacancies v
+ JOIN employees e ON e.user_id=$1 AND e.status='active'
+ WHERE v.status='open' AND v.closing_on>=(now() AT TIME ZONE $2)::date
+ AND NOT EXISTS(SELECT 1 FROM vacancy_views seen WHERE seen.vacancy_id=v.id AND seen.employee_id=e.id)
+ AND NOT EXISTS(SELECT 1 FROM vacancy_applications a WHERE a.vacancy_id=v.id AND a.employee_id=e.id)`,[userId,zone]);
+ return r.unreadCount;
+}
+export async function openVacancy(db,userId,vacancyId){
+ const {rows:[employee]}=await db.query("SELECT id FROM employees WHERE user_id=$1 AND status='active'",[userId]);
+ if(!employee)throw new HttpError(403,'An active employee profile is required','employee_inactive');
+ const {rows:[vacancy]}=await db.query(`SELECT v.id FROM internal_vacancies v WHERE v.id=$1 AND
+ ((v.status='open' AND v.closing_on>=(now() AT TIME ZONE $3)::date)
+ OR EXISTS(SELECT 1 FROM vacancy_applications a WHERE a.vacancy_id=v.id AND a.employee_id=$2)) FOR SHARE OF v`,[vacancyId,employee.id,zone]);
+ if(!vacancy)throw new HttpError(404,'Vacancy not found','not_found');
+ await db.query('INSERT INTO vacancy_views(vacancy_id,employee_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[vacancyId,employee.id]);
+ return {id:Number(vacancyId)};
 }

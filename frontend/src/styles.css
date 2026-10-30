@@ -427,3 +427,8 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .vacancies-page > .table-wrap td { white-space: nowrap; }
 
 .vacancies-page > .table-wrap .row { flex-wrap: nowrap; }
+
+.portal-tab-icon { position: relative; display: inline-flex; }
+.nav-unread-count { position: absolute; top: -6px; left: calc(100% - 4px); min-width: 17px; height: 17px; padding: 0 4px;
+ display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--accent); color: var(--on-accent);
+ font-size: .65rem; font-weight: 700; line-height: 1; }

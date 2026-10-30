@@ -127,3 +127,37 @@ test('vacancy and applicant pagination preserve totals and never mix employee ap
  const applicants=await hr.get(`${URL}/${ids[0]}/applications?pageSize=1&page=2`);assert.equal(applicants.body.total,2);assert.equal(applicants.body.items.length,1);
  assert.equal((await employee.get(URL+'?view=mine')).body.total,1);
 });
+
+test('unopened vacancy counts are personal, persist across sessions and clear only when opened or applied',async()=>{
+ const a=await create(),b=await create({title:'Second new vacancy'});
+ const count=async client=>(await client.get(URL+'/unread-count')).body.unreadCount;
+ assert.equal(await count(employee),2);assert.equal(await count(other),2);
+ let feed=await employee.get(URL);assert.ok(feed.body.items.every(item=>item.unopened));
+ // Merely loading the feed must not mark every vacancy as opened.
+ assert.equal(await count(employee),2);
+ const opened=await employee.post(`${URL}/${a}/open`).send({employeeId:people.other.id});assert.equal(opened.status,200,JSON.stringify(opened.body));
+ assert.equal(await count(employee),1);assert.equal(await count(other),2);
+ const first=(await q('SELECT opened_at FROM vacancy_views WHERE vacancy_id=$1 AND employee_id=$2',[a,people.employee.id])).rows[0].opened_at;
+ assert.equal((await employee.post(`${URL}/${a}/open`).send({})).status,200);
+ const receipts=await q('SELECT opened_at FROM vacancy_views WHERE vacancy_id=$1 AND employee_id=$2',[a,people.employee.id]);assert.equal(receipts.rows.length,1);assert.deepEqual(receipts.rows[0].opened_at,first);
+ const secondDevice=await signIn(app,{username:'employee.user',password});assert.equal(await count(secondDevice),1);
+ feed=await secondDevice.get(URL);assert.equal(feed.body.items.find(item=>item.id===a).unopened,false);assert.equal(feed.body.items.find(item=>item.id===b).unopened,true);
+ assert.equal((await employee.post(`${URL}/${b}/apply`).send({})).status,201);assert.equal(await count(employee),0);assert.equal(await count(other),2);
+ // Existing applications from before read receipts were introduced must not become "new".
+ await q('DELETE FROM vacancy_views WHERE vacancy_id=$1 AND employee_id=$2',[b,people.employee.id]);assert.equal(await count(employee),0);
+});
+
+test('the counter excludes drafts, closed and expired postings, and read marks cannot bypass visibility',async()=>{
+ const open=await create(),draft=await create({status:'draft'}),closed=await create({status:'closed'}),expired=await create({title:'Expired vacancy'});
+ await q("UPDATE internal_vacancies SET closing_on='2000-01-01' WHERE id=$1",[expired]);
+ const endpoint=URL+'/unread-count';assert.equal((await employee.get(endpoint+'?employeeId='+people.other.id)).body.unreadCount,1);
+ for(const id of[draft,closed,expired,999999])assert.equal((await employee.post(`${URL}/${id}/open`).send({})).status,404);
+ assert.equal((await q('SELECT count(*)::int n FROM vacancy_views')).rows[0].n,0);
+ assert.equal((await request(app).get(endpoint)).status,401);assert.equal((await admin.get(endpoint)).status,403);
+ assert.equal((await employee.post(`${URL}/${open}/open`).send({})).status,200);
+ assert.equal((await admin.put(`${URL}/${open}`).send(posting({status:'closed',version:1}))).status,200);
+ assert.equal((await other.get(endpoint)).body.unreadCount,0);
+ assert.equal((await admin.put(`${URL}/${open}`).send(posting({status:'open',version:2}))).status,200);
+ assert.equal((await employee.get(endpoint)).body.unreadCount,0,'an already opened vacancy stays read when reopened');
+ assert.equal((await other.get(endpoint)).body.unreadCount,1,'another employee still has not opened it');
+});
