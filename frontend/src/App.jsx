@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './api/auth.jsx';
 import { homePath, redirectTarget } from './api/paths.js';
-import {canUseWorkspace,canOpenPath,isAdmin,workspaceOptions} from './api/workspaces.js';
+import {canUseWorkspace,canOpenPath,isAdmin,workspaceOptions,allowed} from './api/workspaces.js';
 import WorkspaceHome from './pages/WorkspaceHome.jsx';
 import ChangePassword from './pages/ChangePassword.jsx';
 import Login from './pages/Login.jsx';
@@ -73,7 +73,7 @@ function LoginRoute() {
   return <Login />;
 }
 
-function ManagementHome(){const {user}=useAuth();const location=useLocation();return isAdmin(user)&&!location.pathname.startsWith('/finance')?<Dashboard />:<WorkspaceHome />;}
+function ManagementHome(){const {user}=useAuth();const location=useLocation();return allowed(user,'dashboard.read')?<Dashboard />:<WorkspaceHome />;}
 export default function App() {
   return (
     <AuthProvider>

@@ -12,7 +12,7 @@ import { departmentBody, departmentListQuery, idParams } from '../services/hrSch
 import { departmentPositions } from './positions.js';
 
 const router = Router();
-router.use(noStore, requirePermission('organization.manage'));
+router.use(noStore, requirePermission('organization.read'));
 router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 router.use('/:id/positions', departmentPositions); // list + create positions of one department (task 6.3)
 

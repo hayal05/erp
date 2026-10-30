@@ -12,7 +12,7 @@ import { idParams, shiftCreate, shiftListQuery, shiftUpdate } from '../services/
 
 // Shifts are the work schedules (MVP: same-day only, ISO weekdays 1 = Monday .. 7 = Sunday).
 const router = Router();
-router.use(noStore, requirePermission('organization.manage'));
+router.use(noStore, requirePermission('organization.read'));
 router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 
 const SELECT = `SELECT s.id, s.name, to_char(s.start_time, 'HH24:MI') AS start_time, to_char(s.end_time, 'HH24:MI') AS end_time,

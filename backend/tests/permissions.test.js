@@ -23,11 +23,11 @@ test('registration identity has self-service but no privileged operations', () =
 test('HR prepares payroll and employee facts but cannot approve, pay or settle', () => {
   const user=person('hr');
   for (const p of ['employees.manage','organization.manage','salary_profiles.manage','attendance.manage','leave.manage','announcements.manage','payroll.prepare','audit.hr']) assert.equal(hasPermission(user,p),true,p);
-  for (const p of ['payroll.approve','payroll.pay','payroll_settings.manage','deductions.manage','company_costs.read','settlements.manage','access.manage','audit.access']) assert.equal(hasPermission(user,p),false,p);
+  for (const p of ['payroll.approve','payroll.pay','payroll_settings.manage','deductions.manage','settlements.manage','access.manage','audit.access']) assert.equal(hasPermission(user,p),false,p);
 });
 test('Finance reviews and pays but cannot modify HR records or issue access', () => {
   const user=person('finance');
-  for (const p of ['employees.read','attendance.read','leave.read','payroll.read','payroll.approve','payroll.pay','payroll_settings.manage','deductions.manage','company_costs.read','settlements.manage','audit.finance']) assert.equal(hasPermission(user,p),true,p);
+  for (const p of ['employees.read','attendance.read','leave.read','payroll.read','payroll.approve','payroll.pay','payroll_settings.manage','deductions.manage','settlements.manage','audit.finance']) assert.equal(hasPermission(user,p),true,p);
   for (const p of ['employees.manage','organization.manage','salary_profiles.manage','attendance.manage','leave.manage','announcements.manage','payroll.prepare','access.manage','audit.access']) assert.equal(hasPermission(user,p),false,p);
 });
 test('additive grants retain employee portal access, combine and revoke without mutating identity', () => {
@@ -63,4 +63,10 @@ test('only an explicit allowLocked option permits an authorized locked session',
 test('legacy role guards keep current production behavior during foundation rollout', () => {
   assert.equal(run(requireHr,{role:'hr'}),null);assert.equal(run(requireHr,person('hr')).status,403);
   assert.equal(run(requireEmployee,person('hr','finance')),null);
+});
+
+
+test('HR and Finance share administrative read access while ordinary employees do not',()=>{
+ for(const role of ['hr','finance'])for(const p of ['dashboard.read','employees.read','organization.read','attendance.read','attendance.qr.read','leave.read','announcements.admin_read','payroll.read','payroll_settings.read','company_costs.read','settlements.read','access.read'])assert.equal(hasPermission(person(role),p),true,role+':'+p);
+ for(const p of ['dashboard.read','organization.read','attendance.qr.read','announcements.admin_read','settlements.read','access.read'])assert.equal(hasPermission(person(),p),false,p);
 });

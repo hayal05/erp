@@ -2,7 +2,7 @@ import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])';
 
 // Accessible dialog: portal to <body>, focus moves in and returns to the opener on close, Tab is
 // trapped, Esc and backdrop click close it, page scroll is locked. `dismissible={false}` is for
@@ -18,7 +18,7 @@ export default function Modal({ open, title, onClose, children, footer, wide = f
     const opener = document.activeElement;
     document.body.classList.add('modal-open');
     const dlg = ref.current;
-    (dlg.querySelector('[autofocus],input,select,textarea') ?? dlg).focus();
+    (dlg.querySelector('[autofocus]:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)') ?? dlg).focus();
 
     const onKey = (e) => {
       if (e.key === 'Escape' && dismissible) { e.stopPropagation(); closeRef.current?.(); return; }

@@ -1,3 +1,4 @@
+import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -40,6 +41,7 @@ export default function Leave() {
 }
 
 function Requests({ lookups }) {
+  const canManage=usePermission('leave.manage');
   const toast = useToast();
   const [filters, setFilters] = useState(NO_FILTERS);
   const [page, setPage] = useState(1);
@@ -74,7 +76,7 @@ function Requests({ lookups }) {
         {r.remarks && <><br /><small className="muted">HR: {r.remarks}</small></>}
       </>
     ) },
-    { key: 'act', header: <span className="sr-only">Decide</span>, className: 'nowrap', render: (r) => r.canDecide && (
+    { key: 'act', header: <span className="sr-only">Decide</span>, className: 'nowrap', render: (r) => canManage && r.canDecide && (
       <span className="row">
         <Button size="sm" variant="primary" onClick={() => setDeciding({ request: r, decision: 'approve' })} aria-label={`Approve leave of ${r.employee}, ${r.dates}`}>Approve</Button>
         <Button size="sm" onClick={() => setDeciding({ request: r, decision: 'reject' })} aria-label={`Reject leave of ${r.employee}, ${r.dates}`}>Reject</Button>
@@ -94,16 +96,17 @@ function Requests({ lookups }) {
       </div>
       {filtered && <div className="row"><Button onClick={() => { setFilters(NO_FILTERS); setPage(1); }}>Reset filters</Button></div>}
 
-      <Table caption="Leave requests" columns={columns} rows={data.items.map(queueRow)} loading={state.loading} error={state.error} onRetry={refresh}
+      <Table caption="Leave requests" columns={columns.filter(c=>canManage||c.key!=='act')} rows={data.items.map(queueRow)} loading={state.loading} error={state.error} onRetry={refresh}
         empty={filters.status === 'pending' && !filtered ? 'No requests are waiting for a decision' : 'No leave requests match these filters'} />
       <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPage={setPage} disabled={state.loading} />
 
-      {deciding && <DecisionDialog key={`${deciding.request.id}-${deciding.decision}`} {...deciding} onClose={() => setDeciding(null)} onDone={() => { setDeciding(null); refresh(); }} />}
+      {canManage && deciding && <DecisionDialog key={`${deciding.request.id}-${deciding.decision}`} {...deciding} onClose={() => setDeciding(null)} onDone={() => { setDeciding(null); refresh(); }} />}
     </>
   );
 }
 
 function Entitlements({ employees }) {
+  const canManage=usePermission('leave.manage');
   const toast = useToast();
   const [employeeId, setEmployeeId] = useState('');
   const [year, setYear] = useState(null); // null = the server's current company year
@@ -132,7 +135,7 @@ function Entitlements({ employees }) {
     { key: 'used', header: 'Used', align: 'num' },
     { key: 'pending', header: 'Pending', align: 'num' },
     { key: 'remaining', header: 'Left', align: 'num', render: (b) => (b.hasBalance ? b.remaining : 'No limit') },
-    { key: 'act', header: <span className="sr-only">Change</span>, render: (b) => b.hasBalance && (
+    { key: 'act', header: <span className="sr-only">Change</span>, render: (b) => canManage && b.hasBalance && (
       <Button size="sm" onClick={() => setEditing(b)} aria-label={`Change ${b.name.toLowerCase()} balance of ${employee?.fullName}`}>Change</Button>
     ) },
   ];
@@ -144,13 +147,13 @@ function Entitlements({ employees }) {
         {years.length > 0 && <Field as="select" label="Year" value={year ?? data.year} onChange={(e) => setYear(Number(e.target.value))} options={years} />}
       </div>
       {!employeeId ? <p className="muted">Choose an employee.</p> : (
-        <Table caption={`Leave balances of ${employee?.fullName ?? 'employee'}`} columns={columns} rowKey="leaveTypeId" rows={data.items}
+        <Table caption={`Leave balances of ${employee?.fullName ?? 'employee'}`} columns={columns.filter(c=>canManage||c.key!=='act')} rowKey="leaveTypeId" rows={data.items}
           loading={state.loading} error={state.error} onRetry={refresh} empty="No leave types" />
       )}
       {employeeId && data.items.some((b) => !b.hasBalance) && <p className="muted">Unpaid leave has no annual limit.</p>}
       {data.items.some((b) => b.hasBalance) && <p className="muted">Working days only. Pending requests reserve the balance.</p>}
 
-      {editing && <EntitlementDialog key={`${employeeId}-${editing.leaveTypeId}-${data.year}`} employee={employee} balance={editing} year={data.year}
+      {canManage && editing && <EntitlementDialog key={`${employeeId}-${editing.leaveTypeId}-${data.year}`} employee={employee} balance={editing} year={data.year}
         onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} />}
     </>
   );

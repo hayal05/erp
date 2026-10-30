@@ -34,7 +34,7 @@ function positionBody(req, res, next) {
 
 // ---- /api/departments/:id/positions
 export const departmentPositions = Router({ mergeParams: true });
-departmentPositions.use(noStore, requirePermission('organization.manage'));
+departmentPositions.use(noStore, requirePermission('organization.read'));
 departmentPositions.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 
 departmentPositions.get('/', validate(idParams, 'params'), validate(positionListQuery, 'query'), wrap(async (req, res) => {
@@ -68,7 +68,7 @@ departmentPositions.post('/', validate(idParams, 'params'), positionBody, wrap(a
 
 // ---- /api/positions
 const router = Router();
-router.use(noStore, requirePermission('organization.manage'));
+router.use(noStore, requirePermission('organization.read'));
 router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
 
 // Full replacement of the editable fields (name + the five salary fields). The department never changes here.

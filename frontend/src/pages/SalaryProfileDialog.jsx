@@ -1,3 +1,4 @@
+import {usePermission} from '../api/auth.jsx';
 import AuditBar from '../components/AuditBar.jsx';
 import { useEffect, useState } from 'react';
 import Modal from '../components/Modal.jsx';
@@ -7,6 +8,7 @@ import { get, put } from '../api/client.js';
 import { useToast } from '../components/Toast.jsx';
 import { profileForm, profilePayload } from './salaryProfileForm.js';
 export default function SalaryProfileDialog({ employee, onClose }) {
+  const canManage=usePermission('salary_profiles.manage');
   const toast = useToast();
   const [form, setForm] = useState(null), [error, setError] = useState(''), [fields, setFields] = useState({}), [busy, setBusy] = useState(false), [retry, setRetry] = useState(0);
   useEffect(() => {
@@ -17,7 +19,7 @@ export default function SalaryProfileDialog({ employee, onClose }) {
   }, [employee.id, retry]);
   async function submit(e) {
     e.preventDefault();
-    if (busy || !form) return;
+    if (!canManage || busy || !form) return;
     const result = profilePayload(form); setFields(result.errors ?? {}); setError('');
     if (result.errors) return;
     setBusy(true);
@@ -26,14 +28,14 @@ export default function SalaryProfileDialog({ employee, onClose }) {
     finally { setBusy(false); }
   }
   return <Modal open title={`Salary — ${employee.fullName}`} onClose={() => !busy && onClose()} footer={<>
-    <Button onClick={onClose} disabled={busy}>Cancel</Button><Button variant="primary" type="submit" form="salary-profile" busy={busy} disabled={!form}>Save salary</Button>
+    <Button onClick={onClose} disabled={busy}>{canManage?'Cancel':'Close'}</Button>{canManage && <Button variant="primary" type="submit" form="salary-profile" busy={busy} disabled={!form}>Save salary</Button>}
   </>}>
     {error && <p className="form-error" role="alert">{error}</p>}
     {!form ? error ? <Button onClick={() => setRetry((n) => n + 1)}>Retry</Button> : <p role="status">Loading salary…</p> :
       <form id="salary-profile" className="stack" onSubmit={submit} noValidate>
-        {['basic', 'allowance'].map((key) => <Field key={key} label={key === 'basic' ? 'Basic salary' : 'Allowance'} inputMode="decimal" value={form[key]} error={fields[key]} disabled={busy} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />)}
+        {['basic', 'allowance'].map((key) => <Field key={key} label={key === 'basic' ? 'Basic salary' : 'Allowance'} inputMode="decimal" value={form[key]} error={fields[key]} disabled={busy||!canManage} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />)}
         {[['allowanceTaxable', 'Allowance is taxable'], ['allowancePensionable', 'Allowance is pensionable'], ['pensionApplies', 'Pension applies to this employee']].map(([key, label]) =>
-          <label key={key}><input type="checkbox" checked={form[key]} disabled={busy} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
+          <label key={key}><input type="checkbox" checked={form[key]} disabled={busy||!canManage} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
         <small className="muted">Allowance flags require matching payroll base settings.</small>
       </form>}
   <AuditBar type="salary_profile" id={employee.id} />

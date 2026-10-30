@@ -1,3 +1,4 @@
+import {usePermission} from '../api/auth.jsx';
 import AuditBar from '../components/AuditBar.jsx';
 import { useEffect, useState } from 'react';
 import Button from '../components/Button.jsx';
@@ -34,6 +35,7 @@ export function AnnouncementFeed() {
   </section>;
 }
 export default function Announcements() {
+  const canManage=usePermission('announcements.manage');
   const [status,setStatus]=useState(''),[editing,setEditing]=useState(null),[busy,setBusy]=useState(null);
   const data=useAnnouncements(10,status),toast=useToast();
   async function archive(item) {
@@ -42,17 +44,17 @@ export default function Announcements() {
     catch(e){toast.error(e.message);data.refresh();}finally{setBusy(null);}
   }
   return <section className="stack">
-    <div className="row between"><h1>Announcements</h1><Button variant="primary" onClick={()=>setEditing({title:'',body:'',status:'draft',expiresOn:''})}>New announcement</Button></div>
+    <div className="row between"><h1>Announcements</h1>{canManage&&<Button variant="primary" onClick={()=>setEditing({title:'',body:'',status:'draft',expiresOn:''})}>New announcement</Button>}</div>
     <div className="row"><Field as="select" label="Status" placeholder="All statuses" options={OPTIONS} value={status} onChange={e=>{setStatus(e.target.value);data.setPage(1);}} /><Button onClick={data.refresh} disabled={data.loading}>Refresh</Button></div>
     <Table caption="Company announcements" columns={[
-      {key:'title',header:'Title',render:r=><strong style={{overflowWrap:'anywhere'}}>{r.title}</strong>},
+      {key:'title',header:'Title',render:r=><details><summary style={{overflowWrap:'anywhere'}}>{r.title}</summary><p style={{whiteSpace:'pre-wrap'}}>{r.body}</p></details>},
       {key:'status',header:'Status',render:r=><Badge tone={r.status==='published'&&!r.expired?'ok':'neutral'}>{r.status==='published'&&r.expired?'Expired':r.status}</Badge>},
       {key:'publishedAt',header:'Published',render:r=>r.publishedAt || 'Not published'},
       {key:'expiresOn',header:'Visible through',render:r=>r.expiresOn || 'No expiry'},
       {key:'actions',header:'Actions',render:r=><div className="row"><Button size="sm" disabled={busy!==null} onClick={()=>setEditing(r)}>Edit</Button>{r.status!=='archived'&&<Button size="sm" busy={busy===r.id} disabled={busy!==null} onClick={()=>archive(r)}>Archive</Button>}</div>},
-    ]} rows={data.items} loading={data.loading} error={data.error} onRetry={data.refresh} empty="No announcements found" />
+    ] .filter(c=>canManage||c.key!=='actions')} rows={data.items} loading={data.loading} error={data.error} onRetry={data.refresh} empty="No announcements found" />
     <Pager page={data.page} pageSize={10} total={data.total} onPage={data.setPage} disabled={data.loading} />
-    {editing&&<AnnouncementEditor key={editing.id || 'new'} item={editing} onClose={()=>setEditing(null)} onSaved={()=>{setEditing(null);data.refresh();}} onRefresh={data.refresh} />}
+    {canManage&&editing&&<AnnouncementEditor key={editing.id || 'new'} item={editing} onClose={()=>setEditing(null)} onSaved={()=>{setEditing(null);data.refresh();}} onRefresh={data.refresh} />}
   </section>;
 }
 function AnnouncementEditor({item,onClose,onSaved,onRefresh}) {

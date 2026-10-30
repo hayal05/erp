@@ -1,3 +1,4 @@
+import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { Camera } from 'lucide-react';
 import Button from '../components/Button.jsx';
@@ -50,6 +51,7 @@ function PhotoViewer({ view, onClose }) {
 }
 
 export default function Attendance() {
+  const canManage=usePermission('attendance.manage');
   const toast = useToast();
   const [view, setView] = useState('today');
   const [filters, setFilters] = useState(NO_FILTERS);
@@ -133,12 +135,12 @@ export default function Attendance() {
         <Field as="select" label="Status" placeholder="All statuses" value={filters.status} onChange={setFilter('status')} options={STATUS_OPTIONS} />
       </div>
 
-      <Table caption={view === 'today' ? "Today's attendance" : 'Attendance archive'} columns={columns} rows={rangeBad ? [] : data.items} loading={state.loading} error={state.error} onRetry={refresh}
+      <Table caption={view === 'today' ? "Today's attendance" : 'Attendance archive'} columns={columns.filter(c=>canManage||c.key!=='actions')} rows={rangeBad ? [] : data.items} loading={state.loading} error={state.error} onRetry={refresh}
         empty={filtered ? 'No attendance records match these filters' : view === 'today' ? 'No attendance recorded today' : 'No archived attendance records'} />
       <Pager page={page} pageSize={PAGE_SIZE} total={rangeBad ? 0 : data.total} onPage={setPage} disabled={state.loading} />
 
       {photo && <PhotoViewer key={`${photo.record.id}-${photo.kind}`} view={photo} onClose={() => setPhoto(null)} />}
-      {correcting && <CorrectionDialog key={correcting.id} record={correcting} onClose={() => setCorrecting(null)} onSaved={() => { setCorrecting(null); refresh(); }} />}
+      {canManage && correcting && <CorrectionDialog key={correcting.id} record={correcting} onClose={() => setCorrecting(null)} onSaved={() => { setCorrecting(null); refresh(); }} />}
     </section>
   );
 }

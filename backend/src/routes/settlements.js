@@ -11,7 +11,8 @@ import { MAX_MINOR } from '../services/money.js';
 import { companyDate } from '../services/attendance.js';
 import { audit } from '../services/audit.js';
 import { LIABILITY_CTE,safeAmount,toBalance,PAYMENT_COLUMNS,toPayment,paidPeriod } from '../services/settlements.js';
-const router=Router();router.use(noStore,requirePermission('settlements.manage'));
+const router=Router();router.use(noStore,requirePermission('settlements.read'));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('settlements.manage')(req,res,next));
 const kind = () => v.enum({required:true,values:['income_tax','pension']});
 router.get('/',validate({...pageSchema,view:v.enum({values:['unsettled','all'],default:'unsettled'})},'query'),wrap(async(req,res)=>{
   const data=await withTransaction(async db=>{

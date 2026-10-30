@@ -4,8 +4,8 @@ import { Lock, QrCode, RefreshCw, Unlock } from 'lucide-react';
 import Button from '../components/Button.jsx';
 import UnlockDialog from '../components/UnlockDialog.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { useAuth } from '../api/auth.jsx';
-import { post } from '../api/client.js';
+import { useAuth,usePermission } from '../api/auth.jsx';
+import { get,post } from '../api/client.js';
 import { formatClock } from '../components/hrNav.js';
 import { buildScanUrl, expiryFrom, formatCountdown, remainingSeconds } from './qrState.js';
 
@@ -13,6 +13,9 @@ import { buildScanUrl, expiryFrom, formatCountdown, remainingSeconds } from './q
 // Works in both normal and locked mode; Generate stays active when locked (6.1).
 export default function QrAttendance() {
   const toast = useToast();
+  const canManage=usePermission('attendance.qr');
+  const [status,setStatus]=useState(null);
+  useEffect(()=>{if(canManage)return undefined;const ctrl=new AbortController();get('/qr/status',undefined,{signal:ctrl.signal}).then(setStatus).catch(e=>{if(e.name!=='AbortError')setStatus({error:e.message});});return()=>ctrl.abort();},[canManage]);
   const { locked, setLocked } = useAuth();
   const [qr, setQr] = useState(null);          // { dataUrl, expiresAt } | null
   const [now, setNow] = useState(() => Date.now());
@@ -75,14 +78,14 @@ export default function QrAttendance() {
           <img className="qr-img" src={qr.dataUrl} alt="Attendance QR code. Scan it with your phone camera." width="360" height="360" />
         ) : (
           <div className="qr-placeholder" role="status">
-            {busy ? 'Creating code…' : qr ? 'Code expired' : 'No active code'}
+            {!canManage ? 'QR display is managed by HR' : busy ? 'Creating code…' : qr ? 'Code expired' : 'No active code'}
           </div>
         )}
         <p className="qr-countdown" aria-live="off">
-          {live ? <>Expires in <strong>{formatCountdown(remaining)}</strong></> : 'Press the button to show a new code.'}
+          {!canManage?(status?.error||(!status?'Loading QR status…':status.active?`An unused code is active until ${new Date(status.expiresAt).toLocaleString()}.`:'No unused active code.')):live ? <>Expires in <strong>{formatCountdown(remaining)}</strong></> : 'Press the button to show a new code.'}
         </p>
         {error && <p className="field-error" role="alert">{error}</p>}
-        <div className="qr-actions">
+        {canManage ? <div className="qr-actions">
           <Button variant="primary" busy={busy} onClick={generate}>
             {qr ? <><RefreshCw size={16} aria-hidden="true" /> Generate Again</> : 'Generate New QR'}
           </Button>
@@ -91,7 +94,7 @@ export default function QrAttendance() {
           ) : (
             <Button busy={locking} onClick={lock}><Lock size={16} aria-hidden="true" /> Lock</Button>
           )}
-        </div>
+        </div> : <p className="muted">Read only. HR or Admin generates QR codes and controls the attendance display.</p>}
       </div>
       <UnlockDialog open={unlocking} onClose={() => setUnlocking(false)}
         onUnlocked={() => { setUnlocking(false); setLocked(false); toast.success('Screen unlocked'); }} />

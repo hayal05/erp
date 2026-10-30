@@ -1,3 +1,4 @@
+import {usePermission} from '../api/auth.jsx';
 import AuditBar from '../components/AuditBar.jsx';
 import { useEffect, useState } from 'react';
 import Modal from '../components/Modal.jsx';
@@ -12,6 +13,8 @@ const POSITION_LIMIT = 100; // the API caps pageSize at 100
 
 // Add (employee = null) or edit. Mount with a `key` so the form resets each time it opens.
 export default function EmployeeDialog({ employee, departments, shifts, onClose, onSaved }) {
+  const canManage=usePermission('employees.manage');
+  const readOnly=!canManage;
   const mode = employee ? 'edit' : 'create';
   const toast = useToast();
   const [form, setForm] = useState(() => (employee ? formFromEmployee(employee) : { ...emptyForm(), shiftId: shifts[0] ? String(shifts[0].id) : '' }));
@@ -57,7 +60,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
 
   async function submit(e) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || readOnly) return;
     const problems = validateForm(form, mode, employee);
     setFields(problems);
     setError('');
@@ -84,12 +87,12 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
   }
 
   return (
-    <Modal open wide title={mode === 'create' ? 'Add employee' : 'Edit employee'} onClose={onClose}
+    <Modal open wide title={readOnly?'Employee details':mode === 'create' ? 'Add employee' : 'Edit employee'} onClose={onClose}
       footer={<>
-        <Button onClick={onClose} disabled={busy}>Cancel</Button>
-        <Button variant="primary" type="submit" form="employee-form" busy={busy}>{mode === 'create' ? 'Add employee' : 'Save changes'}</Button>
+        <Button onClick={onClose} disabled={busy}>{readOnly?'Close':'Cancel'}</Button>
+        {!readOnly && <Button variant="primary" type="submit" form="employee-form" busy={busy}>{mode === 'create' ? 'Add employee' : 'Save changes'}</Button>}
       </>}>
-      <form id="employee-form" className="form-grid" onSubmit={submit} noValidate>
+      <form id="employee-form" onSubmit={submit} noValidate><fieldset disabled={readOnly} className="form-grid" style={{border:0,padding:0,margin:0,minWidth:0}}> 
         {error && <div className="form-error full" role="alert">{error}</div>}
         <Field label="Employee ID" maxLength={40} autoComplete="off" {...bind('employeeCode')} />
         <Field label="Full name" maxLength={120} autoComplete="off" {...bind('fullName')} />
@@ -114,7 +117,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
         {mode === 'create' && (
           <Field label="Temporary password" type="password" autoComplete="new-password" hint={`At least ${MIN_PASSWORD} characters. Change required at first sign-in.`} {...bind('password')} />
         )}
-      </form>
+      </fieldset></form>
     <AuditBar type="employee" id={employee?.id} />
     </Modal>
   );

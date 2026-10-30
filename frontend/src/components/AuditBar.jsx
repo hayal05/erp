@@ -7,7 +7,7 @@ import Table,{Pager} from './Table.jsx';
 const HR=['employee','department','position','salary_profile','attendance_record','leave_request','announcement'];
 export default function AuditBar({type,id,reload=0}){
  const {user}=useAuth(),p=user?.permissions||[];
- const allowed=type==='access_employee'?p.includes('audit.access'):HR.includes(type)?p.includes('audit.hr'):p.includes('audit.hr')||p.includes('audit.finance');
+ const allowed=type==='access_employee'?p.includes('audit.access'):type==='settlement_period'?p.includes('audit.finance'):HR.includes(type)?p.includes('audit.hr'):p.includes('audit.hr')||p.includes('audit.finance');
  if(!id||!allowed)return null;
  return <History key={`${type}-${id}`} type={type} id={id} reload={reload}/>;
 }

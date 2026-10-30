@@ -24,7 +24,12 @@ export const tokenLimit = createLimiter({ windowMs: 60_000, max: 30 });
 
 const router = Router();
 // Router-level guard lets locked sessions in; middleware/lock.js narrows them to the allowlist.
-router.use(noStore, requirePermission('attendance.qr', { allowLocked: true }));
+router.use(noStore, requirePermission('attendance.qr.read', { allowLocked: true }));
+router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('attendance.qr',{allowLocked:true})(req,res,next));
+router.get('/status',wrap(async(req,res)=>{
+  const {rows:[active]}=await query('SELECT created_at,expires_at FROM attendance_tokens WHERE expires_at>now() AND used_at IS NULL ORDER BY created_at DESC LIMIT 1');
+  res.json({active:!!active,createdAt:active?.created_at??null,expiresAt:active?.expires_at??null});
+}));
 
 router.post('/tokens', wrap(async (req, res) => {
   const key = req.session.id;
