@@ -647,3 +647,21 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .settlement-note summary { cursor: pointer; color: var(--accent); min-height: var(--tap); align-content: center; }
 .settlement-note p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; }
 .settlement-payment { border-block: 1px solid var(--border); padding-block: var(--space-md); }
+
+/* Approval review uses shared tables/dialogs and compact field/value rows. */
+.approval-heading h1, .approval-proposal h3 { margin: 0; }
+.approval-heading .field { width: 200px; max-width: 100%; }
+.approvals-page .table { min-width: 1020px; }
+.approvals-page .table th, .approvals-page .table td { white-space: nowrap; }
+.approval-meta { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-sm); margin: 0; }
+.approval-meta dt { color: var(--muted); font-size: .8rem; }
+.approval-meta dd { margin: 0; overflow-wrap: anywhere; }
+.approval-proposal { gap: var(--space-sm); }
+.approval-values { margin: 0; min-width: 0; }
+.approval-values > div { display: grid; grid-template-columns: minmax(100px,1fr) minmax(0,2fr); gap: var(--space-sm); padding-block: 6px; border-bottom: 1px solid var(--border); }
+.approval-values dt { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.approval-values dd { margin: 0; min-width: 0; }
+.approval-value { white-space: pre-wrap; overflow-wrap: anywhere; }
+.approval-nested summary { color: var(--accent); cursor: pointer; min-height: var(--tap); align-content: center; }
+.approval-nested .approval-values > div { grid-template-columns: minmax(0,1fr); gap: 2px; }
+@media (max-width: 400px) { .approval-meta, .approval-values > div { grid-template-columns: minmax(0,1fr); } }
