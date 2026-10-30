@@ -19,11 +19,11 @@ function DashboardContent({data:d}){
   {key:'checkIn',header:'In',render:r=>r.checkIn??'—'},{key:'checkOut',header:'Out',render:r=>r.checkOut??'—'}];
  const leaves=[{key:'employeeName',header:'Employee'},{key:'leaveType',header:'Leave'},{key:'dates',header:'Dates',render:r=><span className="nowrap">{r.start} – {r.end}</span>},{key:'days',header:'Days',align:'num'}];
  return <>
-  <p className="muted">{d.date} · {d.timeZone}</p>
+  <p className="muted">{d.date}</p>
   <div className="dashboard-main-stats">
    <article className="card stack"><h2>Total employees</h2><strong className="dashboard-number">{s.totalEmployees}</strong><WorkspaceLink to="/hr/employees">View employees</WorkspaceLink></article>
-   <article className="card stack"><h2>Payroll · {p.month}</h2><strong className="dashboard-number">{p.totalMinor===null?'—':formatMoney(p.totalMinor)}</strong><span className="muted">{p.status?`${p.currencyCode} net salary · ${p.status} · ${p.employeeCount} employees`:'No payroll generated this month'}</span><WorkspaceLink to={`/hr/payroll?month=${p.month}`}>View payroll</WorkspaceLink></article>
-   <article className="card stack"><h2>Present today</h2><strong className="dashboard-number">{s.presentToday}</strong><span className="muted">Includes late arrivals and employees with an incomplete check-out.</span><WorkspaceLink to="/hr/attendance">View attendance</WorkspaceLink></article>
+   <article className="card stack"><h2>Payroll · {p.month}</h2><strong className="dashboard-number">{p.totalMinor===null?'—':formatMoney(p.totalMinor)}</strong><span className="muted">{p.status?`${p.currencyCode} net salary · ${p.status} · ${p.employeeCount} employees`:'No payroll yet'}</span><WorkspaceLink to={`/hr/payroll?month=${p.month}`}>View payroll</WorkspaceLink></article>
+   <article className="card stack"><h2>Present today</h2><strong className="dashboard-number">{s.presentToday}</strong><WorkspaceLink to="/hr/attendance">View attendance</WorkspaceLink></article>
   </div>
   <div className="dashboard-small-stats">
    {[['Late today',s.lateToday],['Absent today',s.absentToday],['On leave today',s.onLeaveToday],['Pending leave',s.pendingLeave]].map(([label,n])=><article className="card" key={label}><h2>{label}</h2><strong className="dashboard-number">{n}</strong></article>)}
