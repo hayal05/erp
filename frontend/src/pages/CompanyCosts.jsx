@@ -22,15 +22,14 @@ export default function CompanyCosts() {
   }, [page, retry, pageRefresh]);
   const totalButton = (r, kind) => <button type="button" className="salary-cell" onClick={() => setDetail({ period: r, kind })}
     aria-label={`View ${kind === 'salary' ? 'salary paid' : 'company pension'} details for ${r.month}`}>{formatMoney(kind === 'salary' ? r.salaryPaidMinor : r.companyPensionMinor)}</button>;
-  return <section className="card stack" aria-labelledby="company-costs-title">
-    <div className="row between"><h1 id="company-costs-title">Company costs</h1><Link to={workspacePath('/hr/payroll',pathname)}>Back to payroll</Link></div>
-    <p className="muted">Paid payrolls only. Select a total for employee details.</p>
+  return <section className="stack company-costs-page" aria-labelledby="company-costs-title">
+    <div className="row between"><div className="row"><h1 id="company-costs-title">Company costs</h1><span className="muted cost-scope">Paid payrolls</span></div><Link className="btn sm" to={workspacePath('/hr/payroll',pathname)}>Back to payroll</Link></div>
     <Table caption="Monthly company payroll costs" columns={[
-      { key: 'month', header: 'Payroll month' }, { key: 'paidOn', header: 'Paid on' }, { key: 'currency', header: 'Currency' },
+      { key: 'month', header: 'Month' }, { key: 'paidOn', header: 'Paid on' }, { key: 'currency', header: 'Currency' },
       { key: 'employeeCount', header: 'Employees', align: 'num' },
       { key: 'salaryPaidMinor', header: 'Salary paid (net)', align: 'num', render: r => totalButton(r, 'salary') },
       { key: 'companyPensionMinor', header: 'Company pension', align: 'num', render: r => totalButton(r, 'pension') },
-    ]} rows={state.items} loading={state.loading} error={state.error} onRetry={() => setRetry(n => n + 1)} empty="No paid payrolls yet. Mark a payroll paid to include its costs here." />
+    ]} rows={state.items} loading={state.loading} error={state.error} onRetry={() => setRetry(n => n + 1)} empty="No paid payrolls yet." />
     <Pager page={page} pageSize={SIZE} total={state.total} onPage={setPage} disabled={state.loading} />
     {detail && <CostDetails key={`${detail.period.id}-${detail.kind}`} {...detail} onClose={() => setDetail(null)} />}
   </section>;
@@ -48,16 +47,15 @@ function CostDetails({ period, kind, onClose }) {
   }, [period.id, page, retry, pageRefresh]);
   const salary = kind === 'salary';
   const money = (key, header) => ({ key, header, align: 'num', render: r => formatMoney(r[key]) });
-  const columns = [{ key: 'employeeCode', header: 'Employee ID' }, { key: 'employeeName', header: 'Employee name' },
+  const columns = [{ key: 'employeeCode', header: 'Employee ID' }, { key: 'employeeName', header: 'Employee' },
     ...salary ? [money('basicMinor','Basic salary'), money('allowanceMinor','Allowance'), money('grossMinor','Gross salary'),
       { key: 'deductions', header: 'Employee deductions', align: 'num', render: r => formatMoney(r.grossMinor - r.netMinor) }, money('netMinor','Salary paid (net)')]
       : [money('pensionableMinor','Pensionable salary'), { key: 'employerPensionRate', header: 'Company rate', align: 'num', render: r => `${r.employerPensionRate}%` }, money('employerPensionMinor','Company contribution')]];
   return <Modal open wide title={`${salary ? 'Salary paid' : 'Company pension'} · ${period.month}`} onClose={onClose} footer={<Button onClick={onClose}>Close</Button>}>
-    <div className="stack"><p>Paid on {period.paidOn} · {period.currency} · {period.employeeCount} employees</p>
-      <p><strong>Monthly total: {formatMoney(salary ? period.salaryPaidMinor : period.companyPensionMinor)} {period.currency}</strong></p>
+    <div className="stack cost-details"><div className="row between cost-detail-meta"><span>Paid on {period.paidOn}</span><span>{period.currency} · {period.employeeCount} employees</span></div>
+      <dl className="cost-totals"><div><dt>{salary ? 'Net salary paid' : 'Company pension'}</dt><dd>{formatMoney(salary ? period.salaryPaidMinor : period.companyPensionMinor)} {period.currency}</dd></div>{salary && <><div><dt>Gross salary</dt><dd>{formatMoney(period.grossMinor)} {period.currency}</dd></div><div><dt>Employer cost</dt><dd>{formatMoney(period.employerCostMinor)} {period.currency}</dd></div></>}</dl>
       <Table caption={salary ? 'Employee salary payments' : 'Employer pension contributions'} columns={columns} rows={state.items} loading={state.loading} error={state.error} onRetry={() => setRetry(n => n + 1)} empty="No employee entries" />
       <Pager page={page} pageSize={DETAIL_SIZE} total={state.total} onPage={setPage} disabled={state.loading} />
-      {salary && <p className="muted">Gross salary: {formatMoney(period.grossMinor)} {period.currency}. Total employer cost: {formatMoney(period.employerCostMinor)} {period.currency}.</p>}
     </div>
   </Modal>;
 }

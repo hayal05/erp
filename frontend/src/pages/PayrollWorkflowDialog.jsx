@@ -32,7 +32,7 @@ export default function PayrollWorkflowDialog({ action, month, period, total, on
   </>}>
     <form id="payroll-workflow" className="stack" onSubmit={submit} noValidate>
       {action === 'generate' && <p>Generate payroll for all active employees?</p>}
-      {action === 'regenerate' && <p>Replace this draft’s salary table using current active employees, saved salary profiles, tax and pension settings, deductions and attendance? Manual salary edits in this draft will be replaced. One-time deductions will be reapplied once. Review the regenerated table before approval.</p>}
+      {action === 'regenerate' && <p>Rebuild this draft from active employees, salary profiles, taxes, pension, deductions and attendance? Manual salary edits will be replaced; one-time deductions are reapplied once. Review before approval.</p>}
       {action === 'approve' && <p>Approve {total} entries? Salary amounts and deductions will be locked.</p>}
       {action === 'pay' && <><p>Mark this payroll paid? This records payment; no money is transferred.</p><Field label="Payment date" type="date" min="1000-01-01" max="9999-12-31" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} disabled={busy} error={dateError} /></>}
       {error && <p className="form-error" role="alert">{error}</p>}

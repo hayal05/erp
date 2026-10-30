@@ -1,7 +1,7 @@
 import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {useAuth} from '../api/auth.jsx';
 import {allowed} from '../api/workspaces.js';
-import {workspacePath,workspaceArea} from '../api/workspaces.js';
+import {workspacePath} from '../api/workspaces.js';
 import PayrollExportButton from './PayrollExportButton.jsx';
 import PayrollWorkflowDialog from './PayrollWorkflowDialog.jsx';
 import { localDate, validMonth, workflowAction } from './payrollWorkflowView.js';
@@ -99,10 +99,10 @@ function SalaryEditDialog({ period, entry, field, onClose, onSaved, onConflict }
   }
   return <Modal open title={`Edit salary — ${entry.employeeName}`} onClose={() => !busy && onClose()} footer={<><Button onClick={onClose} disabled={busy}>Cancel</Button><Button variant="primary" form="salary-entry-edit" type="submit" busy={busy}>Save and recalculate</Button></>}>
     <form id="salary-entry-edit" className="stack" onSubmit={submit} noValidate>
-      <p>{entry.employeeCode} · {period.month}. This payroll only.</p>
+      <p className="muted">{entry.employeeCode} · {period.month}</p>
       {error && <p className="form-error" role="alert">{error}</p>}
-      {['basicMinor','allowanceMinor'].map((key) => <Field key={key} label={key === 'basicMinor' ? 'Basic salary' : 'Allowance'} inputMode="decimal" autoFocus={field === key} value={form[key]} disabled={busy} error={errors[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />)}
-      <p className="muted">Totals recalculate on save. Salary profile stays unchanged.</p>
+      <div className="form-grid">{['basicMinor','allowanceMinor'].map((key) => <Field key={key} label={key === 'basicMinor' ? 'Basic salary' : 'Allowance'} inputMode="decimal" autoFocus={field === key} value={form[key]} disabled={busy} error={errors[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />)}</div>
+      <small className="muted">This payroll only; salary profile unchanged.</small>
     </form>
   </Modal>;
 }
