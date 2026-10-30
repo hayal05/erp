@@ -361,7 +361,8 @@ ul.form-error { margin: 0; padding-left: 28px; }
 
 
 /* Persistent audit footer. Its measured height reserves space in the main content. */
-.hr-shell { --audit-bar-height: 62px; }
+.hr-shell { --audit-bar-height: 0px; }
+.hr-shell.has-audit-footer { --audit-bar-height: 62px; }
 .hr-shell .content { padding-bottom: calc(var(--audit-bar-height) + 24px); }
 .audit-bottom-bar { position: fixed; z-index: 25; left: 240px; right: 0; bottom: 0;
   background: var(--bg-sidebar); border-top: 1px solid var(--border); box-shadow: 0 -4px 18px #0002;

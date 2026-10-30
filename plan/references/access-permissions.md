@@ -255,3 +255,17 @@ icon button on phones. Titles, record references, descriptions and the Refresh b
 are removed from the collapsed bar. The expanded log retains the detail table and
 pagination. Clicking any management sidebar function reloads its audit data and
 resets log pagination, including re-clicking the current function; no polling is added.
+
+
+### Audit footer visibility
+
+The footer is shown only for editable administrative sections when the current user
+has a corresponding write capability. Dashboard/workspace home, QR Attendance,
+Leave, Company Costs, Approvals and unknown routes do not mount it. Read-only views
+such as HR's payroll settings also omit it. Editable employee, organization,
+attendance correction, payroll, financial settings, settlement, announcement and
+access-management pages retain it according to the current user's permissions.
+
+Hidden footers perform no audit fetch and reserve no footer space. Existing record
+history cards remain available where provided. Active-section re-click refresh and
+the compact two-row layout continue on pages that display the footer.

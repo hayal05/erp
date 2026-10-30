@@ -34,6 +34,7 @@ export default function HrLayout() {
     setMenuOpen(false);
   };
   const now = useClock();
+  const audit = auditScope(pathname,user);
 
   useEffect(() => { setMenuOpen(false); }, [pathname]); // close the phone drawer after navigating
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function HrLayout() {
   if (mode === 'locked') return <div className="locked-shell"><Outlet /></div>;
 
   return (
-    <div className="hr-shell">
+    <div className={`hr-shell${audit ? ' has-audit-footer' : ''}`}>
       <a className="skip-link" href="#main">Skip to content</a>
 
       <header className="topbar">
@@ -83,7 +84,7 @@ export default function HrLayout() {
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
       <main id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet /></main>
-      <AuditBottomBar key={`${pathname}:${auditVisit}`} scope={auditScope(pathname)} />
+      {audit && <AuditBottomBar key={`${pathname}:${auditVisit}`} scope={audit} />}
     </div>
   );
 }
