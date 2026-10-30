@@ -27,7 +27,7 @@ function AccessList(){
  return <section className="stack access-management-page"><h1>Access Management</h1>
   <form className="row" onSubmit={e=>{e.preventDefault();setQuery(search.trim());setPage(1);}}><Field label="Name, username, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /><Button type="submit">Search</Button><Button onClick={refresh} disabled={data.loading}>Refresh</Button></form>
   <Table caption="Employee access" columns={[
-   {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'email',header:'Contact email'},{key:'department',header:'Department'},{key:'position',header:'Position'},
+   {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'department',header:'Department'},{key:'position',header:'Position'},
    {key:'active',header:'Account',render:r=>r.active?'Active':'Inactive'},
    {key:'accessRoles',header:'Additional access',render:r=>r.accessRoles.map(roleName).join(', ')||'Employee only'},
    {key:'actions',header:'Actions',render:r=><Button size="sm" onClick={()=>setSelected(r)}>{canManage?'Manage access':'View access'}</Button>},
