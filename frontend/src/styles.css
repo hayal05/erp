@@ -464,3 +464,8 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
   .employees-page .employee-search { width: 100%; max-width: 280px; }
   .employees-page .employee-search input { min-height: var(--tap); }
 }
+
+/* Keep search icons inside the right edge without covering text or intercepting clicks. */
+.search-control { position: relative; display: block; min-width: 0; }
+.field .search-control > input[type="search"] { padding-right: 40px; }
+.search-control > .search-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }

@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { Search } from 'lucide-react';
 
 // Labelled form control with hint + error wiring (aria-invalid / aria-describedby).
 //   <Field label="Email" type="email" value={v} onChange={...} error={fields.email} />
@@ -18,6 +19,7 @@ export default function Field({ label, error, hint, as = 'input', options = [], 
       </select>
     );
   } else if (as === 'textarea') control = <textarea {...common} placeholder={placeholder} />;
+  else if (rest.type === 'search') control = <span className="search-control"><input {...common} placeholder={placeholder} /><Search className="search-icon" size={18} aria-hidden="true" focusable="false" /></span>;
   else control = <input {...common} placeholder={placeholder} />;
 
   return (
