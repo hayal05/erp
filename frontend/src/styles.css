@@ -99,6 +99,13 @@ a { color: var(--accent); }
 .table .state.error { color: var(--danger); }
 .pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; color: var(--muted); }
 
+/* Keep employee columns readable; the table scrolls within the page on narrow screens. */
+.employees-page { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.employees-page > .table-wrap { min-width: 0; max-width: 100%; }
+.employees-page > .table-wrap .table { min-width: 1120px; }
+.employees-page > .table-wrap th, .employees-page > .table-wrap td { white-space: nowrap; }
+.employees-page > .table-wrap .row { flex-wrap: nowrap; }
+
 /* ---- Status badges (colour + text, never colour alone) ---- */
 .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600;
   border: 1px solid currentColor; background: transparent; }
