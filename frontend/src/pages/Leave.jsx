@@ -29,12 +29,12 @@ export default function Leave() {
   }, [toast, pageRefresh]);
 
   return (
-    <section className="stack">
+    <section className="stack leave-page">
       <div className="row between">
         <h1>Leave</h1>
         <div className="row" role="group" aria-label="Leave sections">
-          <Button variant={tab === 'requests' ? 'primary' : 'default'} aria-pressed={tab === 'requests'} onClick={() => setTab('requests')}>Requests</Button>
-          <Button variant={tab === 'entitlements' ? 'primary' : 'default'} aria-pressed={tab === 'entitlements'} onClick={() => setTab('entitlements')}>Entitlements</Button>
+          <Button size="sm" variant={tab === 'requests' ? 'primary' : 'default'} aria-pressed={tab === 'requests'} onClick={() => setTab('requests')}>Requests</Button>
+          <Button size="sm" variant={tab === 'entitlements' ? 'primary' : 'default'} aria-pressed={tab === 'entitlements'} onClick={() => setTab('entitlements')}>Entitlements</Button>
         </div>
       </div>
       {tab === 'requests' ? <Requests lookups={lookups} /> : <Entitlements employees={lookups.employees} />}
@@ -68,16 +68,16 @@ function Requests({ lookups }) {
   const filtered = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS);
 
   const columns = [
-    { key: 'employee', header: 'Employee', render: (r) => <><strong>{r.employee}</strong><br /><small className="muted">{r.code}</small></> },
+    { key: 'employee', header: 'Employee', render: (r) => <span className="leave-person"><strong>{r.employee}</strong><small className="muted">{r.code}</small></span> },
     { key: 'type', header: 'Type' },
     { key: 'dates', header: 'Dates', className: 'nowrap' },
     { key: 'days', header: 'Days', align: 'num' },
-    { key: 'reason', header: 'Reason', render: (r) => r.reason || '—' },
+    { key: 'reason', header: 'Reason', render: (r) => r.reason ? <details className="leave-text"><summary>View reason</summary><p>{r.reason}</p></details> : '—' },
     { key: 'status', header: 'Status', render: (r) => (
-      <>
+      <div className="leave-status">
         <Badge tone={r.tone}>{r.status}</Badge>
-        {r.remarks && <><br /><small className="muted">HR: {r.remarks}</small></>}
-      </>
+        {r.remarks && <details className="leave-text"><summary>Decision note</summary><p>{r.remarks}</p></details>}
+      </div>
     ) },
     { key: 'act', header: <span className="sr-only">Decide</span>, className: 'nowrap', render: (r) => canManage && r.canDecide && (
       <span className="row">
@@ -89,15 +89,15 @@ function Requests({ lookups }) {
 
   return (
     <>
-      <div className="toolbar toolbar-4">
-        <Field as="select" label="Status" placeholder="All statuses" value={filters.status} onChange={setFilter('status')} options={STATUS_FILTER} />
-        <Field as="select" label="Employee" placeholder="All employees" value={filters.employeeId} onChange={setFilter('employeeId')} options={lookups.employees.map(empOption)} />
-        <Field as="select" label="Department" placeholder="All departments" value={filters.departmentId} onChange={setFilter('departmentId')}
+      <div className="leave-filters">
+        <Field as="select" hideLabel label="Status" placeholder="All statuses" value={filters.status} onChange={setFilter('status')} options={STATUS_FILTER} />
+        <Field as="select" hideLabel label="Employee" placeholder="All employees" value={filters.employeeId} onChange={setFilter('employeeId')} options={lookups.employees.map(empOption)} />
+        <Field as="select" hideLabel label="Department" placeholder="All departments" value={filters.departmentId} onChange={setFilter('departmentId')}
           options={lookups.departments.map((d) => ({ value: d.id, label: d.name }))} />
-        <Field as="select" label="Year" placeholder="All years" value={filters.year} onChange={setFilter('year')}
+        <Field as="select" hideLabel label="Year" placeholder="All years" value={filters.year} onChange={setFilter('year')}
           options={[thisYear - 1, thisYear, thisYear + 1].map((y) => ({ value: y, label: String(y) }))} />
+        {filtered && <Button size="sm" onClick={() => { setFilters(NO_FILTERS); setPage(1); }}>Reset filters</Button>}
       </div>
-      {filtered && <div className="row"><Button onClick={() => { setFilters(NO_FILTERS); setPage(1); }}>Reset filters</Button></div>}
 
       <Table caption="Leave requests" columns={columns.filter(c=>canManage||c.key!=='act')} rows={data.items.map(queueRow)} loading={state.loading} error={state.error} onRetry={refresh}
         empty={filters.status === 'pending' && !filtered ? 'No requests are waiting for a decision' : 'No leave requests match these filters'} />
@@ -146,16 +146,15 @@ function Entitlements({ employees }) {
 
   return (
     <>
-      <div className="toolbar toolbar-2">
-        <Field as="select" label="Employee" placeholder="Choose an employee…" value={employeeId} onChange={(e) => { setEmployeeId(e.target.value); setYear(null); }} options={employees.map(empOption)} />
-        {years.length > 0 && <Field as="select" label="Year" value={year ?? data.year} onChange={(e) => setYear(Number(e.target.value))} options={years} />}
+      <div className="leave-filters leave-entitlement-filters">
+        <Field as="select" hideLabel label="Employee" placeholder="Choose an employee…" value={employeeId} onChange={(e) => { setEmployeeId(e.target.value); setYear(null); }} options={employees.map(empOption)} />
+        {years.length > 0 && <Field as="select" hideLabel label="Year" value={year ?? data.year} onChange={(e) => setYear(Number(e.target.value))} options={years} />}
       </div>
-      {!employeeId ? <p className="muted">Choose an employee.</p> : (
+      {employeeId && (
         <Table caption={`Leave balances of ${employee?.fullName ?? 'employee'}`} columns={columns.filter(c=>canManage||c.key!=='act')} rowKey="leaveTypeId" rows={data.items}
           loading={state.loading} error={state.error} onRetry={refresh} empty="No leave types" />
       )}
-      {employeeId && data.items.some((b) => !b.hasBalance) && <p className="muted">Unpaid leave has no annual limit.</p>}
-      {data.items.some((b) => b.hasBalance) && <p className="muted">Working days only. Pending requests reserve the balance.</p>}
+      {data.items.some((b) => b.hasBalance) && <small className="muted">Working days only; pending requests reserve balance.</small>}
 
       {canManage && editing && <EntitlementDialog key={`${employeeId}-${editing.leaveTypeId}-${data.year}`} employee={employee} balance={editing} year={data.year}
         onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} />}

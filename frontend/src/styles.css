@@ -566,3 +566,24 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 @media (max-width: 1100px) { .attendance-filters.archive { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 @media (max-width: 700px) { .attendance-filters, .attendance-filters.archive { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 400px) { .attendance-filters, .attendance-filters.archive { grid-template-columns: minmax(0,1fr); } }
+
+/* Compact leave queues and decision summaries; long notes expand in place. */
+.leave-page > .row h1 { margin: 0; }
+.leave-filters { display: flex; align-items: end; flex-wrap: wrap; gap: var(--space-sm); }
+.leave-filters .field { flex: 1 1 150px; max-width: 260px; }
+.leave-entitlement-filters .field:first-child { flex-basis: 260px; }
+.leave-entitlement-filters .field + .field { flex: 0 1 120px; }
+.leave-page .table { min-width: 900px; }
+.leave-page .table .row { flex-wrap: nowrap; }
+.leave-person { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.leave-status, .leave-request-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.leave-text { min-width: 120px; max-width: 320px; }
+.leave-text summary { color: var(--accent); cursor: pointer; font-size: .85rem; min-height: var(--tap); display: list-item; align-content: center; }
+.leave-text p { margin: 4px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.leave-request-summary { display: grid; gap: var(--space-xs); }
+.leave-request-meta, .leave-request-summary > .muted { font-size: .85rem; }
+.leave-request-reason { overflow-wrap: anywhere; white-space: pre-wrap; }
+.leave-balance-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--space-sm); margin: 0; padding-block: var(--space-sm); border-block: 1px solid var(--border); }
+.leave-balance-summary dt { color: var(--muted); font-size: .8rem; }
+.leave-balance-summary dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 400px) { .leave-balance-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
