@@ -681,3 +681,28 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .access-reason { min-width: 100px; max-width: 280px; }
 .access-reason summary { cursor: pointer; color: var(--accent); min-height: var(--tap); align-content: center; }
 .access-reason p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Compact posting lists, feeds and applicant snapshots. */
+.posting-heading h1, .announcement-feed h2, .applicant-review h2 { margin: 0; }
+.posting-controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-sm); min-width: 0; }
+.posting-controls .field { width: 180px; max-width: 100%; }
+.announcements-page .table { min-width: 800px; }
+.announcements-page .table .row { flex-wrap: nowrap; }
+.announcement-text { min-width: 180px; max-width: 360px; }
+.announcement-text p, .announcement-feed-item p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+.announcement-text summary, .announcement-feed-item summary, .applicant-extra > summary { cursor: pointer; color: var(--accent); min-height: var(--tap); align-content: center; overflow-wrap: anywhere; }
+.announcement-feed { gap: var(--space-sm); }
+.announcement-feed-item { padding-bottom: var(--space-sm); border-bottom: 1px solid var(--border); }
+.announcement-feed-item > small { font-size: .8rem; }
+.vacancies-page .salary-cell { justify-content: flex-start; text-align: left; }
+.vacancy-applications .table { min-width: 840px; }
+.applicant-review { gap: var(--space-sm); }
+.applicant-review h2 { font-size: 1rem; }
+.applicant-review .profile-facts { grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-sm); }
+.applicant-review .profile-facts dd { margin-top: 2px; }
+.applicant-extra > .table-wrap { margin-top: var(--space-sm); }
+.applicant-extra .table { min-width: 500px; }
+.applicant-review-actions { display: flex; align-items: end; flex-wrap: wrap; gap: var(--space-sm); padding-top: var(--space-sm); border-top: 1px solid var(--border); }
+.applicant-review-actions .field { width: 220px; max-width: 100%; }
+.profile-back { justify-self: start; }
+@media (max-width: 400px) { .applicant-review .profile-facts { grid-template-columns: minmax(0,1fr); } }
