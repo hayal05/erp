@@ -15,7 +15,7 @@ function describe(e) {
 // Redirect after success is handled by LoginRoute in App.jsx (it reads the saved `from` page).
 export default function Login() {
   const { login } = useAuth();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ username: '', password: '' });
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -28,7 +28,7 @@ export default function Login() {
     e.preventDefault();
     if (busy) return; // ignore double taps
     const missing = {};
-    if (!form.email.trim()) missing.email = 'Enter your email';
+    if (!form.username.trim()) missing.username = 'Enter your username';
     if (!form.password) missing.password = 'Enter your password';
     setFields(missing);
     setError('');
@@ -36,7 +36,7 @@ export default function Login() {
 
     setBusy(true);
     try {
-      await login(form.email, form.password); // on success the route re-renders and redirects
+      await login(form.username, form.password); // on success the route re-renders and redirects
     } catch (err) {
       setFields(err.code === 'validation' ? err.fields : {});
       setError(describe(err));
@@ -54,11 +54,11 @@ export default function Login() {
         {error && <div id={errId} className="form-error" role="alert">{error}</div>}
 
         <label className="field">
-          <span>Email</span>
-          <input type="email" name="email" autoComplete="username" inputMode="email" autoCapitalize="none"
-            autoCorrect="off" spellCheck={false} autoFocus value={form.email} onChange={set('email')}
-            aria-invalid={!!fields.email} maxLength={254} />
-          {fields.email && <small className="field-error">{fields.email}</small>}
+          <span>Username</span>
+          <input type="text" name="username" autoComplete="username" inputMode="text" autoCapitalize="none"
+            autoCorrect="off" spellCheck={false} autoFocus value={form.username} onChange={set('username')}
+            aria-invalid={!!fields.username} maxLength={254} />
+          {fields.username && <small className="field-error">{fields.username}</small>}
         </label>
 
         <label className="field">

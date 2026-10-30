@@ -18,7 +18,7 @@ router.post('/',validate({currentPassword:field(),newPassword:field(),confirmPas
   const b=req.body,problem=passwordProblem(b.newPassword);
   if(problem)throw new HttpError(400,problem,'validation',{fields:{newPassword:problem}});
   if(b.newPassword!==b.confirmPassword)throw new HttpError(400,'New passwords do not match','validation',{fields:{confirmPassword:'Passwords must match'}});
-  const {rows:[user]}=await query('SELECT id,role,email,full_name,password_hash,must_change_password FROM users WHERE id=$1',[req.user.id]);
+  const {rows:[user]}=await query('SELECT id,role,username,email,full_name,password_hash,must_change_password FROM users WHERE id=$1',[req.user.id]);
   if(!user || !await verifyPassword(b.currentPassword,user.password_hash)){
     passwordChangeLimit.fail(key);
     throw new HttpError(400,'Current password is incorrect','invalid_password',{fields:{currentPassword:'Current password is incorrect'}});
@@ -35,6 +35,6 @@ router.post('/',validate({currentPassword:field(),newPassword:field(),confirmPas
     await audit(db,{actorId:user.id,action:'auth.password.change',entityType:'user',entityId:user.id,details:{temporaryPasswordReplaced:user.must_change_password}});
   });
   passwordChangeLimit.reset(key);
-  res.json({user:withAccess({id:Number(user.id),role:user.role,email:user.email,fullName:user.full_name,mustChangePassword:false},await loadAccessRoles({query},user.id)),csrfToken,locked:false});
+  res.json({user:withAccess({id:Number(user.id),role:user.role,username:user.username,email:user.email,fullName:user.full_name,mustChangePassword:false},await loadAccessRoles({query},user.id)),csrfToken,locked:false});
 }));
 export default router;

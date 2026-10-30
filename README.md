@@ -34,7 +34,7 @@ Edit `.env` (it lives at the **repository root**; the backend and Vite both read
 - `DATABASE_URL`: your local PostgreSQL URL.
 - `SESSION_SECRET`: required, at least 32 characters. Generate one with
   `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
-- `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`: the first HR login (password: 10+ characters).
+- `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD`: the first Admin login (password: 10+ characters). `SEED_ADMIN_EMAIL` is optional contact information; if username is omitted, the seed script uses that email as the username for compatibility.
 - Leave `FRONTEND_URL=http://localhost:5173`, `VITE_API_URL=http://localhost:4000` and `COOKIE_SAMESITE=lax` as they are for local work.
 
 ```bash
@@ -105,7 +105,7 @@ All variables are documented, with comments, in `.env.example`. Summary:
 | `COOKIE_SAMESITE` | API | `lax` (default, and what the Blueprint sets: app and API share one origin). `none` is only for a legacy split deployment of two cross-site hosts. |
 | `COMPANY_NAME`, `COMPANY_TIMEZONE` | API | Shown on the QR page; the timezone decides work dates and lateness (default `Africa/Addis_Ababa`). |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | API only | Selfie storage. Blank = app boots, selfie scans return 503. |
-| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` | one-off | Only read by the seed script. Never stored in Render. |
+| `SEED_ADMIN_USERNAME`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` | one-off | Only read by the seed script. Never stored in Render. |
 | `VITE_API_URL` | frontend build | Local dev only (`http://localhost:4000`). **Leave unset on Render**: empty means the frontend calls the same origin it was loaded from. Baked in at build time; only `VITE_` values reach the browser. |
 | `TEST_DATABASE_URL` | tests | Disposable database, name must contain `test`. |
 
@@ -355,3 +355,30 @@ Honest summary of what has and has not been proven (details in `plan/project sta
 - **Departments, positions and default salaries (Phase 6):** the database, API and tests for tasks 6.1 to 6.3 were run against a real PostgreSQL server. Tasks 6.4 to 6.11 (department and employee API changes, their database tests, and the Departments, department detail and employee form pages) were written in an environment with no PostgreSQL and no installable packages: **their tests and the frontend build have not been run, and the new pages have never been opened in a browser.** The whole-flow check on a fresh database and on a phone (task 6.12) is still to do. Run section 2's commands and click through the new pages before relying on them.
 - MVP shifts are same-day only (a shift cannot cross midnight).
 - Backups, selfie retention/deletion, the manual attendance fallback and the same-day-shift limit are documented in section 7. Those procedures are written from the code and standard tooling; none was run against a real Neon/Cloudinary account.
+
+
+### Employee usernames and optional contact email
+
+After migration 013, sign in with **Username**, not contact email. HR/Admin enters a
+required unique username when registering an employee. Usernames are case-insensitive,
+3–254 characters, using letters, numbers and `. _ - @ +` without spaces. Email is
+optional contact information and can be changed, removed or shared without changing
+login. HR/Finance registration/edits retain the existing approval rules. Only general
+Admin can change the username of an account that has privileged access.
+
+The migration copies existing email login names into a separate username column,
+so existing credentials keep working. Existing users can continue entering their old
+email-shaped username until HR/Admin assigns another username. Changing contact email
+does not change that username. No password reset is required by this migration.
+The API accepts the old login request's `email` key during rollout, but interprets it
+as a username and never looks up contact email.
+
+For new Admin setup, optionally set `SEED_ADMIN_USERNAME`; `SEED_ADMIN_EMAIL` remains
+optional contact information. Existing recovery commands that specify only the old
+`SEED_ADMIN_EMAIL` still identify that original username. Once a username is changed,
+use the current `SEED_ADMIN_USERNAME` for recovery. Do not put seed credentials into
+Render or rerun seeding on every deployment.
+
+Pending employee-creation proposals submitted before this schema change may need to
+be withdrawn and resubmitted with an explicit username. Run migration 013 before
+starting the updated server; the configured Render start command runs migrations.

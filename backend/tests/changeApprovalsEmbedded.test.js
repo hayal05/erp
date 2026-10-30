@@ -19,7 +19,7 @@ before(async()=>{
  shift=(await admin.post('/api/shifts').send({name:'Day',startTime:'09:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:0})).body.id;
  department=(await admin.post('/api/departments').send({name:'Original'})).body.id;
  for(const [code,role]of [['hr','hr'],['hr2','hr'],['fin','finance'],['fin2','finance'],['plain',null]]){
-  const r=await admin.post('/api/employees').send({employeeCode:code,fullName:code,email:code+'@approval.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,departmentId:department});assert.equal(r.status,201,JSON.stringify(r.body));if(code==='plain')person=r.body;if(code==='hr')hrId=r.body.userId;if(code==='fin')finId=r.body.userId;
+  const r=await admin.post('/api/employees').send({employeeCode:code,fullName:code,username: code+'@approval.test', email:code+'@approval.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,departmentId:department});assert.equal(r.status,201,JSON.stringify(r.body));if(code==='plain')person=r.body;if(code==='hr')hrId=r.body.userId;if(code==='fin')finId=r.body.userId;
   await q('UPDATE users SET must_change_password=false WHERE id=$1',[r.body.userId]);
   if(role)await q('INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,$2,$3)',[r.body.userId,role,root]);
  }
@@ -58,7 +58,7 @@ test('stale changes are refused; rejection and withdrawal never modify live reco
  assert.equal((await q('SELECT name FROM departments WHERE id=$1',[department])).rows[0].name,'Latest Admin');
 });
 test('durable employee creation encrypts passwords and replays on a fresh app instance',async()=>{
- const body={employeeCode:'new-person',fullName:'New person',email:'new@approval.test',password:'temporary-private-password',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,departmentId:department};
+ const body={employeeCode:'new-person',fullName:'New person',username: 'new@approval.test', email:'new@approval.test',password:'temporary-private-password',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,departmentId:department};
  const id=await pending(await hr.post('/api/employees').send(body));
  const row=(await q('SELECT * FROM change_requests WHERE id=$1',[id])).rows[0];assert.ok(row.payload_cipher);assert.ok(!JSON.stringify(row).includes(body.password));assert.equal(row.payload_preview.password,'[protected]');
  assert.equal((await q('SELECT 1 FROM users WHERE email=$1',[body.email])).rows.length,0);

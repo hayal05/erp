@@ -29,7 +29,7 @@ test('only hr and employee roles exist (no kiosk role)', { skip }, async () => {
 
 test('email is unique case-insensitively', { skip }, async () => {
   await addUser('dup@x.com');
-  await rejects(`INSERT INTO users (email, full_name, password_hash, role) VALUES ('DUP@x.com','D','x','employee')`, [], /users_email_key/);
+  await rejects(`INSERT INTO users (email, full_name, password_hash, role) VALUES ('DUP@x.com','D','x','employee')`, [], /users_username_key/);
 });
 
 test('shifts must be same-day with valid work days', { skip }, async () => {

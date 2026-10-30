@@ -9,25 +9,27 @@ import { verifyPassword } from '../services/password.js';
 import { audit } from '../services/audit.js';
 
 const FIFTEEN_MIN = 15 * 60_000;
-// Failures only. 5 per email+IP stops guessing one account; 20 per IP stops spraying many emails.
+// Failures only. 5 per username+IP stops guessing one account; 20 per IP stops spraying many usernames.
 export const loginLimits = {
   pair: createLimiter({ windowMs: FIFTEEN_MIN, max: 5 }),
   ip: createLimiter({ windowMs: FIFTEEN_MIN, max: 20 }),
 };
 
-const publicUser = (u) => ({ id: Number(u.id), email: u.email, fullName: u.full_name, role: u.role, mustChangePassword: !!u.must_change_password });
+const publicUser = (u) => ({ id: Number(u.id), username:u.username,email: u.email, fullName: u.full_name, role: u.role, mustChangePassword: !!u.must_change_password });
 const router = Router();
 router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 router.use('/password', changePasswordRoutes);
 
 router.post('/login', wrap(async (req, res) => {
-  const { email, password } = req.body ?? {};
-  if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password
-      || email.length > 254 || password.length > 256) {
-    throw new HttpError(400, 'Email and password are required', 'validation');
+  const { password } = req.body ?? {};
+  // Legacy request field is accepted during rollout, but never queries contact email.
+  const username = req.body?.username ?? req.body?.email;
+  if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password
+      || username.length > 254 || password.length > 256) {
+    throw new HttpError(400, 'Username and password are required', 'validation');
   }
-  const normalized = email.trim().toLowerCase();
+  const normalized = username.trim().toLowerCase();
   const ipKey = req.ip;
   const pairKey = `${req.ip}|${normalized}`;
 
@@ -39,14 +41,14 @@ router.post('/login', wrap(async (req, res) => {
   }
 
   const { rows: [user] } = await query(
-    'SELECT id, email, full_name, role, password_hash, is_active, must_change_password FROM users WHERE lower(email) = $1', [normalized]);
+    'SELECT id, username, email, full_name, role, password_hash, is_active, must_change_password FROM users WHERE lower(username) = $1', [normalized]);
   // Always runs a bcrypt comparison (dummy when the account is unknown) so timing is uniform.
   const ok = await verifyPassword(password, user?.password_hash);
   if (!user || !ok || !user.is_active) {
     loginLimits.ip.fail(ipKey);
     loginLimits.pair.fail(pairKey);
-    // One message for unknown email, wrong password and deactivated account.
-    throw new HttpError(401, 'Invalid email or password', 'invalid_credentials');
+    // One message for unknown username, wrong password and deactivated account.
+    throw new HttpError(401, 'Invalid username or password', 'invalid_credentials');
   }
 
   loginLimits.pair.reset(pairKey);

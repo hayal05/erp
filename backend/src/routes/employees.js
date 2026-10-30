@@ -25,14 +25,14 @@ const FROM = `FROM employees e
   LEFT JOIN departments d ON d.id = e.department_id
   JOIN shifts s ON s.id = e.shift_id
   LEFT JOIN positions p ON p.id = e.position_id`;
-const COLUMNS = `e.id, e.employee_code, e.user_id, u.full_name, u.email, e.phone, e.department_id,
+const COLUMNS = `e.id, e.employee_code, e.user_id, u.full_name, u.username, u.email, e.phone, e.department_id,
   d.name AS department_name, e.position_id, p.name AS position_name, e.job_title, to_char(e.start_date, 'YYYY-MM-DD') AS start_date,
   e.employment_type, e.status, e.shift_id, s.name AS shift_name, e.created_at`;
 
 const optId = (x) => (x == null ? null : Number(x));
 const toEmployee = (r) => ({
   id: Number(r.id), employeeCode: r.employee_code, userId: Number(r.user_id),
-  fullName: r.full_name, email: r.email, phone: r.phone,
+  fullName: r.full_name, username: r.username, email: r.email, phone: r.phone,
   departmentId: optId(r.department_id), departmentName: r.department_name,
   positionId: optId(r.position_id), positionName: r.position_name ?? null, jobTitle: r.job_title,
   startDate: r.start_date, employmentType: r.employment_type, status: r.status,
@@ -51,7 +51,7 @@ router.get('/', validate(employeeListQuery, 'query'), wrap(async (req, res) => {
   if (q.search) {
     params.push(likePattern(q.search));
     const n = `$${params.length}`;
-    where.push(`(u.full_name ILIKE ${n} ESCAPE '\\' OR u.email ILIKE ${n} ESCAPE '\\' OR e.employee_code ILIKE ${n} ESCAPE '\\')`);
+    where.push(`(u.full_name ILIKE ${n} ESCAPE '\\' OR u.username ILIKE ${n} ESCAPE '\\' OR u.email ILIKE ${n} ESCAPE '\\' OR e.employee_code ILIKE ${n} ESCAPE '\\')`);
   }
   for (const [value, column] of [[q.status, 'e.status'], [q.departmentId, 'e.department_id'], [q.shiftId, 'e.shift_id']]) {
     if (value === undefined) continue;
@@ -76,7 +76,7 @@ router.get('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
 
 // Creates the login (users row, role 'employee') and the employee record together.
 router.post('/', validate(employeeCreate), wrap(async (req, res) => {
-  const b = req.body;
+  const b = {...req.body,username:req.body.username.toLowerCase()};
   const problem = passwordProblem(b.password);
   if (problem) throw validationError({ password: problem });
   const hash = await hashPassword(b.password); // slow on purpose; done before the transaction opens
@@ -93,15 +93,15 @@ router.post('/', validate(employeeCreate), wrap(async (req, res) => {
       shiftId = first.id;
     }
     const { rows: [user] } = await db.query(
-      `INSERT INTO users (email, full_name, password_hash, role, must_change_password) VALUES ($1, $2, $3, 'employee', true) RETURNING id`,
-      [b.email, b.fullName, hash]);
+      `INSERT INTO users (email, full_name, password_hash, role, must_change_password, username) VALUES ($1, $2, $3, 'employee', true, $4) RETURNING id`,
+      [b.email??null, b.fullName, hash,b.username]);
     const { rows: [emp] } = await db.query(
       `INSERT INTO employees (employee_code, user_id, phone, department_id, position_id, job_title, start_date, employment_type, shift_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
       [b.employeeCode, user.id, b.phone ?? null, b.departmentId ?? null, position?.id ?? null, position ? position.name : b.jobTitle ?? null,
         b.startDate, b.employmentType, shiftId]);
     await audit(db, { actorId: req.user.id, action: 'employee.create', entityType: 'employee', entityId: emp.id,
-      details: { employeeCode: b.employeeCode, userId: Number(user.id), departmentId: b.departmentId ?? null, shiftId: Number(shiftId),
+      details: { username:b.username,employeeCode: b.employeeCode, userId: Number(user.id), departmentId: b.departmentId ?? null, shiftId: Number(shiftId),
         positionId: position?.id ?? null, salaryApplied: Boolean(position) } });
     if (position) await saveSalaryProfile(db, { employeeId: emp.id, actorId: req.user.id, values: positionSalary(position), source: { type: 'position', positionId: position.id } });
     return findEmployee(db, emp.id);
@@ -109,7 +109,7 @@ router.post('/', validate(employeeCreate), wrap(async (req, res) => {
   res.status(201).json(created);
 }));
 
-const USER_COLUMNS = { fullName: 'full_name', email: 'email' };
+const USER_COLUMNS = { fullName: 'full_name', email: 'email',username:'username' };
 const EMPLOYEE_COLUMNS = {
   employeeCode: 'employee_code', phone: 'phone', departmentId: 'department_id', positionId: 'position_id', jobTitle: 'job_title',
   startDate: 'start_date', employmentType: 'employment_type', shiftId: 'shift_id',
@@ -127,6 +127,7 @@ const EMPLOYEE_COLUMNS = {
 router.patch('/:id', validate(idParams, 'params'), validate(employeeUpdate), wrap(async (req, res) => {
   const { id } = req.params;
   const { applyPositionSalary, ...fields } = req.body;
+  if(fields.username)fields.username=fields.username.toLowerCase();
   if (!Object.keys(req.body).length) throw new HttpError(400, 'No changes supplied', 'validation', { fields: { _: 'Provide at least one field to change' } });
   const assigning = fields.positionId != null;
   if (applyPositionSalary && !assigning) {
@@ -136,7 +137,7 @@ router.patch('/:id', validate(idParams, 'params'), validate(employeeUpdate), wra
   const updated = await withTransaction(async (db) => {
     const { rows: [row] } = await db.query('SELECT user_id, department_id, position_id FROM employees WHERE id = $1 FOR UPDATE', [id]);
     if (!row) throw notFound();
-    if (Object.hasOwn(fields,'email')) await protectPrivilegedAccount(db,req.user,row.user_id);
+    if (Object.hasOwn(fields,'username')) await protectPrivilegedAccount(db,req.user,row.user_id);
     const holdsPosition = row.position_id != null;
     const departmentId = Object.hasOwn(fields, 'departmentId') ? fields.departmentId : optId(row.department_id);
 

@@ -14,7 +14,8 @@ const employeeFields = (create) => ({
   employeeCode: v.string({ required: create, max: 40, pattern: /^[A-Za-z0-9][A-Za-z0-9._/-]*$/,
     patternMessage: 'Use letters, numbers and . _ - / only (no spaces)' }),
   fullName: v.string({ required: create, max: 120 }),
-  email: v.email({ required: create }),
+  username: v.string({required:create,min:3,max:254,pattern:/^[A-Za-z0-9][A-Za-z0-9._@+\-]*$/,patternMessage:'Use letters, numbers and . _ - @ + only (no spaces)'}),
+  email: v.email({nullable:true}),
   phone: v.string({ nullable: true, max: 30, pattern: /^[0-9+()\-.\s]+$/, patternMessage: 'Digits and + ( ) - . only' }),
   departmentId: v.int({ nullable: true, min: 1 }),
   jobTitle: v.string({ nullable: true, max: JOB_TITLE_MAX }), // ignored while the employee holds a position: the position name is the title

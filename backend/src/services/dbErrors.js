@@ -4,9 +4,9 @@ export const validationError = (fields) => new HttpError(400, 'Invalid request',
 // PostgreSQL can report an immediate ON DELETE RESTRICT action as restrict_violation (23001).
 export const isFkViolation = (err) => err?.code === '23503' || err?.code === '23001';
 
-// Constraint names come from database/migrations/001_core.sql.
+// Constraint names come from the versioned database migrations.
 const CONFLICT = {
-  users_email_key: ['email', 'This email is already in use'],
+  users_username_key: ['username', 'This username is already in use'],
   employees_code_key: ['employeeCode', 'This employee ID is already in use'],
   departments_name_key: ['name', 'A department with this name already exists'],
   shifts_name_key: ['name', 'A shift with this name already exists'],

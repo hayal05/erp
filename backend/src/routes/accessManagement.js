@@ -17,12 +17,12 @@ router.get('/employees',validate({...pageSchema,search:v.string({max:120})},'que
   await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
   const search=likePattern(req.query.search||'');
   const from=`FROM employees e JOIN users u ON u.id=e.user_id LEFT JOIN departments d ON d.id=e.department_id
-   LEFT JOIN positions p ON p.id=e.position_id WHERE u.role='employee' AND (u.full_name ILIKE $1 OR u.email ILIKE $1 OR e.employee_code ILIKE $1)`;
-  const {rows}=await db.query(`SELECT e.id,e.employee_code,u.full_name,u.email,e.status,u.is_active,d.name AS department,COALESCE(p.name,e.job_title) AS position,
+   LEFT JOIN positions p ON p.id=e.position_id WHERE u.role='employee' AND (u.full_name ILIKE $1 OR u.username ILIKE $1 OR u.email ILIKE $1 OR e.employee_code ILIKE $1)`;
+  const {rows}=await db.query(`SELECT e.id,e.employee_code,u.full_name,u.username,u.email,e.status,u.is_active,d.name AS department,COALESCE(p.name,e.job_title) AS position,
    ARRAY(SELECT access_role FROM access_grants g WHERE g.user_id=u.id AND g.revoked_at IS NULL ORDER BY access_role) AS roles
    ${from} ORDER BY lower(u.full_name),e.id LIMIT $2 OFFSET $3`,[search,req.query.pageSize,pageOffset(req.query)]);
   const {rows:[count]}=await db.query(`SELECT count(*)::int AS total ${from}`,[search]);
-  return pageResult(rows.map(r=>({id:Number(r.id),employeeCode:r.employee_code,fullName:r.full_name,email:r.email,status:r.status,
+  return pageResult(rows.map(r=>({id:Number(r.id),employeeCode:r.employee_code,fullName:r.full_name,username:r.username,email:r.email,status:r.status,
    active:r.status==='active'&&r.is_active,department:r.department,position:r.position,accessRoles:r.roles})),req.query,count.total);
  });res.json(result);
 }));

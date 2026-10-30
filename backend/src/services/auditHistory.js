@@ -3,7 +3,7 @@ import {hasPermission} from './permissions.js';
 const HR=['audit.hr'],FIN=['audit.finance'],BOTH=['audit.hr','audit.finance'];
 const salary=['basicMinor','allowanceMinor','allowanceTaxable','allowancePensionable','pensionApplies'];
 export const AUDIT_RECORDS={
- employee:{table:'employees',entity:'employee',domains:HR,read:'employees.manage',fields:['employeeCode','fullName','email','phone','departmentId','departmentName','positionId','positionName','jobTitle','startDate','employmentType','shiftId','status']},
+ employee:{table:'employees',entity:'employee',domains:HR,read:'employees.manage',fields:['employeeCode','fullName','username','email','phone','departmentId','departmentName','positionId','positionName','jobTitle','startDate','employmentType','shiftId','status']},
  department:{table:'departments',entity:'department',domains:HR,read:'organization.manage',fields:['name']},
  position:{table:'positions',entity:'position',domains:HR,read:'organization.manage',fields:['name','departmentId',...salary]},
  salary_profile:{table:'employees',entity:'salary_profile',domains:HR,read:'salary_profiles.manage',fields:salary},

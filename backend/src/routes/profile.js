@@ -13,7 +13,7 @@ router.use(noStore, requireEmployee);
 const missing = () => new HttpError(404, 'Employee profile not found', 'not_found');
 // User identity always comes from the session; there is no employee-id input.
 router.get('/', wrap(async (req, res) => {
-  const { rows: [r] } = await query(`SELECT e.id, e.employee_code, u.full_name, u.email, e.phone,
+  const { rows: [r] } = await query(`SELECT e.id, e.employee_code, u.full_name, u.username,u.email, e.phone,
     d.name AS department, COALESCE(p.name,e.job_title) AS position, e.employment_type, e.status,
     to_char(e.start_date,'YYYY-MM-DD') AS start_date, s.name AS shift, e.experience_summary,
     to_char((now() AT TIME ZONE $2)::date,'YYYY-MM-DD') AS today
@@ -21,7 +21,7 @@ router.get('/', wrap(async (req, res) => {
     LEFT JOIN positions p ON p.id=e.position_id JOIN shifts s ON s.id=e.shift_id WHERE e.user_id=$1`,
   [req.user.id, profileTimeZone]);
   if (!r) throw missing();
-  res.json({ employeeCode: r.employee_code, fullName: r.full_name, email: r.email, phone: r.phone,
+  res.json({ employeeCode: r.employee_code, fullName: r.full_name, username:r.username,email: r.email, phone: r.phone,
     department: r.department, position: r.position, employmentType: r.employment_type, status: r.status,
     startDate: r.start_date, shift: r.shift, experienceSummary: r.experience_summary, today: r.today });
 }));

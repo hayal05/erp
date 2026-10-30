@@ -26,9 +26,9 @@ function AccessList(){
  },[page,query,reload]);
  return <section className="stack"><h1>Access Management</h1>
   <p className="muted">Select a registered employee to issue HR or Finance access. Their employee account, attendance, leave and payroll records stay intact. Admin access cannot be issued or revoked here.</p>
-  <form className="row" onSubmit={e=>{e.preventDefault();setQuery(search.trim());setPage(1);}}><Field label="Employee name, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /><Button type="submit">Search</Button><Button onClick={refresh} disabled={data.loading}>Refresh</Button></form>
+  <form className="row" onSubmit={e=>{e.preventDefault();setQuery(search.trim());setPage(1);}}><Field label="Name, username, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /><Button type="submit">Search</Button><Button onClick={refresh} disabled={data.loading}>Refresh</Button></form>
   <Table caption="Employee access" columns={[
-   {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'email',header:'Email'},{key:'department',header:'Department'},{key:'position',header:'Position'},
+   {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'email',header:'Contact email'},{key:'department',header:'Department'},{key:'position',header:'Position'},
    {key:'active',header:'Account',render:r=>r.active?'Active':'Inactive'},
    {key:'accessRoles',header:'Additional access',render:r=>r.accessRoles.map(roleName).join(', ')||'Employee only'},
    {key:'actions',header:'Actions',render:r=><Button size="sm" onClick={()=>setSelected(r)}>Manage access</Button>},
@@ -57,7 +57,7 @@ function AccessDialog({employee,onClose,onChanged}){
   catch(e){setError(e.message);refresh();}finally{setBusy(false);}
  }
  return <Modal open wide title={`Access · ${employee.fullName}`} dismissible={!busy} onClose={()=>!busy&&onClose()} footer={<Button disabled={busy} onClick={onClose}>Close</Button>}><div className="stack">
-  <p>{employee.employeeCode} · {employee.email}</p><p>Additional access: <strong>{active.map(roleName).join(', ')||'None'}</strong></p>
+  <p>{employee.employeeCode} · {employee.username}</p><p>Additional access: <strong>{active.map(roleName).join(', ')||'None'}</strong></p>
   {error&&<p role="alert" className="form-error">{error}</p>}
   {!employee.active?<p className="muted">Inactive employees cannot receive new grants. Existing access can still be revoked.</p>:<form className="stack" onSubmit={grant}>
    <Field as="select" label="Grant additional access" options={[{value:'hr',label:'HR'},{value:'finance',label:'Finance'}]} value={role} onChange={e=>setRole(e.target.value)} disabled={busy}/>

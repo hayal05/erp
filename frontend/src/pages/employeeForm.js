@@ -14,12 +14,12 @@ const MAX_PASSWORD_BYTES = 72; // bcrypt limit, same rule as the server
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const emptyForm = () => ({
-  employeeCode: '', fullName: '', email: '', phone: '', departmentId: '', positionId: '', jobTitle: '',
+  employeeCode: '', fullName: '', username:'',email: '', phone: '', departmentId: '', positionId: '', jobTitle: '',
   startDate: '', employmentType: 'full_time', shiftId: '', password: '', applyPositionSalary: true,
 });
 
 export const formFromEmployee = (e) => ({
-  employeeCode: e.employeeCode, fullName: e.fullName, email: e.email, phone: e.phone ?? '',
+  employeeCode: e.employeeCode, fullName: e.fullName, username:e.username??'',email: e.email??'', phone: e.phone ?? '',
   departmentId: e.departmentId == null ? '' : String(e.departmentId), positionId: e.positionId == null ? '' : String(e.positionId),
   jobTitle: e.jobTitle ?? '', // shown read-only: the position owns the title once one is chosen (task 6.10)
   startDate: e.startDate, employmentType: e.employmentType, shiftId: String(e.shiftId), password: '',
@@ -37,14 +37,15 @@ export function changeDepartment(form, departmentId, original) {
 }
 
 // Returns { field: message } (empty object = fine). `mode` is 'create' or 'edit'.
-export function validateForm(form, mode) {
+export function validateForm(form, mode, original) {
   const f = clean(form);
   const errors = {};
   if (!f.employeeCode) errors.employeeCode = 'Enter the employee ID';
   else if (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(f.employeeCode)) errors.employeeCode = 'Use letters, numbers and . _ - / only (no spaces)';
   if (!f.fullName) errors.fullName = 'Enter the full name';
-  if (!f.email) errors.email = 'Enter the email';
-  else if (!EMAIL.test(f.email)) errors.email = 'Enter a valid email address';
+  if (!f.username) errors.username='Enter the username';
+  else if(!(mode==='edit'&&f.username===original?.username)&&!/^[A-Za-z0-9][A-Za-z0-9._@+\-]{2,253}$/.test(f.username)) errors.username='Use 3–254 letters, numbers and . _ - @ + only';
+  if (f.email && !EMAIL.test(f.email)) errors.email = 'Enter a valid email address';
   if (!f.startDate) errors.startDate = 'Choose the start date';
   if (f.phone && !/^[0-9+()\-.\s]+$/.test(f.phone)) errors.phone = 'Digits and + ( ) - . only';
   if (mode === 'create') {
@@ -59,8 +60,9 @@ const toId = (s) => (s === '' ? null : Number(s));
 // POST body. Blank optional fields are left out; the server picks the first shift when shiftId is missing.
 export function buildCreate(form) {
   const f = clean(form);
-  const body = { employeeCode: f.employeeCode, fullName: f.fullName, email: f.email, startDate: f.startDate,
+  const body = { employeeCode: f.employeeCode, fullName: f.fullName, username:f.username.toLowerCase(), startDate: f.startDate,
     employmentType: f.employmentType, password: form.password };
+  if (f.email) body.email=f.email;
   if (f.phone) body.phone = f.phone;
   if (f.departmentId) body.departmentId = Number(f.departmentId);
   // The position's salary is copied by the server; no salary figures are ever sent, and the title comes from the position.
@@ -74,7 +76,9 @@ export function buildPatch(form, original) {
   const now = clean(form);
   const was = clean(formFromEmployee(original));
   const body = {};
-  for (const key of ['employeeCode', 'fullName', 'email', 'startDate', 'employmentType']) if (now[key] !== was[key]) body[key] = now[key];
+  for (const key of ['employeeCode', 'fullName', 'startDate', 'employmentType']) if (now[key] !== was[key]) body[key] = now[key];
+  if(now.username.toLowerCase()!==was.username.toLowerCase())body.username=now.username.toLowerCase();
+  if(now.email!==was.email)body.email=now.email||null;
   if (now.phone !== was.phone) body.phone = now.phone || null;
   if (now.departmentId !== was.departmentId) body.departmentId = toId(now.departmentId);
   // Position: sent only when it changed. Choosing one also says whether its salary replaces the current one (the checkbox);
@@ -121,7 +125,7 @@ export function savedMessage(mode, body, saved) {
 }
 
 // A failed save -> { fields, message } (task 6.11: moved out of the dialog so it can be tested). 400, 409 and 422 carry field
-// messages for the inputs (a duplicate email, a position of another department, ...); `message` goes at the top of the dialog.
+// messages for the inputs (a duplicate username, a position of another department, ...); `message` goes at the top of the dialog.
 const FIELD_STATUSES = [400, 409, 422];
 export function employeeSaveError(err) {
   const all = err?.fields ?? {};

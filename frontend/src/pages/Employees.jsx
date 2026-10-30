@@ -66,7 +66,7 @@ export default function Employees() {
 
   const columns = [
     { key: 'employeeCode', header: 'ID', className: 'nowrap' },
-    { key: 'fullName', header: 'Name', render: (r) => <><strong>{r.fullName}</strong><br /><small className="muted">{r.email}</small></> },
+    { key: 'fullName', header: 'Name', render: (r) => <><strong>{r.fullName}</strong><br /><small className="muted">{r.username}</small></> },
     { key: 'departmentName', header: 'Department', render: (r) => r.departmentName ?? '—' },
     { key: 'jobTitle', header: 'Title', render: (r) => r.jobTitle ?? '—' },
     { key: 'employmentType', header: 'Type', className: 'nowrap', render: (r) => TYPE_LABEL[r.employmentType] },
@@ -92,7 +92,7 @@ export default function Employees() {
       </div>
 
       <div className="toolbar">
-        <Field label="Search" type="search" placeholder="Name, email or ID" value={filters.search} onChange={setFilter('search')} maxLength={100} />
+        <Field label="Search" type="search" placeholder="Name, username, email or ID" value={filters.search} onChange={setFilter('search')} maxLength={100} />
         <Field as="select" label="Department" placeholder="All departments" value={filters.departmentId} onChange={setFilter('departmentId')}
           options={lookups.departments.map((d) => ({ value: d.id, label: d.name }))} />
         <Field as="select" label="Status" placeholder="All statuses" value={filters.status} onChange={setFilter('status')}

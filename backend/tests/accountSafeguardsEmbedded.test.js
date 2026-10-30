@@ -9,7 +9,7 @@ const {app}=await import('../src/server.js'),{seedAdmin}=await import('../src/db
 let admin,staff,root,hr,finance,normal,shift;
 const creds=email=>({email,password:'password-123'});
 async function employee(code,role){
- const r=await admin.post('/api/employees').send({employeeCode:code,fullName:code,email:code+'@safe.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift});
+ const r=await admin.post('/api/employees').send({employeeCode:code,fullName:code,username: code+'@safe.test', email:code+'@safe.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift});
  assert.equal(r.status,201,JSON.stringify(r.body));const e=r.body;
  await q('UPDATE users SET must_change_password=false WHERE id=$1',[e.userId]);
  if(role)await q('INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,$2,$3)',[e.userId,role,root]);return e;
@@ -26,8 +26,8 @@ test('database rejects disabling or revoking the only active Admin',async()=>{
  await assert.rejects(q("UPDATE access_grants SET revoked_at=now(),revoked_by_user_id=$1,revoke_reason='Attempt' WHERE user_id=$1 AND access_role='admin' AND revoked_at IS NULL",[root]),/last active Admin/);
  assert.equal((await admin.get('/api/access-management/employees')).status,200);
 });
-test('HR cannot alter privileged login email or activation, but can manage ordinary employee status and job facts',async()=>{
- assert.equal((await staff.patch(`/api/employees/${finance.id}`).send({email:'taken@safe.test'})).status,403);
+test('HR cannot alter privileged username or activation, but can manage ordinary employee status and job facts',async()=>{
+ assert.equal((await staff.patch(`/api/employees/${finance.id}`).send({username:'taken.login'})).status,403);
  assert.equal((await staff.post(`/api/employees/${finance.id}/deactivate`).send({reason:'Disable'})).status,403);
  assert.equal((await staff.patch(`/api/employees/${finance.id}`).send({phone:'0911111111'})).status,200);
  assert.equal((await staff.post(`/api/employees/${normal.id}/deactivate`).send({reason:'Employment ended'})).status,200);
