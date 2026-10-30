@@ -375,13 +375,33 @@ ul.form-error { margin: 0; padding-left: 28px; }
 }
 
 .dashboard { min-width: 0; }
-.dashboard-main-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
-.dashboard-small-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
+.dashboard-heading h1, .dashboard h2 { margin: 0; }
+.dashboard-heading time { font-size: .85rem; }
+.dashboard-main-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-sm); }
+.dashboard-small-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--space-sm); }
 .dashboard .card { min-width: 0; }
-.dashboard .card h2 { font-size: 1rem; }
-.dashboard-number { font-size: clamp(1.5rem,2.5vw,2.1rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.dashboard .card h2 { font-size: .9rem; }
+.dashboard-stat { display: grid; align-content: start; gap: var(--space-xs); }
+.dashboard-stat .row { gap: 4px 8px; }
+.dashboard-stat a, .dashboard-stat > .muted { font-size: .8rem; }
+.dashboard-number { font-size: clamp(1.35rem,2vw,1.8rem); line-height: 1.25; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.dashboard-mini { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dashboard-mini .dashboard-number { font-size: 1.25rem; }
+.dashboard-employee { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.dashboard-tables { display: grid; grid-template-columns: minmax(0,1fr); align-items: start; gap: var(--space-md); }
+.dashboard-tables > section { min-width: 0; gap: var(--space-sm); }
+.dashboard-tables .table { min-width: 500px; }
+.dashboard-tables h2 { font-size: 1rem; }
+.dashboard-tables .row > a { font-size: .85rem; }
+.workspace-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: var(--space-sm); }
+.workspace-grid > a { display: flex; align-items: center; min-height: var(--tap); text-decoration: none; font-weight: 600; }
+.workspace-grid > a:hover { background: var(--surface-2); }
+@media (min-width: 1400px) { .dashboard-tables { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 1100px) { .dashboard-small-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-@media (max-width: 700px) { .dashboard-main-stats { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 700px) {
+  .dashboard-main-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .dashboard-payroll { grid-column: 1 / -1; }
+}
 
 /* Employee form: salary of a position, alone (new employee) or beside the current salary (position change) — task 6.10 */
 .salary-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
