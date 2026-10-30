@@ -1,3 +1,4 @@
+import {clearIncrementalData, syncIncrementalIdentity, readBaseline, decodeIncrementalData} from './incrementalData.js';
 // Thin fetch wrapper for the Natra API. All API routes live under /api.
 // VITE_API_URL is the API origin (http://localhost:4000 in dev). Leave it empty to call the same
 // origin, which is what you want if /api is proxied through the static site.
@@ -17,7 +18,7 @@ export class ApiError extends Error {
 
 // The CSRF token lives in memory only (never localStorage): it is re-learned from /auth/me on reload.
 let csrfToken = null;
-export const setCsrfToken = (t) => { csrfToken = t || null; };
+export const setCsrfToken = (t) => { if (csrfToken !== (t || null)) clearIncrementalData(); csrfToken = t || null; };
 export const getCsrfToken = () => csrfToken;
 
 // The auth context subscribes here to react to a session that ended or a tablet that got locked.
@@ -35,14 +36,19 @@ function buildUrl(path, query) {
   return `${BASE}/api${path}${s ? `?${s}` : ''}`;
 }
 
-export async function api(path, { method = 'GET', body, query, signal, responseType = 'json', csrfRetried = false } = {}) {
+export async function api(path, { method = 'GET', body, query, signal, responseType = 'json', csrfRetried = false, deltaRetried = false } = {}) {
   const headers = { Accept: responseType === 'blob' ? 'text/csv' : 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (!SAFE.has(method) && csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
+  const url = buildUrl(path, query);
+  const incremental = method === 'GET' && responseType === 'json' && !path.startsWith('/auth') && !path.startsWith('/qr') && !path.includes('/photos/');
+  const baseline = readBaseline(url);
+  if (incremental) headers['X-Data-Delta'] = !deltaRetried && baseline.entry ? baseline.entry.version : 'initial';
+  if (!SAFE.has(method) && path.startsWith('/auth/')) clearIncrementalData();
   let res;
   try {
-    res = await fetch(buildUrl(path, query), {
+    res = await fetch(url, {
       method, headers, credentials: 'include', signal,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
@@ -58,8 +64,19 @@ export async function api(path, { method = 'GET', body, query, signal, responseT
     listener('approval_pending', data);
     throw new ApiError(202, data.code, data.message, {requestId:data.requestId});
   }
-  if (res.ok) return data;
+  if (res.ok) {
+    if (path.startsWith('/auth/')) syncIncrementalIdentity(data);
+    if (incremental) {
+      try { return decodeIncrementalData(url, data, baseline); }
+      catch {
+        if (!deltaRetried && baseline.epoch === readBaseline(url).epoch) return api(path, { method, query, signal, responseType, deltaRetried: true });
+        throw new ApiError(0, 'refresh_failed', 'Could not update this page. Open the section again.');
+      }
+    }
+    return data;
+  }
 
+  if ([401, 403, 423].includes(res.status)) clearIncrementalData();
   const err = data?.error ?? {};
   const apiErr = new ApiError(res.status, err.code ?? 'error', err.message ?? `Request failed (${res.status})`, err.details);
   // A different tab (or a failed logout) can leave a cookie newer than our in-memory token.

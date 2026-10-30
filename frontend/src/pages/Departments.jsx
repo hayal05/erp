@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {workspacePath} from '../api/workspaces.js';
 import {useLocation} from 'react-router-dom';
 import {usePermission} from '../api/auth.jsx';
@@ -22,6 +23,7 @@ function useDebounced(value, ms = 300) {
 }
 
 export default function Departments() {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('organization.manage');
   const toast = useToast();
   const [searchText, setSearchText] = useState('');
@@ -41,7 +43,7 @@ export default function Departments() {
       .then((res) => { setData(res); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') setState({ loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [page, search, reload]);
+  }, [page, search, reload, pageRefresh]);
 
   async function remove() {
     const { department } = confirm;

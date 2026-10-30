@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
 import { useEffect, useState } from 'react';
@@ -10,6 +11,7 @@ import { useToast } from '../components/Toast.jsx';
 const OPTIONS = [{value:'draft',label:'Draft'},{value:'published',label:'Published'},{value:'archived',label:'Archived'}];
 const payload = item => ({ title:item.title, body:item.body, status:item.status, expiresOn:item.expiresOn || null, ...(item.id ? {version:item.version} : {}) });
 function useAnnouncements(size, status) {
+  const pageRefresh = usePageRefresh();
   const [page,setPage]=useState(1),[reload,setReload]=useState(0);
   const [state,setState]=useState({items:[],total:0,loading:true,error:''});
   useEffect(()=>{
@@ -18,14 +20,14 @@ function useAnnouncements(size, status) {
       .then(r=>{if(!ctrl.signal.aborted)setState({...r,loading:false,error:''});})
       .catch(e=>{if(!ctrl.signal.aborted)setState({items:[],total:0,loading:false,error:e.message});});
     return()=>ctrl.abort();
-  },[page,size,status,reload]);
+  },[page,size,status,reload, pageRefresh]);
   return { ...state,page,setPage,refresh:()=>setReload(n=>n+1) };
 }
 export function AnnouncementFeed() {
   const data=useAnnouncements(5);
   return <section className="card stack" aria-labelledby="employee-announcements-title">
     <div className="row between"><h2 id="employee-announcements-title">Announcements</h2></div>
-    {data.loading ? <Skeleton variant="cards" label="Loading announcements…" /> : data.error ? <p role="alert" className="form-error">{data.error}</p> : !data.total ? <p className="muted">No active announcements.</p>
+    {data.loading && !data.items.length ? <Skeleton variant="cards" label="Loading announcements…" /> : data.error ? <p role="alert" className="form-error">{data.error}</p> : !data.total ? <p className="muted">No active announcements.</p>
       : data.items.map(item=><article className="card stack" key={item.id}>
         <h3 style={{overflowWrap:'anywhere'}}>{item.title}</h3>
         <small className="muted">Published {item.publishedAt}{item.expiresOn ? ` · Visible through ${item.expiresOn}` : ''}</small>

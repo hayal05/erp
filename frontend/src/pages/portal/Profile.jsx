@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../../api/pageRefresh.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
 import { useEffect, useState } from 'react';
 import Button from '../../components/Button.jsx';
@@ -9,6 +10,7 @@ import { formatWorkDate } from '../attendanceForm.js';
 import { tenure, employmentLabel } from './profileView.js';
 const SIZE = 10;
 export default function Profile() {
+  const pageRefresh = usePageRefresh();
   const toast = useToast();
   const [profile, setProfile] = useState(null), [error, setError] = useState(''), [retry, setRetry] = useState(0);
   const [summary, setSummary] = useState(''), [editing, setEditing] = useState(false), [busy, setBusy] = useState(false), [saveError, setSaveError] = useState('');
@@ -18,14 +20,14 @@ export default function Profile() {
     get('/profile', {}, { signal: ctrl.signal }).then(p => { if (!ctrl.signal.aborted) { setProfile(p); setSummary(p.experienceSummary); } })
       .catch(e => { if (!ctrl.signal.aborted) setError(e.message); });
     return () => ctrl.abort();
-  }, [retry]);
+  }, [retry, pageRefresh]);
   useEffect(() => {
     const ctrl = new AbortController(); setHistory(h => ({ ...h, loading: true, error: '' }));
     get('/profile/positions', { page, pageSize: SIZE }, { signal: ctrl.signal })
       .then(h => { if (!ctrl.signal.aborted) setHistory({ ...h, loading: false, error: '' }); })
       .catch(e => { if (!ctrl.signal.aborted) setHistory({ items: [], total: 0, loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [page, retry]);
+  }, [page, retry, pageRefresh]);
   async function save(e) {
     e.preventDefault(); if (busy) return; setBusy(true); setSaveError('');
     try {

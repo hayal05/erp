@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {useAuth} from '../api/auth.jsx';
 import {allowed} from '../api/workspaces.js';
 import {workspacePath,workspaceArea} from '../api/workspaces.js';
@@ -18,6 +19,7 @@ import { formatMoney } from '../api/money.js';
 import { SALARY_COLUMNS, canEditSalary, periodIdFromParam, salaryEditForm, salaryEditPayload } from './salarySheetView.js';
 const PAGE_SIZE = 25;
 export default function Payroll() {
+  const pageRefresh = usePageRefresh();
   const {user}=useAuth();
   const {pathname}=useLocation();
   const [params, setParams] = useSearchParams();
@@ -29,7 +31,7 @@ export default function Payroll() {
   useEffect(() => { setPage(1); setEditing(null); setDetails(null); setWorkflow(null); }, [selected, requestedMonth]);
   useEffect(() => {
     const ctrl = new AbortController();
-    setState({ loading: true, error: '', period: null, entries: [], total: 0 });
+    setState(s => ({ ...s, loading: true, error: '' }));
     async function load() {
       if (requestedMonth !== null && !validMonth(requestedMonth)) throw new Error('Invalid payroll month in the link. Choose a month below.');
       if (selected === false && requestedMonth === null) throw new Error('Invalid payroll period in the link. Open Payroll from the sidebar to view the latest period.');
@@ -45,7 +47,7 @@ export default function Payroll() {
     load().then((data) => { if (!ctrl.signal.aborted) setState({ ...data, loading: false, error: '' }); })
       .catch((e) => { if (!ctrl.signal.aborted) setState({ loading: false, error: e.message, period: null, entries: [], total: 0 }); });
     return () => ctrl.abort();
-  }, [selected, requestedMonth, page, reload]);
+  }, [selected, requestedMonth, page, reload, pageRefresh]);
   const editable = canEditSalary(state.period) && !state.loading && allowed(user,'payroll.prepare');
   const columns = SALARY_COLUMNS.map((col, index) => ({ ...col, align: index > 1 ? 'num' : undefined, className: index < 2 ? 'nowrap' : undefined,
     render: index === 1 ? (entry) => <button type="button" className="salary-name" onClick={() => setDetails({ periodId: state.period.id, entry })} aria-label={`View salary details for ${entry.employeeName}`}>{entry.employeeName}</button> : index === 0 ? undefined : (entry) => col.editable && editable ?

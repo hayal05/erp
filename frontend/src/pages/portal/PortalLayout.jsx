@@ -1,3 +1,4 @@
+import {PageRefreshProvider} from '../../api/pageRefresh.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { CalendarCheck, CalendarDays, FileText, Home, LogOut, UserRound, ChevronDown } from 'lucide-react';
@@ -40,7 +41,7 @@ export default function PortalLayout() {
     };
   }, []);
   return (
-    <div className="portal-shell">
+    <PageRefreshProvider version={sectionVisit}><div className="portal-shell">
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="portal-top">
         <span className="brand">Natra</span>
@@ -55,7 +56,7 @@ export default function PortalLayout() {
           </div>
         </details>
       </header>
-      <main id="main" className="portal-content" tabIndex={-1}><Outlet key={`${pathname}:${sectionVisit}`} /></main>
+      <main id="main" className="portal-content" tabIndex={-1}><Outlet /></main>
       <nav className="portal-tabs" aria-label="Main">
         {PORTAL_NAV.map((item) => {
           const Icon = ICONS[item.key];
@@ -66,7 +67,7 @@ export default function PortalLayout() {
           );
         })}
       </nav>
-    </div>
+    </div></PageRefreshProvider>
   );
 }
 

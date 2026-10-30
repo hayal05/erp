@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../../api/pageRefresh.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import Button from '../../components/Button.jsx';
 import Field from '../../components/Field.jsx';
@@ -12,6 +13,7 @@ const PAGE_SIZE = 10;
 // Employee leave (spec 10): balances, a request form and the status of past requests. The server counts the days
 // (working days minus holidays) and checks overlap and balance, so the form never sends or shows a day count in advance.
 export default function Leave() {
+  const pageRefresh = usePageRefresh();
   const toast = useToast();
   const [year, setYear] = useState(null); // null = let the server pick the current company year
   const [balances, setBalances] = useState({ year: null, items: [] });
@@ -28,7 +30,7 @@ export default function Leave() {
 
   useEffect(() => {
     get('/leave/types').then((r) => setTypes(r.items)).catch((e) => toast.error(`Could not load leave types: ${e.message}`));
-  }, [toast]);
+  }, [toast, pageRefresh]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -36,7 +38,7 @@ export default function Leave() {
       .then((r) => { setBalances(r); if (year === null) setYear(r.year); })
       .catch((e) => { if (e.name !== 'AbortError') toast.error(`Could not load balances: ${e.message}`); });
     return () => ctrl.abort();
-  }, [year, reload, toast]);
+  }, [year, reload, toast, pageRefresh]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -45,7 +47,7 @@ export default function Leave() {
       .then((r) => { setList(r); setState({ loading: false, error: '' }); })
       .catch((e) => { if (e.name !== 'AbortError') setState({ loading: false, error: e.message }); });
     return () => ctrl.abort();
-  }, [page, reload]);
+  }, [page, reload, pageRefresh]);
 
   const set = (k) => (e) => {
     const value = e.target.value;

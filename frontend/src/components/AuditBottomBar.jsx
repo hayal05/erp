@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import Skeleton from './Skeleton.jsx';
 import {useEffect,useId,useRef,useState} from 'react';
 import {History} from 'lucide-react';
@@ -14,6 +15,7 @@ function AuditFact({title,event,unapproved=false,loading,error}){
  return <div><dt>{title}:</dt><dd title={error||text||undefined}>{error?<span role="alert">Unavailable</span>:loading?<Skeleton variant="line" label={`Loading ${title.toLowerCase()}…`} />:event?<><span className="audit-actor">{event.actor||'System / not recorded'}</span><span aria-hidden="true">·</span><time dateTime={event.at}>{stamp(event.at)}</time></>:unapproved?<span className="audit-not-authorised">Not authorised</span>:'—'}</dd></div>;
 }
 export default function AuditBottomBar({scope}){
+  const pageRefresh = usePageRefresh();
  const {user}=useAuth();
  const [open,setOpen]=useState(false),[page,setPage]=useState(1),[retry,setRetry]=useState(0),[data,setData]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const ref=useRef(null),panel=useRef(null),toggle=useRef(null),panelId=useId();
@@ -22,7 +24,7 @@ export default function AuditBottomBar({scope}){
   const ctrl=new AbortController();setBusy(true);setError('');
   get('/audit-history',{area:scope.area,page,pageSize:10},{signal:ctrl.signal}).then(r=>{if(!ctrl.signal.aborted)setData(r);}).catch(e=>{if(!ctrl.signal.aborted){setData(null);setError(e.status===403?'Audit history is unavailable for this section.':e.message);}}).finally(()=>{if(!ctrl.signal.aborted)setBusy(false);});
   return()=>ctrl.abort();
- },[scope.area,page,retry,permissions]);
+ },[scope.area,page,retry,permissions, pageRefresh]);
  // Reserve exactly the displayed height so the fixed footer never covers the last table row.
  useEffect(()=>{
   const footer=ref.current,shell=footer?.closest('.hr-shell');if(!footer||!shell)return undefined;

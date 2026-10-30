@@ -8,7 +8,7 @@ export function cors(req, res, next) {
     res.set({
       'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token',
+      'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, X-Data-Delta',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
       Vary: 'Origin',
     });

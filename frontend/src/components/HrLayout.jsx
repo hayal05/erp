@@ -1,3 +1,4 @@
+import {PageRefreshProvider} from '../api/pageRefresh.jsx';
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ShieldCheck, Landmark, Megaphone, Building2, CalendarCheck, CalendarDays, LayoutDashboard, LogOut, Menu, QrCode, Settings, Users, Wallet } from 'lucide-react';
@@ -51,7 +52,7 @@ export default function HrLayout() {
   if (mode === 'locked') return <div className="locked-shell"><Outlet /></div>;
 
   return (
-    <div className={`hr-shell${audit ? ' has-audit-footer' : ''}`}>
+    <PageRefreshProvider version={sectionVisit}><div className={`hr-shell${audit ? ' has-audit-footer' : ''}`}>
       <a className="skip-link" href="#main">Skip to content</a>
 
       <header className="topbar">
@@ -83,8 +84,8 @@ export default function HrLayout() {
       </aside>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
-      <main id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet key={`${pathname}:${sectionVisit}`} /></main>
-      {audit && <AuditBottomBar key={`${pathname}:${sectionVisit}`} scope={audit} />}
-    </div>
+      <main id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet /></main>
+      {audit && <AuditBottomBar key={pathname} scope={audit} />}
+    </div></PageRefreshProvider>
   );
 }

@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import Skeleton from '../components/Skeleton.jsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
@@ -13,10 +14,11 @@ import { buildScanUrl, expiryFrom, formatCountdown, remainingSeconds } from './q
 // Tablet QR page (spec 6): clock, big QR, expiry countdown, Generate / Generate Again, Lock.
 // Works in both normal and locked mode; Generate stays active when locked (6.1).
 export default function QrAttendance() {
+  const pageRefresh = usePageRefresh();
   const toast = useToast();
   const canManage=usePermission('attendance.qr');
   const [status,setStatus]=useState(null);
-  useEffect(()=>{if(canManage)return undefined;const ctrl=new AbortController();get('/qr/status',undefined,{signal:ctrl.signal}).then(setStatus).catch(e=>{if(e.name!=='AbortError')setStatus({error:e.message});});return()=>ctrl.abort();},[canManage]);
+  useEffect(()=>{if(canManage)return undefined;const ctrl=new AbortController();get('/qr/status',undefined,{signal:ctrl.signal}).then(setStatus).catch(e=>{if(e.name!=='AbortError')setStatus({error:e.message});});return()=>ctrl.abort();},[canManage, pageRefresh]);
   const { locked, setLocked } = useAuth();
   const [qr, setQr] = useState(null);          // { dataUrl, expiresAt } | null
   const [now, setNow] = useState(() => Date.now());

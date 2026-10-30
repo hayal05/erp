@@ -1,3 +1,4 @@
+import {incrementalReads} from './middleware/incrementalReads.js';
 import express from 'express';
 import changeRequestRoutes from './routes/changeRequests.js';
 import helmet from 'helmet';
@@ -60,6 +61,8 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use(csrfProtection);
   app.use(passwordChangeGate);
   app.use(lockGate); // a locked tablet session can only reach the allowlist (middleware/lock.js)
+
+  app.use(incrementalReads());
 
   const operations=express.Router();
   operations.use('/api/announcements', announcementRoutes);

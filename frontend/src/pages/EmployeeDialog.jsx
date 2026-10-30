@@ -1,3 +1,4 @@
+import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {usePermission} from '../api/auth.jsx';
 import { useEffect, useState } from 'react';
 import Modal from '../components/Modal.jsx';
@@ -12,6 +13,7 @@ const POSITION_LIMIT = 100; // the API caps pageSize at 100
 
 // Add (employee = null) or edit. Mount with a `key` so the form resets each time it opens.
 export default function EmployeeDialog({ employee, departments, shifts, onClose, onSaved }) {
+  const pageRefresh = usePageRefresh();
   const canManage=usePermission('employees.manage');
   const readOnly=!canManage;
   const mode = employee ? 'edit' : 'create';
@@ -35,7 +37,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
       .then((res) => setPositions({ status: 'ready', items: res.items, total: res.total, error: '' }))
       .catch((e) => { if (e.name !== 'AbortError') setPositions({ status: 'error', items: [], total: 0, error: e.message }); });
     return () => ctrl.abort();
-  }, [form.departmentId, retry.positions]);
+  }, [form.departmentId, retry.positions, pageRefresh]);
 
   // The current salary is only needed to compare it with a newly chosen position.
   const wantProfile = needsCurrentSalary(form, employee);
@@ -47,7 +49,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
       .then((value) => setProfile({ status: 'ready', value, error: '' }))
       .catch((e) => { if (e.name !== 'AbortError') setProfile({ status: 'error', value: null, error: e.message }); });
     return () => ctrl.abort();
-  }, [wantProfile, employee?.id, retry.profile]);
+  }, [wantProfile, employee?.id, retry.profile, pageRefresh]);
 
   const plan = salaryPlan({ form, original: employee, positions: positions.items, profile: profile.status === 'ready' ? profile.value : null });
   const departmentChosen = Boolean(form.departmentId);
