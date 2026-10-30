@@ -40,11 +40,11 @@ export function HolidayDialog({ holiday, year, onClose, onSaved }) {
   return (
     <Modal open title={holiday ? 'Edit holiday' : 'Add holiday'} onClose={() => !s.busy && onClose()}
       footer={<><Button onClick={onClose} disabled={s.busy}>Cancel</Button><Button variant="primary" type="submit" form="holiday-form" busy={s.busy}>Save</Button></>}>
-      <form id="holiday-form" className="stack" onSubmit={s.submit} noValidate>
-        {s.error && <div className="form-error" role="alert">{s.error}</div>}
+      <form id="holiday-form" className="form-grid" onSubmit={s.submit} noValidate>
+        {s.error && <div className="form-error full" role="alert">{s.error}</div>}
         <Field label="Date" type="date" value={s.form.date} onChange={s.set('date')} error={s.fields.date} />
         <Field label="Name" maxLength={100} autoComplete="off" value={s.form.name} onChange={s.set('name')} error={s.fields.name} />
-        <p className="muted">Holidays are excluded from new leave requests.</p>
+        <small className="muted full">Excluded from future leave requests.</small>
       </form>
     </Modal>
   );
@@ -64,10 +64,10 @@ export function ShiftDialog({ shift, onClose, onSaved }) {
       <form id="shift-form" className="form-grid" onSubmit={s.submit} noValidate>
         {s.error && <div className="form-error full" role="alert">{s.error}</div>}
         <Field className="full" label="Name" maxLength={100} autoComplete="off" value={s.form.name} onChange={s.set('name')} error={s.fields.name} />
-        <Field label="Start time" type="time" value={s.form.startTime} onChange={s.set('startTime')} error={s.fields.startTime} />
+        <div className="shift-time-grid full"><Field label="Start time" type="time" value={s.form.startTime} onChange={s.set('startTime')} error={s.fields.startTime} />
         <Field label="End time" type="time" value={s.form.endTime} onChange={s.set('endTime')} error={s.fields.endTime} />
-        <Field label="Grace period (minutes)" inputMode="numeric" maxLength={3} autoComplete="off" value={s.form.graceMinutes} onChange={s.set('graceMinutes')}
-          error={s.fields.graceMinutes} hint="Allowed minutes after shift start." />
+        <Field label="Late grace (minutes)" inputMode="numeric" maxLength={3} autoComplete="off" value={s.form.graceMinutes} onChange={s.set('graceMinutes')}
+          error={s.fields.graceMinutes} /></div>
         <fieldset className="full weekdays" aria-describedby={s.fields.workDays ? 'weekdays-err' : undefined}>
           <legend>Work days</legend>
           {WEEKDAYS.map(([n, label]) => (
@@ -75,7 +75,7 @@ export function ShiftDialog({ shift, onClose, onSaved }) {
           ))}
           {s.fields.workDays && <small id="weekdays-err" className="field-error">{s.fields.workDays}</small>}
         </fieldset>
-        <p className="full muted">Select working days. Overnight shifts are not supported.</p>
+        <small className="full muted">Overnight shifts are not supported.</small>
       </form>
     </Modal>
   );

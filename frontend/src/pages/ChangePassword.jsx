@@ -16,15 +16,14 @@ export default function ChangePassword({forced=false}) {
     catch(e){setError(e.message);setFields(e.fields || {});setForm(f=>({...f,currentPassword:''}));}
     finally{setBusy(false);}
   }
-  const content=<form className={forced?'auth-card':'card stack'} onSubmit={submit}>
+  const content=<form className={forced?'auth-card password-change-form':'stack password-change-form'} onSubmit={submit}>
     <h1>{forced?'Set your own password':'Change password'}</h1>
-    <p className="muted">{forced?'Set a new password to continue.':'Change your password.'} Other sessions will be signed out.</p>
+    <small className="muted">Other sessions will be signed out.</small>
     {error&&<p className="form-error" role="alert">{error}</p>}
     <Field type="password" label={forced?'Temporary / current password':'Current password'} autoComplete="current-password" value={form.currentPassword} onChange={change('currentPassword')} required maxLength={256} disabled={busy} error={fields.currentPassword} autoFocus />
     <Field type="password" label="New password" autoComplete="new-password" value={form.newPassword} onChange={change('newPassword')} required minLength={10} maxLength={72} disabled={busy} error={fields.newPassword} hint="10+ characters, maximum 72 UTF-8 bytes." />
     <Field type="password" label="Confirm new password" autoComplete="new-password" value={form.confirmPassword} onChange={change('confirmPassword')} required disabled={busy} error={fields.confirmPassword} />
-    <Button variant="primary" type="submit" busy={busy}>Save password</Button>
-    {forced?<Button disabled={busy} onClick={logout}>Log out</Button>:<Button disabled={busy} onClick={()=>navigate('/portal/profile')}>Cancel</Button>}
+    <div className="row end password-actions">{forced?<Button disabled={busy} onClick={logout}>Log out</Button>:<Button disabled={busy} onClick={()=>navigate('/portal/profile')}>Cancel</Button>}<Button variant="primary" type="submit" busy={busy}>Save password</Button></div>
   </form>;
   return forced?<main className="auth-page">{content}</main>:<section className="stack">{content}</section>;
 }

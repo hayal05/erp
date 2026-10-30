@@ -18,12 +18,13 @@ import { saveErrorView, shiftRow } from './settingsView.js';
 // HR settings (spec 8): company holidays and working schedules. Both change how leave days are counted for requests made from now on.
 // (Payroll settings join this page in Phase 4.)
 export default function Settings() {
+  const [section,setSection]=useState('holidays');
   return (
-    <section className="stack">
-      <h1>Settings</h1>
-      <p><WorkspaceLink to="/hr/settings/payroll">Payroll settings</WorkspaceLink> <span className="muted">(income tax, pension, other taxes, deductions)</span></p>
-      <Holidays />
-      <Schedules />
+    <section className="stack general-settings-page">
+      <div className="row between"><h1>Settings</h1><WorkspaceLink className="btn sm" to="/hr/settings/payroll">Payroll settings</WorkspaceLink></div>
+      <div className="row" role="group" aria-label="Settings sections"><Button size="sm" variant={section==='holidays'?'primary':'default'} aria-pressed={section==='holidays'} onClick={()=>setSection('holidays')}>Holidays</Button><Button size="sm" variant={section==='schedules'?'primary':'default'} aria-pressed={section==='schedules'} onClick={()=>setSection('schedules')}>Schedules</Button></div>
+      <div hidden={section!=='holidays'}><Holidays /></div>
+      <div hidden={section!=='schedules'}><Schedules /></div>
     </section>
   );
 }
@@ -71,10 +72,10 @@ function Holidays() {
   return (
     <div className="stack">
       <div className="row between">
-        <h2>Holidays</h2>
+        <h2 className="sr-only">Holidays</h2>
         <div className="row">
-          {years.length > 0 && <Field label="Year" as="select" options={years} value={year ?? data.year} onChange={(e) => setYear(Number(e.target.value))} />}
-          {canManage && <Button variant="primary" onClick={() => setDialog({ holiday: null })} disabled={!data.year}><Plus size={16} aria-hidden="true" /> Add holiday</Button>}
+          {years.length > 0 && <Field hideLabel label="Year" as="select" options={years} value={year ?? data.year} onChange={(e) => setYear(Number(e.target.value))} />}
+          {canManage && <Button size="sm" variant="primary" onClick={() => setDialog({ holiday: null })} disabled={!data.year}><Plus size={16} aria-hidden="true" /> Add holiday</Button>}
         </div>
       </div>
       <Table caption={`Holidays in ${data.year ?? 'the year'}`} columns={columns.filter(c=>canManage||c.key!=='act')} rows={data.items} loading={state.loading} error={state.error} onRetry={refresh}
@@ -125,12 +126,11 @@ function Schedules() {
   return (
     <div className="stack">
       <div className="row between">
-        <h2>Working schedules</h2>
-        {canManage && <Button variant="primary" onClick={() => setDialog({ shift: null })}><Plus size={16} aria-hidden="true" /> Add schedule</Button>}
+        <h2 className="sr-only">Working schedules</h2>
+        {canManage && <Button size="sm" variant="primary" onClick={() => setDialog({ shift: null })}><Plus size={16} aria-hidden="true" /> Add schedule</Button>}
       </div>
       <Table caption="Working schedules" columns={columns.filter(c=>canManage||c.key!=='act')} rows={list.items.map(shiftRow)} loading={state.loading} error={state.error} onRetry={refresh}
         empty="No schedules yet. Add one before adding employees." />
-      <p className="muted">Schedules set working days, hours and lateness.</p>
 
       {canManage && dialog && <ShiftDialog key={dialog.shift?.id ?? 'new'} shift={dialog.shift} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); refresh(); }} />}
     </div>
