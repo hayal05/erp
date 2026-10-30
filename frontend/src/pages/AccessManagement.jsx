@@ -1,4 +1,3 @@
-import AuditBar from '../components/AuditBar.jsx';
 import {useEffect,useState} from 'react';
 import {usePermission,useAuth} from '../api/auth.jsx';
 import {get,post} from '../api/client.js';
@@ -72,6 +71,5 @@ function AccessDialog({employee,onClose,onChanged}){
    {key:'actions',header:'Status',render:r=>r.revokedAt?'Revoked':r.role==='admin'?'Active (protected)':!canManage?'Active':<Button size="sm" disabled={busy} onClick={()=>{setRevoke(r);setReason('');setError('');}}>Revoke {roleName(r.role)}</Button>},
   ]} rows={history.items} loading={history.loading} error={history.error} onRetry={refresh} empty="No access grants recorded"/>
   <Pager page={page} pageSize={HISTORY_SIZE} total={history.total} onPage={setPage} disabled={history.loading||busy}/>
- <AuditBar type="access_employee" id={employee.id} reload={reload}/>
  </div></Modal>;
 }

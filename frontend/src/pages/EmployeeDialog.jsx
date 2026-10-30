@@ -1,5 +1,4 @@
 import {usePermission} from '../api/auth.jsx';
-import AuditBar from '../components/AuditBar.jsx';
 import { useEffect, useState } from 'react';
 import Modal from '../components/Modal.jsx';
 import Button from '../components/Button.jsx';
@@ -118,7 +117,6 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
           <Field label="Temporary password" type="password" autoComplete="new-password" hint={`At least ${MIN_PASSWORD} characters. Change required at first sign-in.`} {...bind('password')} />
         )}
       </fieldset></form>
-    <AuditBar type="employee" id={employee?.id} />
     </Modal>
   );
 }

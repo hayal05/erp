@@ -1,4 +1,3 @@
-import AuditBar from '../components/AuditBar.jsx';
 import { useState } from 'react';
 import Modal from '../components/Modal.jsx';
 import Button from '../components/Button.jsx';
@@ -49,7 +48,6 @@ export function DecisionDialog({ request, decision, onClose, onDone }) {
           value={remarks} onChange={(e) => { setRemarks(e.target.value); setFields({}); }} error={fields.remarks}
           hint={approving ? 'Approving takes the days off the balance.' : 'The employee will see this.'} />
       </form>
-      <AuditBar type="leave_request" id={request.id}/>
     </Modal>
   );
 }
