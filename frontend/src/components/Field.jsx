@@ -4,7 +4,7 @@ import { useId } from 'react';
 //   <Field label="Email" type="email" value={v} onChange={...} error={fields.email} />
 //   <Field as="select" label="Department" options={[{ value: 1, label: 'Sales' }]} placeholder="Choose…" />
 //   <Field as="textarea" label="Reason" />
-export default function Field({ label, error, hint, as = 'input', options = [], placeholder, className = '', ...rest }) {
+export default function Field({ label, error, hint, as = 'input', options = [], placeholder, className = '', hideLabel = false, ...rest }) {
   const id = useId();
   const describedBy = [hint && `${id}-hint`, error && `${id}-err`].filter(Boolean).join(' ') || undefined;
   const common = { id, 'aria-invalid': error ? true : undefined, 'aria-describedby': describedBy, ...rest };
@@ -22,7 +22,7 @@ export default function Field({ label, error, hint, as = 'input', options = [], 
 
   return (
     <div className={`field ${className}`.trim()}>
-      <label htmlFor={id} className={rest.type === 'search' ? 'sr-only' : undefined}>{label}</label>
+      <label htmlFor={id} className={hideLabel || rest.type === 'search' ? 'sr-only' : undefined}>{label}</label>
       {control}
       {hint && <small id={`${id}-hint`} className="field-hint">{hint}</small>}
       {error && <small id={`${id}-err`} className="field-error">{error}</small>}
