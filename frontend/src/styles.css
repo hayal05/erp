@@ -710,20 +710,16 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 /* Employee pages favor flat sections and readable mobile controls. */
 .portal-content h1, .portal-content h2 { margin: 0; }
 .portal-home-page > .row h1 { font-size: 1.25rem; }
-.portal-position-history > summary, .portal-leave-request > summary, .portal-leave-note > summary { cursor: pointer; color: var(--accent); min-height: var(--tap); align-content: center; }
-.portal-position-history > .stack, .portal-leave-request > form { margin-top: var(--space-sm); }
+.portal-position-history > summary, .portal-leave-note > summary { cursor: pointer; color: var(--accent); min-height: var(--tap); align-content: center; }
+.portal-position-history > .stack { margin-top: var(--space-sm); }
 .portal-position-history .table { min-width: 560px; }
 .portal-attendance-page .table { min-width: 480px; }
 .portal-attendance-status { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .portal-attendance-page .toolbar { max-width: 440px; }
-.portal-leave-page > .row > .field { width: 110px; }
 .portal-leave-page .leave-balances { gap: var(--space-sm); }
 .portal-leave-page .leave-balances .card { padding: 10px; gap: 2px; }
 .portal-leave-page .leave-balances .card > strong { font-size: .85rem; }
 .portal-leave-page .leave-balances .card > small { font-size: .75rem; }
-.portal-leave-request { border-block: 1px solid var(--border); padding-block: var(--space-xs); }
-.portal-leave-request summary { font-weight: 600; }
-.portal-leave-request form > .btn { justify-self: start; }
 .portal-leave-page .table { min-width: 540px; }
 .portal-leave-note { max-width: 260px; }
 .portal-leave-note p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; }
@@ -828,3 +824,18 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
   .employee-profile-identity h2 { font-size: 1.2rem; }
 }
 @media (max-width: 360px) { .employee-profile-section .profile-facts > div { grid-template-columns: minmax(0,1fr); gap: 2px; } }
+
+/* Employee leave keeps balances and requests visible; the form opens only when needed. */
+.portal-leave-page { gap: var(--space-sm); }
+.portal-leave-controls { margin-left: auto; flex-wrap: nowrap; }
+.portal-leave-controls .field { width: 96px; }
+.portal-leave-page .leave-balances { grid-template-columns: repeat(auto-fit,minmax(min(100%,200px),1fr)); }
+.portal-leave-page .leave-balances .card { gap: 6px; }
+.leave-balance-heading { gap: 4px 8px; }
+.leave-balance-heading > strong { font-size: .85rem; overflow-wrap: anywhere; }
+.portal-leave-page .leave-headline { font-size: .9rem; white-space: nowrap; }
+.portal-leave-page > h2 { font-size: 1rem; }
+.portal-leave-status { display: inline-flex; align-items: center; gap: 6px; }
+.portal-leave-page .table th, .portal-leave-page .table td { white-space: nowrap; }
+@media (max-width: 700px) { .portal-leave-page .leave-balances { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 360px) { .portal-leave-page .leave-balances { grid-template-columns: minmax(0,1fr); } }

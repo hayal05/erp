@@ -80,6 +80,12 @@ try{
  const profile=await render('pages/Vacancies.jsx','ApplicantProfile',{profile:{...person,experienceSummary:'Experience remains available',positionHistory:[{id:1,department:'Operations',position:'Officer',recordedOn:'2025-01-01'}]}});
  assert.ok(profile.includes('Experience remains available')&&profile.includes('2025-01-01'),'Applicant snapshot details lost');
  await render('pages/AccessManagement.jsx','AccessDialog',{employee:person});await render('components/UnlockDialog.jsx','default',{open:true});
+ const balanceProps={year:2026,items:[{leaveTypeId:1,name:'Annual leave',hasBalance:true,total:20,remaining:12,used:5,pending:3,adjusted:2},{leaveTypeId:2,name:'Unpaid leave',hasBalance:false,used:1,pending:0,adjusted:0}]};
+ const balanceMarkup=await render('pages/portal/Leave.jsx','EmployeeLeaveBalances',balanceProps,'/portal/leave');
+ for(const value of ['Annual leave','12 days left','Total 20','Used 5','Pending 3','Adjustment +2','No limit','Unpaid'])assert.ok(balanceMarkup.includes(value),`Leave balance lost ${value}`);
+ const negativeBalance=await render('pages/portal/Leave.jsx','EmployeeLeaveBalances',{year:2026,items:[{...balanceProps.items[0],remaining:-2,used:21,pending:1}]},'/portal/leave');
+ assert.ok(negativeBalance.includes('-2 days left')&&negativeBalance.includes('leave-empty'),'Overspent leave balance is not visible');
+ assert.ok(!(await render('pages/portal/Leave.jsx','EmployeeLeaveBalances',{year:2026,items:[]},'/portal/leave')).includes('aria-label="Leave balances'),'Empty balances rendered an unused list');
  const ownProfile={...person,experienceSummary:'Previous role in customer service'};
  const ownProps={profile:ownProfile,history:{items:[{id:1,position:'Officer',department:'Operations',recordedOn:'2025-01-01',baseline:true}],total:1,loading:false,error:''},page:1,summary:ownProfile.experienceSummary,editing:false,busy:false,saveError:''};
  const own=await render('pages/portal/Profile.jsx','ProfileDetails',ownProps,'/portal/profile');
