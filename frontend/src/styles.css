@@ -137,6 +137,12 @@ a { color: var(--accent); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
 
+/* Management panes own scrolling; the document itself must never scroll with them. */
+@media screen {
+  html:has(.hr-shell), body:has(.hr-shell) { height: 100%; overflow: hidden; overflow: clip; overscroll-behavior: none; }
+  #root:has(.hr-shell) { height: 100%; min-height: 0; overflow: hidden; overflow: clip; }
+}
+
 /* ---- HR shell: top bar + sidebar + content (layout from the UI reference) ---- */
 .skip-link { position: absolute; left: 8px; top: -60px; z-index: 100; background: var(--accent); color: var(--on-accent);
   padding: 8px 14px; border-radius: 999px; font-weight: 600; text-decoration: none; }
