@@ -15,7 +15,7 @@ export function workspaceOptions(user){
 }
 export const workspaceArea=pathname=>pathname==='/finance'||pathname.startsWith('/finance/')?'finance':'hr';
 export const workspacePath=(path,pathname)=>workspaceArea(pathname)==='finance'?path.replace(/^\/hr(?=\/|$)/,'/finance'):path;
-const HR_PATHS=[['/hr/approvals','approvals.read'],['/hr/access-management','access.read'],['/hr/payroll/company-costs','company_costs.read'],['/hr/settings/payroll','payroll_settings.read'],
+const HR_PATHS=[['/hr/vacancies','vacancies.admin_read'],['/hr/approvals','approvals.read'],['/hr/access-management','access.read'],['/hr/payroll/company-costs','company_costs.read'],['/hr/settings/payroll','payroll_settings.read'],
  ['/hr/employees','employees.read'],['/hr/departments','organization.read'],['/hr/attendance','attendance.read'],['/hr/qr','attendance.qr.read'],
  ['/hr/leave','leave.read'],['/hr/payroll','payroll.read'],['/hr/settlements','settlements.read'],['/hr/announcements','announcements.admin_read'],['/hr/settings','organization.read']];
 export function canOpenPath(user,path){

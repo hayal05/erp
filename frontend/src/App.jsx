@@ -1,3 +1,4 @@
+import Vacancies from './pages/Vacancies.jsx';
 import Skeleton from './components/Skeleton.jsx';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './api/auth.jsx';
@@ -86,6 +87,7 @@ export default function App() {
           <Route path="approvals" element={<Approvals />} />
           <Route path="access-management" element={<AccessManagement />} />
           <Route path="announcements" element={<Announcements />} />
+          <Route path="vacancies" element={<Vacancies />} />
           <Route path="employees" element={<Employees />} />
           <Route path="departments" element={<Departments />} />
           <Route path="departments/:id" element={<DepartmentDetail />} />
@@ -104,6 +106,7 @@ export default function App() {
           <Route path="approvals" element={<Approvals />} />
           <Route path="access-management" element={<AccessManagement />} />
           <Route path="announcements" element={<Announcements />} />
+          <Route path="vacancies" element={<Vacancies />} />
           <Route path="employees" element={<Employees />} />
           <Route path="departments" element={<Departments />} />
           <Route path="departments/:id" element={<DepartmentDetail />} />
@@ -121,6 +124,7 @@ export default function App() {
           <Route index element={<PortalHome />} />
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="vacancies" element={<Vacancies employee />} />
           <Route path="scan" element={<Scan />} />
           <Route path="attendance" element={<History />} />
           <Route path="leave" element={<Leave />} />

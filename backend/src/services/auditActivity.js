@@ -5,6 +5,7 @@ import {pageOffset,pageResult} from './sql.js';
 const record=(type,entity=AUDIT_RECORDS[type].entity)=>({entity,fields:AUDIT_RECORDS[type].fields,allowed:user=>canReadAudit(user,type)});
 const extra=(entity,permission,domains,fields)=>({entity,fields,allowed:user=>hasPermission(user,permission)&&domains.some(p=>hasPermission(user,p))});
 const sources={
+ vacancy:record('vacancy'),application:record('vacancy_application'),
  employee:record('employee'),salary:record('salary_profile'),department:record('department'),position:record('position'),
  attendance:record('attendance_record'),leave:record('leave_request'),announcement:record('announcement'),
  payroll:record('payroll_period'),entry:record('payroll_period','payroll_entry'),access:record('access_employee'),
@@ -18,7 +19,7 @@ const sources={
  request:extra('change_request','approvals.read',['audit.hr','audit.finance'],['department','requestedBy']),
 };
 export const AUDIT_AREAS={
- all:Object.keys(sources),employees:['employee','salary'],departments:['department','position'],attendance:['attendance'],
+ all:Object.keys(sources),vacancies:['vacancy','application'],employees:['employee','salary'],departments:['department','position'],attendance:['attendance'],
  leave:['leave','balance'],announcements:['announcement'],payroll:['payroll','entry','deduction'],
  payroll_settings:['calculation','brackets','tax'],settlements:['settlement'],access:['access'],settings:['shift','holiday'],approvals:['request'],
 };
@@ -37,7 +38,7 @@ export async function loadAuditActivity(db,user,query){
  AND (a.entity_type<>'change_request' OR EXISTS(SELECT 1 FROM change_requests c WHERE c.id::text=a.entity_id
    AND (c.requester_id=$2 OR (c.department=ANY($3::text[]) AND c.permission=ANY($4::text[]))))))`;
  const {rows}=await db.query(`${cte} SELECT * FROM events ORDER BY at DESC,id DESC LIMIT $5 OFFSET $6`,[...args,query.pageSize,pageOffset(query)]);
- const summaryFilter=query.area==='approvals'?'true':"entity_type<>'change_request'";
+ const summaryFilter=query.area==='approvals'?'true':"entity_type<>'change_request' AND action<>'vacancy.apply'";
  const {rows:[metadata]}=await db.query(`${cte}, latest_modified AS (
  SELECT * FROM events WHERE ${summaryFilter} AND action !~ '(^|\\.)(approve|pay)$' ORDER BY at DESC,id DESC LIMIT 1
  ) SELECT (SELECT count(*)::int FROM events) AS total,

@@ -1,6 +1,7 @@
 // Business labels for review screens; API routes stay internal.
 export function changeLabel(method,path){
  const p=path.replace(/^\/api\//,'').split('/'),last=p.at(-1),id=p.find(v=>/^\d+$/.test(v));
+ if(p[0]==='vacancies')return p.includes('applications')?`Review vacancy application #${last}`:method==='POST'?'Post internal vacancy':`Update vacancy #${id}`;
  if(p[0]==='payroll')return last==='approve'?`Approve payroll #${id}`:last==='pay'?`Record payroll payment #${id}`:last==='regenerate'?`Regenerate payroll #${id}`:p.includes('entries')?`Update salary in payroll #${id}`:'Generate payroll';
  if(p[0]==='settlements')return `Record tax or pension settlement for payroll #${id}`;
  if(p[0]==='leave-admin')return 'Adjust leave entitlement';

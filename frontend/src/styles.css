@@ -208,7 +208,7 @@ a { color: var(--accent); }
   padding-top: calc(10px + env(safe-area-inset-top)); background: var(--bg-sidebar); border-bottom: 1px solid var(--border); }
 .portal-top .spacer { flex: 1; }
 .portal-content { flex: 1; min-width: 0; padding: 16px; outline: 0; padding-bottom: calc(var(--tap) + 40px + env(safe-area-inset-bottom)); }
-.portal-tabs { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr);
+.portal-tabs { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(6, minmax(76px, 1fr)); overflow-x: auto;
   max-width: 720px; margin: 0 auto; background: var(--bg-sidebar); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
 .portal-tabs .tab { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; min-height: var(--tap); color: var(--muted);
   text-decoration: none; font-size: .75rem; border-top: 3px solid transparent; }
@@ -419,3 +419,11 @@ ul.form-error { margin: 0; padding-left: 28px; }
   .skeleton-splash { padding: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .skeleton-block::after { animation: none; display: none; } }
+
+/* Vacancy lists keep each application on one readable row. */
+.vacancies-page { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.vacancies-page > .table-wrap { min-width: 0; max-width: 100%; }
+.vacancies-page > .table-wrap .table { min-width: 900px; }
+.vacancies-page > .table-wrap td { white-space: nowrap; }
+
+.vacancies-page > .table-wrap .row { flex-wrap: nowrap; }
