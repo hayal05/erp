@@ -1,7 +1,6 @@
 import {workspacePath} from '../api/workspaces.js';
 import {useLocation} from 'react-router-dom';
 import {Link as RouterLink} from 'react-router-dom';
-import Button from '../components/Button.jsx';
 import Table,{Badge} from '../components/Table.jsx';
 import {formatMoney} from '../api/money.js';
 import {useResource,ResourceState} from './payrollResource.jsx';
@@ -9,7 +8,7 @@ const labels={present:'Present',late:'Late',absent:'Absent',on_leave:'On leave',
 const tone={present:'ok',late:'warn',absent:'danger',on_leave:'info',incomplete:'neutral'};
 export default function Dashboard(){
  const r=useResource('/dashboard');
- return <section className="stack dashboard"><div className="row between"><h1>Dashboard</h1><Button onClick={r.reload} disabled={r.loading}>Refresh</Button></div>
+ return <section className="stack dashboard"><div className="row between"><h1>Dashboard</h1></div>
  {!r.data?<ResourceState variant="dashboard" loading={r.loading} error={r.error} onRetry={r.reload}/>:<DashboardContent data={r.data}/>}
  </section>;
 }
@@ -20,7 +19,7 @@ function DashboardContent({data:d}){
   {key:'checkIn',header:'In',render:r=>r.checkIn??'—'},{key:'checkOut',header:'Out',render:r=>r.checkOut??'—'}];
  const leaves=[{key:'employeeName',header:'Employee'},{key:'leaveType',header:'Leave'},{key:'dates',header:'Dates',render:r=><span className="nowrap">{r.start} – {r.end}</span>},{key:'days',header:'Days',align:'num'}];
  return <>
-  <p className="muted">{d.date} · {d.timeZone}. Refresh to update these figures.</p>
+  <p className="muted">{d.date} · {d.timeZone}</p>
   <div className="dashboard-main-stats">
    <article className="card stack"><h2>Total employees</h2><strong className="dashboard-number">{s.totalEmployees}</strong><WorkspaceLink to="/hr/employees">View employees</WorkspaceLink></article>
    <article className="card stack"><h2>Payroll · {p.month}</h2><strong className="dashboard-number">{p.totalMinor===null?'—':formatMoney(p.totalMinor)}</strong><span className="muted">{p.status?`${p.currencyCode} net salary · ${p.status} · ${p.employeeCount} employees`:'No payroll generated this month'}</span><WorkspaceLink to={`/hr/payroll?month=${p.month}`}>View payroll</WorkspaceLink></article>

@@ -26,7 +26,7 @@ export default function Settlements(){
   const money=(key,header)=>({key,header,align:'num',render:r=>formatMoney(r[key])});
   const balance=(kind,key,header)=>({key,header,align:'num',render:r=><button type="button" className="salary-cell" onClick={()=>setSelected({period:r,kind})} aria-label={`View ${settlementLabel(kind)} payable for ${r.month}`}>{formatMoney(r[key])}</button>});
   return <section className="stack">
-    <div className="row between"><h1>Settlements</h1><Button onClick={refresh} disabled={data.loading}>Refresh</Button></div>
+    <div className="row between"><h1>Settlements</h1></div>
     {!data.loading&&!data.error&&data.summary?.map(s=><div className="card stack" key={s.currency||'currency'}><strong>Outstanding · {s.currency||'Currency not recorded'}</strong><div className="row"><span>Income tax: <strong>{formatMoney(s.incomeTaxBalanceMinor)}</strong></span><span>Pension: <strong>{formatMoney(s.pensionBalanceMinor)}</strong></span></div></div>)}
     <Field as="select" label="Show" value={view} options={[{value:'unsettled',label:'Unsettled months'},{value:'all',label:'All paid payroll months'}]} onChange={e=>{setView(e.target.value);setPage(1);}} />
     <Table caption="Monthly tax and pension payable" columns={[

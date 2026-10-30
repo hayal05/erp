@@ -27,10 +27,10 @@ export default function HrLayout() {
   const { user, locked, logout } = useAuth();
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [auditVisit, setAuditVisit] = useState(0);
+  const [sectionVisit, setSectionVisit] = useState(0);
   const visitSection = event => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    setAuditVisit(n => n + 1); // Refresh even when the active sidebar section is clicked again.
+    setSectionVisit(n => n + 1); // Refresh even when the active sidebar section is clicked again.
     setMenuOpen(false);
   };
   const now = useClock();
@@ -83,8 +83,8 @@ export default function HrLayout() {
       </aside>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
-      <main id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet /></main>
-      {audit && <AuditBottomBar key={`${pathname}:${auditVisit}`} scope={audit} />}
+      <main id="main" className="content" tabIndex={-1}><ApprovalNotice /><Outlet key={`${pathname}:${sectionVisit}`} /></main>
+      {audit && <AuditBottomBar key={`${pathname}:${sectionVisit}`} scope={audit} />}
     </div>
   );
 }

@@ -23,7 +23,7 @@ export default function Approvals(){
   catch(e){setError(e.message);}finally{setBusy(false);}
  };
  return <section><h1>Approvals</h1>
-  <div className="toolbar"><label>Show <select value={view} onChange={e=>{setView(e.target.value);setPage(1);}} disabled={busy}><option value="pending">Pending</option><option value="mine">My requests</option><option value="all">All requests</option></select></label><button onClick={()=>setVersion(v=>v+1)} disabled={busy}>Refresh</button></div>
+  <div className="toolbar"><label>Show <select value={view} onChange={e=>{setView(e.target.value);setPage(1);}} disabled={busy}><option value="pending">Pending</option><option value="mine">My requests</option><option value="all">All requests</option></select></label></div>
   {error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status">{notice}</p>}
   {!data?(error?null:<Skeleton variant="table" columns={7} label="Loading requests…" />):<><div className="table-wrap"><table><thead><tr><th>Request</th><th>Area</th><th>Change</th><th>Requested by</th><th>Requested on</th><th>Status</th><th>Review</th></tr></thead><tbody>
   {data.items.map(row=><tr key={row.id}><td>#{row.id}</td><td>{row.department.toUpperCase()}</td><td>{changeLabel(row.method,row.path)}</td><td>{row.requester_name}{Number(row.requester_id)===user.id?' (you)':''}</td><td>{when(row.requested_at)}</td><td>{row.status}</td><td><button disabled={busy} onClick={()=>{setSelected(row);setReason('');setError('');}}>Details</button></td></tr>)}

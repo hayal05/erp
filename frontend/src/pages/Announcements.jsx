@@ -24,7 +24,7 @@ function useAnnouncements(size, status) {
 export function AnnouncementFeed() {
   const data=useAnnouncements(5);
   return <section className="card stack" aria-labelledby="employee-announcements-title">
-    <div className="row between"><h2 id="employee-announcements-title">Announcements</h2><Button size="sm" onClick={data.refresh} disabled={data.loading}>Refresh</Button></div>
+    <div className="row between"><h2 id="employee-announcements-title">Announcements</h2></div>
     {data.loading ? <Skeleton variant="cards" label="Loading announcements…" /> : data.error ? <p role="alert" className="form-error">{data.error}</p> : !data.total ? <p className="muted">No active announcements.</p>
       : data.items.map(item=><article className="card stack" key={item.id}>
         <h3 style={{overflowWrap:'anywhere'}}>{item.title}</h3>
@@ -45,7 +45,7 @@ export default function Announcements() {
   }
   return <section className="stack">
     <div className="row between"><h1>Announcements</h1>{canManage&&<Button variant="primary" onClick={()=>setEditing({title:'',body:'',status:'draft',expiresOn:''})}>New announcement</Button>}</div>
-    <div className="row"><Field as="select" label="Status" placeholder="All statuses" options={OPTIONS} value={status} onChange={e=>{setStatus(e.target.value);data.setPage(1);}} /><Button onClick={data.refresh} disabled={data.loading}>Refresh</Button></div>
+    <div className="row"><Field as="select" label="Status" placeholder="All statuses" options={OPTIONS} value={status} onChange={e=>{setStatus(e.target.value);data.setPage(1);}} /></div>
     <Table caption="Company announcements" columns={[
       {key:'title',header:'Title',render:r=><details><summary style={{overflowWrap:'anywhere'}}>{r.title}</summary><p style={{whiteSpace:'pre-wrap'}}>{r.body}</p></details>},
       {key:'status',header:'Status',render:r=><Badge tone={r.status==='published'&&!r.expired?'ok':'neutral'}>{r.status==='published'&&r.expired?'Expired':r.status}</Badge>},
