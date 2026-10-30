@@ -1,3 +1,4 @@
+import Skeleton from './components/Skeleton.jsx';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './api/auth.jsx';
 import { homePath, redirectTarget } from './api/paths.js';
@@ -37,7 +38,7 @@ function Splash() {
   if (status === 'error') {
     return <main role="alert"><p>{error}</p><button onClick={reload}>Try again</button></main>;
   }
-  return <main aria-busy="true"><p>Loading…</p></main>;
+  return <main className="skeleton-splash"><Skeleton variant="dashboard" label="Loading your workspace…" /></main>;
 }
 
 // UI convenience only: the server enforces roles and the lock on every request (task 1.9).

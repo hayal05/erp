@@ -10,7 +10,7 @@ const tone={present:'ok',late:'warn',absent:'danger',on_leave:'info',incomplete:
 export default function Dashboard(){
  const r=useResource('/dashboard');
  return <section className="stack dashboard"><div className="row between"><h1>Dashboard</h1><Button onClick={r.reload} disabled={r.loading}>Refresh</Button></div>
- {!r.data?<ResourceState loading={r.loading} error={r.error} onRetry={r.reload}/>:<DashboardContent data={r.data}/>}
+ {!r.data?<ResourceState variant="dashboard" loading={r.loading} error={r.error} onRetry={r.reload}/>:<DashboardContent data={r.data}/>}
  </section>;
 }
 function DashboardContent({data:d}){

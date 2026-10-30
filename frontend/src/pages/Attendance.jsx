@@ -1,3 +1,4 @@
+import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { Camera } from 'lucide-react';
@@ -37,7 +38,7 @@ function PhotoViewer({ view, onClose }) {
   return (
     <Modal open wide title={title} onClose={onClose} footer={<Button onClick={onClose}>Close</Button>}>
       <div className="photo-view" aria-busy={state.status === 'loading' || undefined}>
-        {state.status === 'loading' && <p className="muted">Loading photo…</p>}
+        {state.status === 'loading' && <Skeleton variant="image" label="Loading photo…" />}
         {state.status === 'ready' && (
           <img className="photo-img" src={state.url} alt={`${KIND_LABEL[kind]} selfie of ${record.fullName}`}
             onError={() => setState({ status: 'error', url: '', message: 'The photo could not be loaded. The link may have expired.' })} />

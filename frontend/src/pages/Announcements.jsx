@@ -1,3 +1,4 @@
+import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
 import AuditBar from '../components/AuditBar.jsx';
 import { useEffect, useState } from 'react';
@@ -25,7 +26,7 @@ export function AnnouncementFeed() {
   const data=useAnnouncements(5);
   return <section className="card stack" aria-labelledby="employee-announcements-title">
     <div className="row between"><h2 id="employee-announcements-title">Announcements</h2><Button size="sm" onClick={data.refresh} disabled={data.loading}>Refresh</Button></div>
-    {data.loading ? <p role="status">Loading announcements…</p> : data.error ? <p role="alert" className="form-error">{data.error}</p> : !data.total ? <p className="muted">No active announcements.</p>
+    {data.loading ? <Skeleton variant="cards" label="Loading announcements…" /> : data.error ? <p role="alert" className="form-error">{data.error}</p> : !data.total ? <p className="muted">No active announcements.</p>
       : data.items.map(item=><article className="card stack" key={item.id}>
         <h3 style={{overflowWrap:'anywhere'}}>{item.title}</h3>
         <small className="muted">Published {item.publishedAt}{item.expiresOn ? ` · Visible through ${item.expiresOn}` : ''}</small>

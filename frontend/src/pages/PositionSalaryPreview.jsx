@@ -1,3 +1,4 @@
+import Skeleton from '../components/Skeleton.jsx';
 import Button from '../components/Button.jsx';
 
 // Read-only salary facts of one package. Used for the new-employee preview and for both sides of the comparison.
@@ -36,7 +37,7 @@ export default function PositionSalaryPreview({ plan, profile, busy, onApplyChan
   // plan.kind === 'change'
   return (
     <div className="stack full" aria-live="polite">
-      {profile.status === 'loading' && <p role="status" className="muted">Loading the current salary…</p>}
+      {profile.status === 'loading' && <Skeleton label="Loading the current salary…" />}
       {profile.status === 'error' && (
         <p className="form-error" role="alert">Could not load the current salary: {profile.error} <Button size="sm" onClick={onRetry}>Try again</Button></p>
       )}
