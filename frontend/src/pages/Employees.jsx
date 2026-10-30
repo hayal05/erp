@@ -86,7 +86,7 @@ export default function Employees() {
   ];
 
   return (
-    <section className="stack">
+    <section className="stack employees-page">
       <div className="row between">
         <h1>Employees</h1>
         {canManage && <Button variant="primary" onClick={() => setDialog({ employee: null })} disabled={!lookups.shifts.length}
