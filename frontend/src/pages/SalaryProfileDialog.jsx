@@ -1,3 +1,4 @@
+import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
 import AuditBar from '../components/AuditBar.jsx';
 import { useEffect, useState } from 'react';
@@ -31,7 +32,7 @@ export default function SalaryProfileDialog({ employee, onClose }) {
     <Button onClick={onClose} disabled={busy}>{canManage?'Cancel':'Close'}</Button>{canManage && <Button variant="primary" type="submit" form="salary-profile" busy={busy} disabled={!form}>Save salary</Button>}
   </>}>
     {error && <p className="form-error" role="alert">{error}</p>}
-    {!form ? error ? <Button onClick={() => setRetry((n) => n + 1)}>Retry</Button> : <p role="status">Loading salary…</p> :
+    {!form ? error ? <Button onClick={() => setRetry((n) => n + 1)}>Retry</Button> : <Skeleton label="Loading salary…" /> :
       <form id="salary-profile" className="stack" onSubmit={submit} noValidate>
         {['basic', 'allowance'].map((key) => <Field key={key} label={key === 'basic' ? 'Basic salary' : 'Allowance'} inputMode="decimal" value={form[key]} error={fields[key]} disabled={busy||!canManage} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />)}
         {[['allowanceTaxable', 'Allowance is taxable'], ['allowancePensionable', 'Allowance is pensionable'], ['pensionApplies', 'Pension applies to this employee']].map(([key, label]) =>

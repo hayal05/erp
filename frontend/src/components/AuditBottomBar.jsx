@@ -1,3 +1,4 @@
+import Skeleton from './Skeleton.jsx';
 import {useEffect,useId,useRef,useState} from 'react';
 import {History} from 'lucide-react';
 import {get} from '../api/client.js';
@@ -10,7 +11,7 @@ const stamp=value=>value?new Intl.DateTimeFormat(undefined,{year:'2-digit',month
 const value=(field,v)=>v==null?'—':field.endsWith('Minor')&&typeof v==='number'?formatMoney(v):Array.isArray(v)?v.join(', '):String(v);
 function AuditFact({title,event,unapproved=false,loading,error}){
  const text=event?`${event.actor||'System / not recorded'} · ${stamp(event.at)}`:'';
- return <div><dt>{title}:</dt><dd title={error||text||undefined}>{error?<span role="alert">Unavailable</span>:loading?'…':event?<><span className="audit-actor">{event.actor||'System / not recorded'}</span><span aria-hidden="true">·</span><time dateTime={event.at}>{stamp(event.at)}</time></>:unapproved?<span className="audit-not-authorised">Not authorised</span>:'—'}</dd></div>;
+ return <div><dt>{title}:</dt><dd title={error||text||undefined}>{error?<span role="alert">Unavailable</span>:loading?<Skeleton variant="line" label={`Loading ${title.toLowerCase()}…`} />:event?<><span className="audit-actor">{event.actor||'System / not recorded'}</span><span aria-hidden="true">·</span><time dateTime={event.at}>{stamp(event.at)}</time></>:unapproved?<span className="audit-not-authorised">Not authorised</span>:'—'}</dd></div>;
 }
 export default function AuditBottomBar({scope}){
  const {user}=useAuth();

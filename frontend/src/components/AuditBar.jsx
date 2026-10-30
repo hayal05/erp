@@ -1,3 +1,4 @@
+import Skeleton from './Skeleton.jsx';
 import {useEffect,useState} from 'react';
 import {useAuth} from '../api/auth.jsx';
 import {get} from '../api/client.js';
@@ -22,7 +23,7 @@ function History({type,id,reload}){
  },[type,id,page,retry,reload]);
  return <aside className="card stack" aria-label="Record audit history">
   <strong>Audit information</strong>
-  {data.loading?<p role="status">Loading audit history…</p>:data.error?<p role="alert" className="form-error">{data.error} <Button size="sm" onClick={()=>setRetry(n=>n+1)}>Retry</Button></p>:<>
+  {data.loading?<Skeleton variant="line" label="Loading audit history…" />:data.error?<p role="alert" className="form-error">{data.error} <Button size="sm" onClick={()=>setRetry(n=>n+1)}>Retry</Button></p>:<>
    <dl className="profile-facts">{[['created','Created'],['modified','Last modified'],['approved','Approved']].map(([key,title])=><div key={key}><dt>{title} by / on</dt><dd>{data.summary[key]?`${data.summary[key].actor||'System / not recorded'} · ${stamp(data.summary[key].at)}`:'Not recorded'}</dd></div>)}</dl>
    <Button size="sm" aria-expanded={open} onClick={()=>{setOpen(v=>!v);if(!open)setRetry(n=>n+1);}}>{open?'Hide change log':'View change log'}</Button><Button size="sm" onClick={()=>setRetry(n=>n+1)}>Refresh audit</Button>
    {open&&<><Table caption="Record change log" columns={[{key:'actor',header:'By'},{key:'at',header:'On',render:r=>stamp(r.at)},{key:'action',header:'Action',render:r=>label(r.action)},

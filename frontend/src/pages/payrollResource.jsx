@@ -1,3 +1,4 @@
+import Skeleton from '../components/Skeleton.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import Button from '../components/Button.jsx';
 import { get } from '../api/client.js';
@@ -23,8 +24,8 @@ export function useResource(path, query) {
 }
 
 // Shared loading / error block for the tab bodies. Renders nothing when there is data to show.
-export function ResourceState({ loading, error, onRetry }) {
-  if (loading) return <p className="muted" aria-busy="true" role="status">Loading…</p>;
+export function ResourceState({ loading, error, onRetry, variant = 'form' }) {
+  if (loading) return <Skeleton variant={variant} />;
   if (error) return (
     <div className="stack" role="alert"><p className="form-error">{error}</p><div><Button onClick={onRetry}>Try again</Button></div></div>
   );

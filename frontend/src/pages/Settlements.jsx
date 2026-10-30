@@ -1,3 +1,4 @@
+import Skeleton from '../components/Skeleton.jsx';
 import {usePermission} from '../api/auth.jsx';
 import AuditBar from '../components/AuditBar.jsx';
 import { useEffect,useState } from 'react';
@@ -57,7 +58,7 @@ function SettlementDetails({period,kind,onClose,onRecorded}){
     :[money('pensionableMinor','Pensionable salary'),money('employeePensionMinor','Employee pension'),money('employerPensionMinor','Company pension'),{key:'combined',header:'Total pension',align:'num',render:r=>formatMoney(r.employeePensionMinor+r.employerPensionMinor)}])];
   return <Modal open wide title={`${label} payable · ${period.month}`} onClose={()=>!busy&&onClose()} footer={<Button disabled={busy} onClick={onClose}>Close</Button>} dismissible={!busy}>
     <div className="stack">
-      {error?<p className="form-error" role="alert">{error} <Button onClick={refresh}>Retry</Button></p>:!current?<p role="status">Loading balance…</p>:<>
+      {error?<p className="form-error" role="alert">{error} <Button onClick={refresh}>Retry</Button></p>:!current?<Skeleton label="Loading balance…" />:<>
         <p>{current.currency} · {current.employeeCount} employees · Payroll paid on {current.paidOn}</p>
         <div className="row"><span>Due: <strong>{formatMoney(amounts.due)}</strong></span><span>Settled: <strong>{formatMoney(amounts.paid)}</strong></span><span>Outstanding: <strong>{formatMoney(amounts.balance)}</strong></span></div>
         {kind==='pension'&&<p className="muted">Employee pension: {formatMoney(current.employeePensionMinor)} + company pension: {formatMoney(current.companyPensionMinor)}.</p>}

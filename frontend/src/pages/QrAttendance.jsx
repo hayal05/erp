@@ -1,3 +1,4 @@
+import Skeleton from '../components/Skeleton.jsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { Lock, QrCode, RefreshCw, Unlock } from 'lucide-react';
@@ -78,11 +79,11 @@ export default function QrAttendance() {
           <img className="qr-img" src={qr.dataUrl} alt="Attendance QR code. Scan it with your phone camera." width="360" height="360" />
         ) : (
           <div className="qr-placeholder" role="status">
-            {!canManage ? 'QR display is managed by HR' : busy ? 'Creating code…' : qr ? 'Code expired' : 'No active code'}
+            {!canManage ? 'QR display is managed by HR' : busy ? <Skeleton variant="image" label="Creating QR code…" /> : qr ? 'Code expired' : 'No active code'}
           </div>
         )}
         <p className="qr-countdown" aria-live="off">
-          {!canManage?(status?.error||(!status?'Loading QR status…':status.active?`A shared code is active until ${new Date(status.expiresAt).toLocaleString()}.`:'No active code.')):live ? <>Expires in <strong>{formatCountdown(remaining)}</strong></> : 'Press the button to show a new code.'}
+          {!canManage?(status?.error||(!status?<Skeleton variant="line" label="Loading QR status…" />:status.active?`A shared code is active until ${new Date(status.expiresAt).toLocaleString()}.`:'No active code.')):live ? <>Expires in <strong>{formatCountdown(remaining)}</strong></> : 'Press the button to show a new code.'}
         </p>
         {canManage && live && <p className="muted">All employees can use this code before it expires. Each employee can use it once.</p>}
         {error && <p className="field-error" role="alert">{error}</p>}

@@ -1,3 +1,4 @@
+import Skeleton from '../components/Skeleton.jsx';
 import {useEffect,useState,useRef} from 'react';
 import {get,post} from '../api/client.js';
 import {useAuth} from '../api/auth.jsx';
@@ -24,7 +25,7 @@ export default function Approvals(){
  return <section><h1>Approvals</h1><p className="muted">HR and Finance administrative changes take effect after another authorized person in the same area, or Admin, approves. Admin changes apply immediately. Attendance check-ins and existing leave approvals continue as usual.</p>
   <div className="toolbar"><label>Show <select value={view} onChange={e=>{setView(e.target.value);setPage(1);}} disabled={busy}><option value="pending">Pending</option><option value="mine">My requests</option><option value="all">All requests</option></select></label><button onClick={()=>setVersion(v=>v+1)} disabled={busy}>Refresh</button></div>
   {error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status">{notice}</p>}
-  {!data?<p aria-busy="true">Loading requests…</p>:<><div className="table-wrap"><table><thead><tr><th>Request</th><th>Area</th><th>Change</th><th>Requested by</th><th>Requested on</th><th>Status</th><th>Review</th></tr></thead><tbody>
+  {!data?(error?null:<Skeleton variant="table" columns={7} label="Loading requests…" />):<><div className="table-wrap"><table><thead><tr><th>Request</th><th>Area</th><th>Change</th><th>Requested by</th><th>Requested on</th><th>Status</th><th>Review</th></tr></thead><tbody>
   {data.items.map(row=><tr key={row.id}><td>#{row.id}</td><td>{row.department.toUpperCase()}</td><td>{changeLabel(row.method,row.path)}</td><td>{row.requester_name}{Number(row.requester_id)===user.id?' (you)':''}</td><td>{when(row.requested_at)}</td><td>{row.status}</td><td><button disabled={busy} onClick={()=>{setSelected(row);setReason('');setError('');}}>Details</button></td></tr>)}
   {!data.items.length&&<tr><td colSpan={7}>No requests found.</td></tr>}</tbody></table></div>
   <div className="toolbar"><button disabled={busy||page<=1} onClick={()=>setPage(p=>p-1)}>Previous</button><span>Page {page} of {Math.max(1,Math.ceil(data.total/data.pageSize))} · {data.total} requests</span><button disabled={busy||page*data.pageSize>=data.total} onClick={()=>setPage(p=>p+1)}>Next</button></div></>}

@@ -1,3 +1,4 @@
+import Skeleton from '../../components/Skeleton.jsx';
 import { useEffect, useState } from 'react';
 import Button from '../../components/Button.jsx';
 import Field from '../../components/Field.jsx';
@@ -33,7 +34,7 @@ export default function Profile() {
     } catch (e) { setSaveError(e.message); } finally { setBusy(false); }
   }
   if (error) return <section className="stack"><h1>My profile</h1><p role="alert" className="form-error">{error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></section>;
-  if (!profile) return <p role="status">Loading profile…</p>;
+  if (!profile) return <Skeleton variant="profile" label="Loading profile…" />;
   const facts = [['Employee ID', profile.employeeCode], ['Department', profile.department], ['Position', profile.position],
     ['Username',profile.username], ['Email', profile.email], ['Phone', profile.phone], ['Employment type', employmentLabel(profile.employmentType)],
     ['Status', profile.status], ['Joined', formatWorkDate(profile.startDate)], ['Time employed', tenure(profile.startDate, profile.today)], ['Shift', profile.shift]];
