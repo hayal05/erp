@@ -27,12 +27,11 @@ export default function Settlements(){
   const data=useList('/settlements',{page,pageSize:SIZE,view},reload),refresh=()=>setReload(n=>n+1);
   const money=(key,header)=>({key,header,align:'num',render:r=>formatMoney(r[key])});
   const balance=(kind,key,header)=>({key,header,align:'num',render:r=><button type="button" className="salary-cell" onClick={()=>setSelected({period:r,kind})} aria-label={`View ${settlementLabel(kind)} payable for ${r.month}`}>{formatMoney(r[key])}</button>});
-  return <section className="stack">
-    <div className="row between"><h1>Settlements</h1></div>
-    {!data.loading&&!data.error&&data.summary?.map(s=><div className="card stack" key={s.currency||'currency'}><strong>Outstanding · {s.currency||'Currency not recorded'}</strong><div className="row"><span>Income tax: <strong>{formatMoney(s.incomeTaxBalanceMinor)}</strong></span><span>Pension: <strong>{formatMoney(s.pensionBalanceMinor)}</strong></span></div></div>)}
-    <Field as="select" label="Show" value={view} options={[{value:'unsettled',label:'Unsettled months'},{value:'all',label:'All paid payroll months'}]} onChange={e=>{setView(e.target.value);setPage(1);}} />
+  return <section className="stack settlements-page">
+    <div className="row between settlement-heading"><h1>Settlements</h1><Field as="select" hideLabel label="Settlement view" value={view} options={[{value:'unsettled',label:'Unsettled months'},{value:'all',label:'All paid payroll months'}]} onChange={e=>{setView(e.target.value);setPage(1);}} /></div>
+    {!data.loading&&!data.error&&data.summary?.length>0&&<div className="settlement-summary-grid">{data.summary.map(s=><div className="card settlement-currency" key={s.currency||'currency'}><strong>Outstanding · {s.currency||'Currency not recorded'}</strong><dl className="settlement-totals"><div><dt>Income tax</dt><dd>{formatMoney(s.incomeTaxBalanceMinor)}</dd></div><div><dt>Pension</dt><dd>{formatMoney(s.pensionBalanceMinor)}</dd></div></dl></div>)}</div>}
     <Table caption="Monthly tax and pension payable" columns={[
-      {key:'month',header:'Payroll month'},{key:'currency',header:'Currency'},
+      {key:'month',header:'Month'},{key:'currency',header:'Currency'},
       money('incomeTaxMinor','Income tax due'),money('incomeTaxSettledMinor','Tax settled'),balance('income_tax','incomeTaxBalanceMinor','Tax outstanding'),
       money('pensionMinor','Pension due'),money('pensionSettledMinor','Pension settled'),balance('pension','pensionBalanceMinor','Pension outstanding'),
       {key:'status',header:'Status',render:r=><Badge tone={r.incomeTaxBalanceMinor===0&&r.pensionBalanceMinor===0?'ok':'warn'}>{r.incomeTaxBalanceMinor===0&&r.pensionBalanceMinor===0?'Settled':'Unsettled'}</Badge>},
@@ -44,6 +43,7 @@ export default function Settlements(){
 function SettlementDetails({period,kind,onClose,onRecorded}){
   const pageRefresh = usePageRefresh();
   const canManage=usePermission('settlements.manage');
+  const [detailTab,setDetailTab]=useState('employees');
   const [current,setCurrent]=useState(null),[error,setError]=useState(''),[reload,setReload]=useState(0),[page,setPage]=useState(1),[historyPage,setHistoryPage]=useState(1),[recording,setRecording]=useState(false),[busy,setBusy]=useState(false);
   const employees=useList(`/payroll/periods/${period.id}/entries`,{page,pageSize:DETAIL_SIZE},reload);
   const history=useList(`/settlements/${period.id}/payments`,{kind,page:historyPage,pageSize:DETAIL_SIZE},reload);
@@ -55,24 +55,22 @@ function SettlementDetails({period,kind,onClose,onRecorded}){
   },[period.id,reload, pageRefresh]);
   const label=settlementLabel(kind),amounts=current?payable(current,kind):null;
   const money=(key,header)=>({key,header,align:'num',render:r=>formatMoney(r[key])});
-  const cols=[{key:'employeeCode',header:'Employee ID'},{key:'employeeName',header:'Employee name'},...(kind==='income_tax'?[money('taxableIncomeMinor','Taxable income'),money('incomeTaxMinor','Income tax withheld')]
+  const cols=[{key:'employeeCode',header:'Employee ID'},{key:'employeeName',header:'Employee'},...(kind==='income_tax'?[money('taxableIncomeMinor','Taxable income'),money('incomeTaxMinor','Income tax withheld')]
     :[money('pensionableMinor','Pensionable salary'),money('employeePensionMinor','Employee pension'),money('employerPensionMinor','Company pension'),{key:'combined',header:'Total pension',align:'num',render:r=>formatMoney(r.employeePensionMinor+r.employerPensionMinor)}])];
   return <Modal open wide title={`${label} payable · ${period.month}`} onClose={()=>!busy&&onClose()} footer={<Button disabled={busy} onClick={onClose}>Close</Button>} dismissible={!busy}>
-    <div className="stack">
+    <div className="stack settlement-details">
       {error?<p className="form-error" role="alert">{error} <Button onClick={refresh}>Retry</Button></p>:!current?<Skeleton label="Loading balance…" />:<>
-        <p>{current.currency} · {current.employeeCount} employees · Payroll paid on {current.paidOn}</p>
-        <div className="row"><span>Due: <strong>{formatMoney(amounts.due)}</strong></span><span>Settled: <strong>{formatMoney(amounts.paid)}</strong></span><span>Outstanding: <strong>{formatMoney(amounts.balance)}</strong></span></div>
-        {kind==='pension'&&<p className="muted">Employee pension: {formatMoney(current.employeePensionMinor)} + company pension: {formatMoney(current.companyPensionMinor)}.</p>}
-        {canManage&&amounts.balance>0&&!recording&&<Button variant="primary" onClick={()=>setRecording(true)}>Record payment</Button>}
-        {canManage&&recording&&<PaymentForm period={current} kind={kind} balance={amounts.balance} onBusy={setBusy} onConflict={()=>{setRecording(false);refresh();onRecorded();}} onCancel={()=>setRecording(false)} onSaved={()=>{setRecording(false);setHistoryPage(1);refresh();onRecorded();}} />}
+        <div className="row between settlement-meta"><span>{current.currency} · {current.employeeCount} employees · Paid {current.paidOn}</span>{canManage&&amounts.balance>0&&!recording&&<Button size="sm" variant="primary" onClick={()=>setRecording(true)}>Record payment</Button>}</div>
+        <dl className="settlement-totals settlement-period-totals">{[['Due',amounts.due],['Settled',amounts.paid],['Outstanding',amounts.balance]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{formatMoney(value)}</dd></div>)}</dl>
+        {kind==='pension'&&<small className="muted">Employee: {formatMoney(current.employeePensionMinor)} · Company: {formatMoney(current.companyPensionMinor)}</small>}
+        {canManage&&recording&&<PaymentForm period={current} kind={kind} balance={amounts.balance} onBusy={setBusy} onConflict={()=>{setRecording(false);refresh();onRecorded();}} onCancel={()=>setRecording(false)} onSaved={()=>{setRecording(false);setDetailTab('history');setHistoryPage(1);refresh();onRecorded();}} />}
       </>}
-      <h2>Employee breakdown</h2>
-      <Table caption={`${label} employee breakdown`} columns={cols} rows={employees.items} loading={employees.loading} error={employees.error} onRetry={refresh} empty="No employee entries" />
+      <div className="row" role="group" aria-label="Settlement details"><Button size="sm" disabled={busy} variant={detailTab==='employees'?'primary':'default'} aria-pressed={detailTab==='employees'} onClick={()=>setDetailTab('employees')}>Employees</Button><Button size="sm" disabled={busy} variant={detailTab==='history'?'primary':'default'} aria-pressed={detailTab==='history'} onClick={()=>setDetailTab('history')}>Payments</Button></div>
+      {detailTab==='employees'?<><Table caption={`${label} employee breakdown`} columns={cols} rows={employees.items} loading={employees.loading} error={employees.error} onRetry={refresh} empty="No employee entries" />
       <Pager page={page} pageSize={DETAIL_SIZE} total={employees.total} onPage={setPage} disabled={employees.loading||busy} />
-      <h2>Settlement history</h2>
-      <Table caption={`${label} settlement history`} columns={[{key:'paymentDate',header:'Payment date'},money('amountMinor','Amount'),{key:'reference',header:'Reference'},{key:'notes',header:'Notes'}, {key:'recordedBy',header:'Recorded by'}]}
+      </>:<><Table caption={`${label} settlement history`} columns={[{key:'paymentDate',header:'Payment date'},money('amountMinor','Amount'),{key:'reference',header:'Reference'},{key:'notes',header:'Notes',render:r=>r.notes?<details className="settlement-note"><summary>View notes</summary><p>{r.notes}</p></details>:'—'}, {key:'recordedBy',header:'Recorded by'}]}
         rows={history.items} loading={history.loading} error={history.error} onRetry={refresh} empty="No payments recorded" />
-      <Pager page={historyPage} pageSize={DETAIL_SIZE} total={history.total} onPage={setHistoryPage} disabled={history.loading||busy} />
+      <Pager page={historyPage} pageSize={DETAIL_SIZE} total={history.total} onPage={setHistoryPage} disabled={history.loading||busy} /></>}
     </div>
   </Modal>;
 }
@@ -86,14 +84,14 @@ function PaymentForm({period,kind,balance,onBusy,onConflict,onCancel,onSaved}){
     try{await post(`/settlements/${period.id}/payments`,result.value);toast.success('Settlement payment recorded');onSaved();}
     catch(e){if(e.status===409){toast.error(e.message);onConflict();}else{setError(e.message);setFields(e.fields||{});}}finally{setBusy(false);onBusy(false);}
   }
-  return <form className="card stack" onSubmit={submit}>
+  return <form className="stack settlement-payment" onSubmit={submit}>
     <h3>Record {settlementLabel(kind).toLowerCase()} payment</h3>
     {error&&<p role="alert" className="form-error">{error}</p>}
-    <Field label={`Amount (${period.currency})`} inputMode="decimal" value={form.amount} onChange={change('amount')} disabled={busy} error={fields.amount||fields.amountMinor} required />
+    <div className="form-grid"><Field label={`Amount (${period.currency})`} inputMode="decimal" value={form.amount} onChange={change('amount')} disabled={busy} error={fields.amount||fields.amountMinor} required />
     <Field label="Payment date" type="date" max={period.today} value={form.paymentDate} onChange={change('paymentDate')} disabled={busy} error={fields.paymentDate} required />
-    <Field label="Payment reference" value={form.reference} onChange={change('reference')} maxLength={120} disabled={busy} error={fields.reference} required />
-    <Field as="textarea" label="Notes (optional)" value={form.notes} onChange={change('notes')} maxLength={1000} disabled={busy} error={fields.notes} />
-    <p className="muted">Records a payment already made. Saved records cannot be edited or deleted.</p>
-    <div className="row"><Button disabled={busy} onClick={onCancel}>Cancel</Button><Button variant="primary" type="submit" busy={busy}>Save payment</Button></div>
+    <Field className="full" label="Payment reference" value={form.reference} onChange={change('reference')} maxLength={120} disabled={busy} error={fields.reference} required />
+    <Field as="textarea" className="full" rows={2} label="Notes (optional)" value={form.notes} onChange={change('notes')} maxLength={1000} disabled={busy} error={fields.notes} /></div>
+    <small className="muted">Record an existing payment. Saved records cannot be edited or deleted.</small>
+    <div className="row end"><Button size="sm" disabled={busy} onClick={onCancel}>Cancel</Button><Button size="sm" variant="primary" type="submit" busy={busy}>Save payment</Button></div>
   </form>;
 }
