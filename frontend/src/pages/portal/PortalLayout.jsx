@@ -1,3 +1,4 @@
+import {VacancyUnreadProvider,useVacancyUnread} from '../../api/vacancyUnread.jsx';
 import {PageRefreshProvider} from '../../api/pageRefresh.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
@@ -41,7 +42,7 @@ export default function PortalLayout() {
     };
   }, []);
   return (
-    <PageRefreshProvider version={sectionVisit}><div className="portal-shell">
+    <VacancyUnreadProvider key={user.id} pathname={pathname} visit={sectionVisit}><PageRefreshProvider version={sectionVisit}><div className="portal-shell">
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="portal-top">
         <span className="brand">Natra</span>
@@ -58,17 +59,21 @@ export default function PortalLayout() {
       </header>
       <main id="main" className="portal-content" tabIndex={-1}><Outlet /></main>
       <nav className="portal-tabs" aria-label="Main">
-        {PORTAL_NAV.map((item) => {
-          const Icon = ICONS[item.key];
-          return (
-            <NavLink key={item.key} to={item.to} end={item.end} onClick={visitSection} className={({ isActive }) => `tab${isActive ? ' active' : ''}`}>
-              <Icon size={22} aria-hidden="true" /><span>{item.label}</span>
-            </NavLink>
-          );
-        })}
+        <PortalNavigation visitSection={visitSection} />
       </nav>
-    </div></PageRefreshProvider>
+    </div></PageRefreshProvider></VacancyUnreadProvider>
   );
+}
+
+function PortalNavigation({visitSection}){
+ const {unreadCount}=useVacancyUnread();
+ return PORTAL_NAV.map(item=>{
+  const Icon=ICONS[item.key],count=item.key==='vacancies'?unreadCount:0;
+  return <NavLink key={item.key} to={item.to} end={item.end} onClick={visitSection} className={({isActive})=>`tab${isActive?' active':''}`}
+   aria-label={count>0?`${item.label}, ${count} unopened ${count===1?'vacancy':'vacancies'}`:undefined}>
+   <span className="portal-tab-icon"><Icon size={22} aria-hidden="true"/>{count>0&&<span className="nav-unread-count" aria-hidden="true">{count>99?'99+':count}</span>}</span><span>{item.label}</span>
+  </NavLink>;
+ });
 }
 
 export function PortalHome() {

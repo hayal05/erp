@@ -1,3 +1,4 @@
+import {useVacancyUnread} from '../api/vacancyUnread.jsx';
 import {useState} from 'react';
 import {usePermission} from '../api/auth.jsx';
 import {post,put,patch} from '../api/client.js';
@@ -13,16 +14,21 @@ const label=value=>String(value||'').replaceAll('_',' ').replace(/^./,s=>s.toUpp
 const stamp=value=>value?new Date(value).toLocaleString():'—';
 const payload=f=>({title:f.title.trim(),description:f.description||'',departmentId:Number(f.departmentId),positionId:Number(f.positionId),closingOn:f.closingOn,status:f.status,...(f.id?{version:f.version}:{})});
 export default function Vacancies({employee=false}){
+ const {openVacancy,refreshUnread}=useVacancyUnread();
  const canManage=usePermission('vacancies.manage'),canReview=usePermission('vacancies.review'),toast=useToast();
  const [page,setPage]=useState(1),[view,setView]=useState('open'),[status,setStatus]=useState(''),[editing,setEditing]=useState(null),[details,setDetails]=useState(null),[applicants,setApplicants]=useState(null),[applying,setApplying]=useState(null);
  const r=useResource('/vacancies',{page,pageSize:SIZE,view:employee?view:'manage',status:employee?undefined:status});
  async function apply(item){
   if(applying!==null)return;setApplying(item.id);
-  try{await post(`/vacancies/${item.id}/apply`);toast.success('Application submitted');r.reload();setDetails(null);}
-  catch(e){toast.error(e.message);if(e.status===409)r.reload();}finally{setApplying(null);}
+  try{await post(`/vacancies/${item.id}/apply`);toast.success('Application submitted');r.reload();setDetails(null);refreshUnread();}
+  catch(e){toast.error(e.message);if(e.status===409){r.reload();refreshUnread();}}finally{setApplying(null);}
+ }
+ function open(item){
+  setDetails(item);
+  if(employee)openVacancy(item.id).then(()=>r.reload()).catch(e=>toast.error(e.message));
  }
  const applyButton=item=>item.applicationId?<Badge tone="info">{label(item.applicationStatus)}</Badge>:item.acceptingApplications?<Button size="sm" variant="primary" busy={applying===item.id} disabled={applying!==null} onClick={()=>apply(item)}>Apply</Button>:<Badge>Closed</Badge>;
- const columns=[{key:'title',header:'Vacancy',render:item=><button type="button" className="salary-cell" onClick={()=>setDetails(item)}>{item.title}</button>},
+ const columns=[{key:'title',header:'Vacancy',render:item=><button type="button" className="salary-cell" onClick={()=>open(item)}>{item.title}{employee&&item.unopened&&<> <Badge tone="info">New</Badge></>}</button>},
   {key:'department',header:'Department'},{key:'position',header:'Position'},{key:'closingOn',header:'Closing date',className:'nowrap'},
   {key:'status',header:'Status',render:item=><Badge tone={item.acceptingApplications?'ok':'neutral'}>{item.status==='open'&&!item.acceptingApplications?'Expired':label(item.status)}</Badge>},
   ...(!employee?[{key:'applicationCount',header:'Applications',align:'num'}]:[]),

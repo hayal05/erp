@@ -11,7 +11,7 @@ import {hasPermission} from '../services/permissions.js';
 import {audit,diffFields} from '../services/audit.js';
 import {companyDate} from '../services/attendance.js';
 import {approvalTransaction} from '../services/approvalExecution.js';
-import {loadVacancies,applyForVacancy,vacancyColumns,vacancyFrom,vacancyOutput} from '../services/vacancies.js';
+import {loadVacancies,applyForVacancy,vacancyUnreadCount,openVacancy,vacancyColumns,vacancyFrom,vacancyOutput} from '../services/vacancies.js';
 import {config} from '../config.js';
 const router=Router();router.use(noStore,requirePermission('vacancies.read'));
 const statuses=['draft','open','closed'];
@@ -25,6 +25,12 @@ async function checkPosting(db,b){
 router.get('/',validate({...pageSchema,view:v.enum({values:['open','mine','manage'],default:'open'}),status:v.enum({values:statuses})},'query'),wrap(async(req,res)=>{
  if(req.query.view==='manage'&&!hasPermission(req.user,'vacancies.admin_read'))throw new HttpError(403,'You cannot manage vacancies','forbidden');
  const result=await withTransaction(async db=>{await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');return loadVacancies(db,req.user,req.query);});res.json(result);
+}));
+router.get('/unread-count',requireEmployee,wrap(async(req,res)=>{
+ const unreadCount=await withTransaction(db=>vacancyUnreadCount(db,req.user.id));res.json({unreadCount});
+}));
+router.post('/:id/open',requireEmployee,validate(idParams,'params'),validate({}),wrap(async(req,res)=>{
+ const result=await withTransaction(db=>openVacancy(db,req.user.id,req.params.id));res.json(result);
 }));
 router.post('/',requirePermission('vacancies.manage'),validate(schema),approvalWrap(async(req,res)=>{
  const b=req.body;
