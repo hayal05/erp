@@ -23,7 +23,7 @@ function useDebounced(value, ms = 300) {
   return v;
 }
 
-const Back = () => <p><WorkspaceLink to="/hr/departments"><ArrowLeft size={14} aria-hidden="true" /> All departments</WorkspaceLink></p>;
+const Back = () => <WorkspaceLink className="organization-back" to="/hr/departments"><ArrowLeft size={14} aria-hidden="true" /> Departments</WorkspaceLink>;
 
 export default function DepartmentDetail() {
   const id = departmentIdFromParam(useParams().id);
@@ -92,7 +92,7 @@ function Detail({ id }) {
     { key: 'name', header: 'Position', render: (r) => <strong>{r.name}</strong> },
     { key: 'basic', header: 'Basic salary', align: 'num' },
     { key: 'allowance', header: 'Allowance', align: 'num', render: (r) => (
-      <>{r.allowance}{r.allowanceNote && <><br /><small className="muted">{r.allowanceNote}</small></>}</>
+      <span className="position-allowance">{r.allowance}{r.allowanceNote && <small className="muted">{r.allowanceNote}</small>}</span>
     ) },
     { key: 'pension', header: 'Pension', className: 'nowrap' },
     { key: 'employees', header: 'Employees', align: 'num' },
@@ -110,22 +110,15 @@ function Detail({ id }) {
   const view = confirm ? deletePositionView(confirm.position) : null;
 
   return (
-    <section className="stack">
-      <Back />
-      <div className="row between">
-        <div>
-          <h1>{dept ? dept.name : 'Department'}</h1>
-          {dept && <p className="muted">{plural(dept.positionCount, 'position')} · {plural(dept.employeeCount, 'employee')}</p>}
+    <section className="stack organization-page positions-page">
+      <div className="row between organization-meta"><Back />{dept && <span className="muted">{plural(dept.positionCount, 'position')} · {plural(dept.employeeCount, 'employee')}</span>}</div>
+      <div className="row between organization-heading">
+        <h1>{dept ? dept.name : 'Department'}</h1>
+        <div className="organization-controls">
+          <Field label="Search positions" type="search" placeholder="Position name" value={searchText} maxLength={100}
+            onChange={(e) => { setSearchText(e.target.value); setPage(1); }} />
+          {canManage && <Button size="sm" variant="primary" onClick={() => setDialog({ position: null })} disabled={!dept}><Plus size={16} aria-hidden="true" /> Add position</Button>}
         </div>
-        {canManage && <Button variant="primary" onClick={() => setDialog({ position: null })} disabled={!dept}><Plus size={16} aria-hidden="true" /> Add position</Button>}
-      </div>
-
-      <h2>Positions and salary</h2>
-      <p className="muted">Position changes do not update existing employee salaries.</p>
-
-      <div className="toolbar">
-        <Field label="Search" type="search" placeholder="Position name" value={searchText} maxLength={100}
-          onChange={(e) => { setSearchText(e.target.value); setPage(1); }} />
       </div>
 
       <Table caption="Positions and salary" columns={columns.filter(c=>canManage||c.key!=='actions')} rows={data.items.map(positionRow)} loading={state.loading} error={state.error} onRetry={refresh}
