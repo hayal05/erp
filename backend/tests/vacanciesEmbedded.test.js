@@ -24,7 +24,7 @@ before(async()=>{
  department=(await admin.post('/api/departments').send({name:'Operations'})).body.id;
  const pos=await admin.post(`/api/departments/${department}/positions`).send({name:'Analyst',basicMinor:100000,allowanceMinor:10000});assert.equal(pos.status,201,JSON.stringify(pos.body));position=pos.body.id;
  for(const [username,role]of[['hr','hr'],['hr2','hr'],['finance','finance'],['employee',null],['other',null]]){
-  const r=await admin.post('/api/employees').send({username:username+'.user',employeeCode:username,fullName:username,password,startDate:'2020-01-01',shiftId:shift,departmentId:department,positionId:position});assert.equal(r.status,201,JSON.stringify(r.body));people[username]=r.body;
+  const r=await admin.post('/api/employees').send({username:username+'.user',employeeCode:username,fullName:username,password,startDate:'2020-01-01',shiftId:shift,departmentId:department,positionId:position,...(username==='employee'?{gender:'female',dateOfBirth:'1995-02-28',fieldOfStudy:'Economics'}:{})});assert.equal(r.status,201,JSON.stringify(r.body));people[username]=r.body;
   await q('UPDATE users SET must_change_password=false WHERE id=$1',[r.body.userId]);if(role)await q('INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,$2,$3)',[r.body.userId,role,root]);
  }
  hr=await signIn(app,{username:'hr.user',password});hr2=await signIn(app,{username:'hr2.user',password});finance=await signIn(app,{username:'finance.user',password});employee=await signIn(app,{username:'employee.user',password});other=await signIn(app,{username:'other.user',password});
@@ -50,7 +50,7 @@ test('one-click apply uses only the signed-in employee profile, freezes its hist
  const applied=await employee.post(`${URL}/${id}/apply`).send({employeeId:people.other.id,profile:{fullName:'Forged'},status:'selected',cv:'ignored'});assert.equal(applied.status,201,JSON.stringify(applied.body));
  assert.equal((await employee.post(`${URL}/${id}/apply`).send({})).status,409);
  const rows=(await q('SELECT * FROM vacancy_applications')).rows;assert.equal(rows.length,1);assert.equal(Number(rows[0].employee_id),people.employee.id);
- const snapshot=rows[0].profile_snapshot;assert.equal(snapshot.fullName,'employee');assert.equal(snapshot.phone,'0911111111');assert.equal(snapshot.experienceSummary,'Operations experience');assert.ok(snapshot.positionHistory.length);
+ const snapshot=rows[0].profile_snapshot;assert.equal(snapshot.fullName,'employee');assert.equal(snapshot.gender,'female');assert.equal(snapshot.dateOfBirth,'1995-02-28');assert.equal(snapshot.fieldOfStudy,'Economics');assert.equal(snapshot.phone,'0911111111');assert.equal(snapshot.experienceSummary,'Operations experience');assert.ok(snapshot.positionHistory.length);
  const text=JSON.stringify(snapshot);assert.doesNotMatch(text,/password|salary|basicMinor|allowanceMinor|accessRoles|photo/);
  await q("UPDATE employees SET experience_summary='Changed later',phone='0922222222' WHERE id=$1",[people.employee.id]);
  const detail=await hr.get(`${URL}/${id}/applications/${applied.body.id}`);assert.equal(detail.status,200);assert.deepEqual(detail.body.profile,snapshot);

@@ -60,7 +60,7 @@ try{
  const department={id:1,name:'Operations'},shift={id:1,name:'Day',startTime:'08:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:10};
  for(const props of [{employee:null},{employee:person}]){
   const html=await render('pages/EmployeeDialog.jsx','default',{...props,departments:[department],shifts:[shift]});
-  for(const label of ['Employee ID','Full name','Username','Department','Position','Start date'])assert.ok(html.includes(label),`Employee form lost ${label}`);
+  for(const label of ['Employee ID','Full name','Gender','Date of birth','Field of study','Username','Department','Position','Start date'])assert.ok(html.includes(label),`Employee form lost ${label}`);
  }
  await render('pages/DepartmentDialog.jsx','default',{department});await render('pages/PositionDialog.jsx','default',{departmentId:1,position:null});
  for(const name of ['HolidayDialog','ShiftDialog'])await render('pages/SettingsDialogs.jsx',name,{holiday:null,year:2026,shift});
@@ -86,10 +86,10 @@ try{
  const negativeBalance=await render('pages/portal/Leave.jsx','EmployeeLeaveBalances',{year:2026,items:[{...balanceProps.items[0],remaining:-2,used:21,pending:1}]},'/portal/leave');
  assert.ok(negativeBalance.includes('-2 days left')&&negativeBalance.includes('leave-empty'),'Overspent leave balance is not visible');
  assert.ok(!(await render('pages/portal/Leave.jsx','EmployeeLeaveBalances',{year:2026,items:[]},'/portal/leave')).includes('aria-label="Leave balances'),'Empty balances rendered an unused list');
- const ownProfile={...person,experienceSummary:'Previous role in customer service'};
+ const ownProfile={...person,gender:'female',dateOfBirth:'1995-02-28',fieldOfStudy:'Economics',experienceSummary:'Previous role in customer service'};
  const ownProps={profile:ownProfile,history:{items:[{id:1,position:'Officer',department:'Operations',recordedOn:'2025-01-01',baseline:true}],total:1,loading:false,error:''},page:1,summary:ownProfile.experienceSummary,editing:false,busy:false,saveError:''};
  const own=await render('pages/portal/Profile.jsx','ProfileDetails',ownProps,'/portal/profile');
- for(const value of [person.fullName,person.employeeCode,person.username,'Operations','Officer','Account &amp; contact','Employment','Previous role in customer service','Starting record'])assert.ok(own.includes(value),`Employee profile lost ${value}`);
+ for(const value of [person.fullName,person.employeeCode,person.username,'Operations','Officer','Personal details &amp; contact','Employment','Previous role in customer service','Starting record','Female','Date of birth','Economics'])assert.ok(own.includes(value),`Employee profile lost ${value}`);
  assert.ok(!own.includes('<input')&&!own.includes('<textarea'),'HR-managed profile facts became editable');
  await render('pages/portal/Profile.jsx','ProfileDetails',{...ownProps,editing:true},'/portal/profile');
  await render('pages/portal/Profile.jsx','ProfileDetails',{...ownProps,profile:{...ownProfile,fullName:'A very long employee name that must wrap in the identity header',email:null,phone:null},history:{items:[],total:0,loading:false,error:''}},'/portal/profile');

@@ -33,6 +33,9 @@ before(async () => {
   for (const [c, name, role] of [[HR, 'Hana HR', 'hr'], [PLAIN, 'Plain User', 'employee']]) {
     await query(`INSERT INTO users (email, full_name, password_hash, role) VALUES ($1, $2, $3, $4)`, [c.email, name, await hashPassword(c.password), role]);
   }
+  // This legacy role='hr' fixture exercises immediate General Admin CRUD.
+  // New HR grants require a reviewer, covered by employeePersonalDetailsEmbedded.test.js.
+  await query("INSERT INTO access_grants(user_id,access_role,granted_by_user_id) SELECT id,'admin',id FROM users WHERE email=$1",[HR.email]);
   shiftId = Number((await query(`INSERT INTO shifts (name, start_time, end_time) VALUES ('Standard', '09:00', '17:00') RETURNING id`)).rows[0].id);
   hr = await signIn(app, HR);
 });

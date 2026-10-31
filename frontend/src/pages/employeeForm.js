@@ -9,16 +9,19 @@ export const EMPLOYMENT_TYPES = [
   { value: 'intern', label: 'Intern' },
 ];
 
+export const GENDER_OPTIONS=[{value:'male',label:'Male'},{value:'female',label:'Female'}];
+
 export const MIN_PASSWORD = 10;
 const MAX_PASSWORD_BYTES = 72; // bcrypt limit, same rule as the server
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const emptyForm = () => ({
-  employeeCode: '', fullName: '', username:'',email: '', phone: '', departmentId: '', positionId: '', jobTitle: '',
+  employeeCode: '', fullName: '', gender:'',dateOfBirth:'',fieldOfStudy:'', username:'',email: '', phone: '', departmentId: '', positionId: '', jobTitle: '',
   startDate: '', employmentType: 'full_time', shiftId: '', password: '', applyPositionSalary: true,
 });
 
 export const formFromEmployee = (e) => ({
+  gender:e.gender??'',dateOfBirth:e.dateOfBirth??'',fieldOfStudy:e.fieldOfStudy??'',
   employeeCode: e.employeeCode, fullName: e.fullName, username:e.username??'',email: e.email??'', phone: e.phone ?? '',
   departmentId: e.departmentId == null ? '' : String(e.departmentId), positionId: e.positionId == null ? '' : String(e.positionId),
   jobTitle: e.jobTitle ?? '', // shown read-only: the position owns the title once one is chosen (task 6.10)
@@ -43,6 +46,9 @@ export function validateForm(form, mode, original) {
   if (!f.employeeCode) errors.employeeCode = 'Enter the employee ID';
   else if (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(f.employeeCode)) errors.employeeCode = 'Use letters, numbers and . _ - / only (no spaces)';
   if (!f.fullName) errors.fullName = 'Enter the full name';
+  if(f.gender&&!GENDER_OPTIONS.some(o=>o.value===f.gender))errors.gender='Choose Male or Female';
+  if(f.dateOfBirth){const date=new Date(`${f.dateOfBirth}T00:00:00Z`);if(!/^\d{4}-\d{2}-\d{2}$/.test(f.dateOfBirth)||f.dateOfBirth<'0001-01-01'||Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==f.dateOfBirth)errors.dateOfBirth='Choose a valid birth date';}
+  if(f.fieldOfStudy?.length>150)errors.fieldOfStudy='At most 150 characters';
   if (!f.username) errors.username='Enter the username';
   else if(!(mode==='edit'&&f.username===original?.username)&&!/^[A-Za-z0-9][A-Za-z0-9._@+\-]{2,253}$/.test(f.username)) errors.username='Use 3–254 letters, numbers and . _ - @ + only';
   if (f.email && !EMAIL.test(f.email)) errors.email = 'Enter a valid email address';
@@ -62,6 +68,7 @@ export function buildCreate(form) {
   const f = clean(form);
   const body = { employeeCode: f.employeeCode, fullName: f.fullName, username:f.username.toLowerCase(), startDate: f.startDate,
     employmentType: f.employmentType, password: form.password };
+  for(const key of ['gender','dateOfBirth','fieldOfStudy'])if(f[key])body[key]=f[key];
   if (f.email) body.email=f.email;
   if (f.phone) body.phone = f.phone;
   if (f.departmentId) body.departmentId = Number(f.departmentId);
@@ -77,6 +84,7 @@ export function buildPatch(form, original) {
   const was = clean(formFromEmployee(original));
   const body = {};
   for (const key of ['employeeCode', 'fullName', 'startDate', 'employmentType']) if (now[key] !== was[key]) body[key] = now[key];
+  for(const key of ['gender','dateOfBirth','fieldOfStudy'])if(now[key]!==was[key])body[key]=now[key]||null;
   if(now.username.toLowerCase()!==was.username.toLowerCase())body.username=now.username.toLowerCase();
   if(now.email!==was.email)body.email=now.email||null;
   if (now.phone !== was.phone) body.phone = now.phone || null;

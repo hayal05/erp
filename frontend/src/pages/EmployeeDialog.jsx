@@ -6,7 +6,7 @@ import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { get, patch, post } from '../api/client.js';
-import { EMPLOYMENT_TYPES, MIN_PASSWORD, buildCreate, buildPatch, changeDepartment, emptyForm, employeeSaveError, formFromEmployee, needsCurrentSalary, positionOptions, salaryPlan, savedMessage, validateForm } from './employeeForm.js';
+import { EMPLOYMENT_TYPES, GENDER_OPTIONS, MIN_PASSWORD, buildCreate, buildPatch, changeDepartment, emptyForm, employeeSaveError, formFromEmployee, needsCurrentSalary, positionOptions, salaryPlan, savedMessage, validateForm } from './employeeForm.js';
 import PositionSalaryPreview from './PositionSalaryPreview.jsx';
 
 const POSITION_LIMIT = 100; // the API caps pageSize at 100
@@ -98,6 +98,9 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
         <fieldset className="employee-form-group form-grid"><legend>Identity &amp; account</legend>
         <Field label="Employee ID" maxLength={40} autoComplete="off" {...bind('employeeCode')} />
         <Field label="Full name" maxLength={120} autoComplete="off" {...bind('fullName')} />
+        <Field as="select" label="Gender" placeholder="Select gender" options={GENDER_OPTIONS} {...bind('gender')} />
+        <Field label="Date of birth" type="date" min="0001-01-01" {...bind('dateOfBirth')} />
+        <Field className="full" label="Field of study" maxLength={150} placeholder="e.g. Economics" {...bind('fieldOfStudy')} />
         <Field label="Username" required minLength={3} maxLength={254} autoComplete="off" autoCapitalize="none" {...bind('username')} />
         {mode === 'create' && (
           <Field label="Temporary password" type="password" autoComplete="new-password" hint={`${MIN_PASSWORD}+ characters; change at first sign-in.`} {...bind('password')} />
