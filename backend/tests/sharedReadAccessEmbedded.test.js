@@ -15,7 +15,7 @@ before(async()=>{
  shift=(await admin.post('/api/shifts').send({name:'Day',startTime:'09:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:0})).body.id;
  department=(await admin.post('/api/departments').send({name:'Shared view'})).body.id;
  for(const role of ['hr','finance','plain']){
-  const r=await admin.post('/api/employees').send({username:role+'.user',employeeCode:role,fullName:role,password,startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,departmentId:department});assert.equal(r.status,201,JSON.stringify(r.body));
+  const r=await admin.post('/api/employees').send({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',username:role+'.user',employeeCode:role,fullName:role,password,startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,departmentId:department});assert.equal(r.status,201,JSON.stringify(r.body));
   await q('UPDATE users SET must_change_password=false WHERE id=$1',[r.body.userId]);
   if(role!=='plain')await q('INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,$2,$3)',[r.body.userId,role,root]);else employee=r.body;
  }
@@ -59,7 +59,7 @@ test('cross-department proposals are visible but cannot be approved by the unrel
  assert.equal((await finance.post(`/api/change-requests/${id}/reject`).send({reason:'Unrelated role'})).status,403);
  assert.equal((await finance.post(`/api/change-requests/${id}/cancel`).send({})).status,403);
  assert.equal((await admin.post(`/api/change-requests/${id}/approve`).send({})).status,200);
- const created=await hr.post('/api/employees').send({username:'queued.user',employeeCode:'queued',fullName:'Queued user',password,startDate:'2026-01-01',shiftId:shift});assert.equal(created.status,202);
+ const created=await hr.post('/api/employees').send({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',username:'queued.user',employeeCode:'queued',fullName:'Queued user',password,startDate:'2026-01-01',shiftId:shift});assert.equal(created.status,202);
  const preview=await finance.get(`/api/change-requests/${created.body.requestId}`);assert.equal(preview.status,200);assert.equal(preview.body.payload_preview.password,'[protected]');assert.ok(!JSON.stringify(preview.body).includes(password));assert.equal('payload_cipher' in preview.body,false);
 });
 test('QR status reveals metadata without granting generation or exposing bearer tokens',async()=>{

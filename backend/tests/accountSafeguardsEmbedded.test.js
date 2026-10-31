@@ -9,7 +9,7 @@ const {app}=await import('../src/server.js'),{seedAdmin}=await import('../src/db
 let admin,staff,root,hr,finance,normal,shift;
 const creds=email=>({email,password:'password-123'});
 async function employee(code,role){
- const r=await admin.post('/api/employees').send({employeeCode:code,fullName:code,username: code+'@safe.test', email:code+'@safe.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift});
+ const r=await admin.post('/api/employees').send({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',employeeCode:code,fullName:code,username: code+'@safe.test', email:code+'@safe.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift});
  assert.equal(r.status,201,JSON.stringify(r.body));const e=r.body;
  await q('UPDATE users SET must_change_password=false WHERE id=$1',[e.userId]);
  if(role)await q('INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,$2,$3)',[e.userId,role,root]);return e;

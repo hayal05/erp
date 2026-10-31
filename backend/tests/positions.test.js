@@ -27,7 +27,7 @@ const PACKAGE = (p) => ({ basicMinor: p.basicMinor, allowanceMinor: p.allowanceM
 
 const audit = async (action, id) => (await query('SELECT * FROM audit_logs WHERE action = $1 AND entity_id = $2 ORDER BY id', [action, String(id)])).rows;
 const newPosition = async (departmentId, body) => { const res = await hr.post(`/api/departments/${departmentId}/positions`).send(body); assert.equal(res.status, 201, JSON.stringify(res.body)); return res.body; };
-const hire = (o = {}) => { n += 1; return hr.post('/api/employees').send({ employeeCode: `Q${n}`, fullName: `Qa ${n}`, username: `q${n}@natra.test`, email: `q${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', ...o }); };
+const hire = (o = {}) => { n += 1; return hr.post('/api/employees').send({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study', employeeCode: `Q${n}`, fullName: `Qa ${n}`, username: `q${n}@natra.test`, email: `q${n}@natra.test`, startDate: '2026-03-01', password: 'initial-password-1', ...o }); };
 const hired = async (o) => { const res = await hire(o); assert.equal(res.status, 201, JSON.stringify(res.body)); return res.body; };
 const salary = async (employeeId) => { const { saved, employeeId: _id, ...rest } = (await hr.get(`/api/salary-profiles/${employeeId}`)).body; return { saved, ...rest }; };
 const packageOf = async (employeeId) => { const { saved, ...rest } = await salary(employeeId); assert.equal(saved, true); return rest; };

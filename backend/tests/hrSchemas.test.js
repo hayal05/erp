@@ -9,7 +9,7 @@ const { translateDbError, validationError, isFkViolation } = await import('../sr
 const { diffFields } = await import('../src/services/audit.js');
 const { HttpError } = await import('../src/middleware/error.js');
 
-const goodEmployee = { employeeCode: 'EMP-001', fullName: ' Abebe Kebede ', username: 'Abebe@Natra.test', email: 'Abebe@Natra.test', startDate: '2026-01-15', password: 'a-long-password' };
+const goodEmployee = { gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',employeeCode: 'EMP-001', fullName: ' Abebe Kebede ', username: 'Abebe@Natra.test', email: 'Abebe@Natra.test', startDate: '2026-01-15', password: 'a-long-password' };
 
 test('intList: sorted, unique, bounded whole numbers', () => {
   const rule = { d: v.intList({ min: 1, max: 7, minItems: 1, maxItems: 7 }) };
@@ -28,7 +28,7 @@ test('employee create: required fields, defaults, trimming and dropped unknown k
   assert.equal(value.shiftId, undefined);
   for (const k of ['role', 'status', 'userId']) assert.equal(k in value, false, k); // no mass assignment
   const missing = parse(employeeCreate, {}).errors;
-  assert.deepEqual(Object.keys(missing).sort(), ['employeeCode', 'fullName', 'password', 'startDate','username']);
+  assert.deepEqual(Object.keys(missing).sort(), ['dateOfBirth','employeeCode','fieldOfStudy','fullName','gender','password','startDate','username']);
 });
 
 test('employee create: the password is not trimmed', () => {

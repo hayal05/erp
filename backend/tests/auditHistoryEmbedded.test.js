@@ -16,7 +16,7 @@ before(async()=>{
  const shift=(await admin.post('/api/shifts').send({name:'Day',startTime:'09:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:0})).body.id;
  department=(await admin.post('/api/departments').send({name:'Audit Dept'})).body.id;
  for(const [code,role]of [['hr','hr'],['finance','finance'],['plain',null]]){
-  const r=await admin.post('/api/employees').send({employeeCode:code,fullName:code,username: code+'@audit.test', email:code+'@audit.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,departmentId:department});assert.equal(r.status,201);if(code==='plain')person=r.body;
+  const r=await admin.post('/api/employees').send({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',employeeCode:code,fullName:code,username: code+'@audit.test', email:code+'@audit.test',password:'password-123',startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,departmentId:department});assert.equal(r.status,201);if(code==='plain')person=r.body;
   await q('UPDATE users SET must_change_password=false WHERE id=$1',[r.body.userId]);
   if(role)await q('INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,$2,$3)',[r.body.userId,role,root]);
  }

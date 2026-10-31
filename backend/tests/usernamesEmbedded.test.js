@@ -10,7 +10,7 @@ const {app}=await import('../src/server.js'),{hashPassword}=await import('../src
 const request=(await import('supertest')).default;
 let admin,hr,hr2,root,shift,person,privileged;
 const password='password-123';
-const body=(username,email)=>({username,employeeCode:username.replaceAll('.','-'),fullName:username,password,startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,...(email?{email}:{})});
+const body=(username,email)=>({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',username,employeeCode:username.replaceAll('.','-'),fullName:username,password,startDate:'2026-01-01',employmentType:'full_time',shiftId:shift,...(email?{email}:{})});
 const login=(username,pw=password)=>request(app).post('/api/auth/login').send({username,password:pw});
 const approve=async(reviewer,id)=>reviewer.post(`/api/change-requests/${id}/approve`).send({});
 before(async()=>{
@@ -19,6 +19,7 @@ before(async()=>{
  root=(await q("INSERT INTO users(email,full_name,password_hash,role) VALUES('legacy@username.test','Legacy Admin',$1,'hr') RETURNING id",[await hashPassword(password)])).rows[0].id;
  await q("INSERT INTO access_grants(user_id,access_role) VALUES($1,'admin')",[root]);
  await db.exec(await fs.readFile(new URL('013_usernames.sql',dir),'utf8'));
+ for(const f of files.filter(f=>f>'013_usernames.sql'))await db.exec(await fs.readFile(new URL(f,dir),'utf8'));
  admin=await signIn(app,{username:'legacy@username.test',password});
  shift=(await admin.post('/api/shifts').send({name:'Day',startTime:'09:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:0})).body.id;
  for(const name of ['hr.one','hr.two']){
@@ -50,7 +51,7 @@ test('registration requires a unique username but no email; password setup and s
  assert.equal((await agent.get('/api/auth/me')).body.user.username,'hana.login');
  assert.equal((await agent.get('/api/profile')).body.username,'hana.login');
  assert.ok((await admin.get('/api/employees?search=hana.login')).body.items.some(e=>e.id===person.id));
- r=await admin.post('/api/employees').send({...body('HANA.LOGIN'),employeeCode:'duplicate'});assert.equal(r.status,409);assert.ok(r.body.error.details.fields.username);
+ r=await admin.post('/api/employees').send({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',...body('HANA.LOGIN'),employeeCode:'duplicate'});assert.equal(r.status,409);assert.ok(r.body.error.details.fields.username);
  const missing=body('missing');delete missing.username;missing.email='contact@optional.test';
  r=await admin.post('/api/employees').send(missing);assert.equal(r.status,400);assert.ok(r.body.error.details.fields.username);
  assert.equal((await admin.post('/api/employees').send(body('bad name'))).status,400);

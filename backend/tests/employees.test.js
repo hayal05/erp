@@ -18,7 +18,7 @@ let n = 0;
 
 const newEmployee = (o = {}) => {
   n += 1;
-  return { employeeCode: `E${String(n).padStart(3, '0')}`, fullName: `Person ${n}`, username: `p${n}@natra.test`, email: `p${n}@natra.test`,
+  return { gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',employeeCode: `E${String(n).padStart(3, '0')}`, fullName: `Person ${n}`, username: `p${n}@natra.test`, email: `p${n}@natra.test`,
     startDate: '2026-02-01', password: 'initial-password-1', ...o };
 };
 const create = async (o) => { const res = await hr.post('/api/employees').send(newEmployee(o)); assert.equal(res.status, 201, JSON.stringify(res.body)); return res.body; };
@@ -104,7 +104,7 @@ test('create validation: weak password, bad references and malformed fields are 
   assert.deepEqual([res.status, ...fieldsOf(res)], [400, 'departmentId']);
   res = await hr.post('/api/employees').send(newEmployee({ shiftId: 999999 }));
   assert.deepEqual([res.status, ...fieldsOf(res)], [400, 'shiftId']);
-  res = await hr.post('/api/employees').send({ fullName: '', email: 'nope' });
+  res = await hr.post('/api/employees').send({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study', fullName: '', email: 'nope' });
   assert.equal(res.status, 400);
   assert.ok(fieldsOf(res).includes('email') && fieldsOf(res).includes('employeeCode') && fieldsOf(res).includes('startDate'));
 });
