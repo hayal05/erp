@@ -395,8 +395,10 @@ The employee Vacancies tab shows a personal count of active, unopened postings. 
 
 ### Employee personal details
 
-Migration `017_employee_personal_details.sql` adds optional Gender, Date of birth and Field of study fields. Gender accepts only Male/Female (`male`/`female` in the API); birth dates must be real dates on or before the current company date. Field of study is limited to 150 characters.
+Gender, Date of birth and Field of study are required for registration and employee editing. Gender accepts only Male/Female (`male`/`female` in the API); birth dates must be real dates on or before the current company date. Field of study is limited to 150 characters. Partial API edits can omit these fields when the saved record is complete, but cannot blank or clear them. Any incomplete imported record must be completed before an administrative edit is applied.
 
-HR/Admin can register and edit these facts through the existing employee form and approval process. Employees can view them in their profile but cannot change them through self-service. New internal-vacancy applications include the saved facts in their immutable profile snapshot; previously submitted applications keep their original snapshot. Existing employee records retain empty values until supplied. Blank optional fields can be cleared when editing.
+Migration `018_required_employee_personal_details.sql` backfills the two user-supplied records by employee code or username (case-insensitive). It refuses an identifier that matches multiple employees, leaves unrelated records alone, and has nothing to backfill on a fresh installation. Existing nullable storage remains compatible with legacy/imported data; mandatory registration and effective-record validation are enforced by the application.
 
-Apply the migration before starting the updated server; the existing Render startup migration command handles this during deployment. No new environment variables are required.
+HR changes retain independent approval; General Admin changes remain immediate. Employees can view these facts in their profile but cannot modify them through self-service. New internal-vacancy applications include the saved facts in the immutable profile snapshot; previously submitted applications keep their original snapshot.
+
+Apply migrations before starting the updated server; the existing Render startup migration command handles this during deployment. No new environment variables are required. Schema/data changes can make pending employee proposals stale; those must be resubmitted.

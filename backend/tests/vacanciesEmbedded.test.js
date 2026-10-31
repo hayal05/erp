@@ -24,7 +24,7 @@ before(async()=>{
  department=(await admin.post('/api/departments').send({name:'Operations'})).body.id;
  const pos=await admin.post(`/api/departments/${department}/positions`).send({name:'Analyst',basicMinor:100000,allowanceMinor:10000});assert.equal(pos.status,201,JSON.stringify(pos.body));position=pos.body.id;
  for(const [username,role]of[['hr','hr'],['hr2','hr'],['finance','finance'],['employee',null],['other',null]]){
-  const r=await admin.post('/api/employees').send({username:username+'.user',employeeCode:username,fullName:username,password,startDate:'2020-01-01',shiftId:shift,departmentId:department,positionId:position,...(username==='employee'?{gender:'female',dateOfBirth:'1995-02-28',fieldOfStudy:'Economics'}:{})});assert.equal(r.status,201,JSON.stringify(r.body));people[username]=r.body;
+  const r=await admin.post('/api/employees').send({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',username:username+'.user',employeeCode:username,fullName:username,password,startDate:'2020-01-01',shiftId:shift,departmentId:department,positionId:position,...(username==='employee'?{gender:'female',dateOfBirth:'1995-02-28',fieldOfStudy:'Economics'}:{})});assert.equal(r.status,201,JSON.stringify(r.body));people[username]=r.body;
   await q('UPDATE users SET must_change_password=false WHERE id=$1',[r.body.userId]);if(role)await q('INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,$2,$3)',[r.body.userId,role,root]);
  }
  hr=await signIn(app,{username:'hr.user',password});hr2=await signIn(app,{username:'hr2.user',password});finance=await signIn(app,{username:'finance.user',password});employee=await signIn(app,{username:'employee.user',password});other=await signIn(app,{username:'other.user',password});

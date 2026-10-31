@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { emptyForm, formFromEmployee, validateForm, buildCreate, buildPatch, changeDepartment, needsCurrentSalary, positionOptions, salaryPlan, savedMessage } from '../src/pages/employeeForm.js';
 import { PORTAL_NAV, firstName } from '../src/pages/portal/portalNav.js';
 
-const employee = { id: 5, employeeCode: 'E-5', fullName: 'Abebe Kebede', username:'abebe',email: 'a@natra.test', phone: '0911', departmentId: 2, positionId: null, jobTitle: 'Clerk',
+const employee = { gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',id: 5, employeeCode: 'E-5', fullName: 'Abebe Kebede', username:'abebe',email: 'a@natra.test', phone: '0911', departmentId: 2, positionId: null, jobTitle: 'Clerk',
   startDate: '2026-02-01', employmentType: 'full_time', shiftId: 3 };
-const filled = { ...emptyForm(), employeeCode: 'E-9', fullName: ' Hana  ',username:'hana', email: 'h@natra.test', startDate: '2026-03-01', shiftId: '3', password: 'long-enough-pw' };
+const filled = { ...emptyForm(), employeeCode: 'E-9', fullName: ' Hana  ',gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',username:'hana', email: 'h@natra.test', startDate: '2026-03-01', shiftId: '3', password: 'long-enough-pw' };
 
 test('create validation: required fields, formats and password length', () => {
-  assert.deepEqual(Object.keys(validateForm(emptyForm(), 'create')).sort(), ['employeeCode', 'fullName', 'password', 'startDate','username']);
+  assert.deepEqual(Object.keys(validateForm(emptyForm(), 'create')).sort(), ['dateOfBirth','employeeCode','fieldOfStudy','fullName','gender','password','startDate','username']);
   assert.deepEqual(validateForm(filled, 'create'), {});
   const bad = { ...filled, employeeCode: 'E 9', email: 'nope', phone: 'call', password: 'short' };
   assert.deepEqual(Object.keys(validateForm(bad, 'create')).sort(), ['email', 'employeeCode', 'password', 'phone']);
@@ -22,7 +22,7 @@ test('edit validation does not ask for a password', () => {
 
 test('create payload: trimmed, blanks left out, ids are numbers, password untouched', () => {
   const body = buildCreate({ ...filled, password: ' spaced pw ', departmentId: '2' });
-  assert.deepEqual(body, { employeeCode: 'E-9', fullName: 'Hana', username:'hana',email: 'h@natra.test', startDate: '2026-03-01', employmentType: 'full_time',
+  assert.deepEqual(body, { employeeCode: 'E-9', fullName: 'Hana',gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study', username:'hana',email: 'h@natra.test', startDate: '2026-03-01', employmentType: 'full_time',
     password: ' spaced pw ', departmentId: 2, shiftId: 3 });
   assert.equal('phone' in body, false);
   assert.equal('jobTitle' in buildCreate(filled), false);
@@ -207,13 +207,13 @@ test('username is required independently of optional contact email',()=>{
  const legacy={...employee,username:"legacy'name@test.co"};assert.deepEqual(validateForm(formFromEmployee(legacy),'edit',legacy),{});
 });
 
-test('personal details round-trip, trim and clear without changing existing employees',()=>{
+test('mandatory personal details round-trip, trim and reject clearing',()=>{
   const form={...filled,gender:'female',dateOfBirth:'2000-02-29',fieldOfStudy:' Economics '};
   assert.deepEqual(validateForm(form,'create'),{});
   const data=buildCreate(form);assert.equal(data.gender,'female');assert.equal(data.dateOfBirth,'2000-02-29');assert.equal(data.fieldOfStudy,'Economics');
   const person={...employee,gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Accounting'};
   const editing=formFromEmployee(person);assert.deepEqual(buildPatch(editing,person),{});
-  assert.deepEqual(buildPatch({...editing,gender:'',dateOfBirth:'',fieldOfStudy:''},person),{gender:null,dateOfBirth:null,fieldOfStudy:null});
+  assert.deepEqual(Object.keys(validateForm({...editing,gender:'',dateOfBirth:'',fieldOfStudy:''},'edit',person)).sort(),['dateOfBirth','fieldOfStudy','gender']);
   assert.ok(validateForm({...form,gender:'other'},'create').gender);
   assert.ok(validateForm({...form,dateOfBirth:'2001-02-29'},'create').dateOfBirth);
   assert.ok(validateForm({...form,fieldOfStudy:'x'.repeat(151)},'create').fieldOfStudy);

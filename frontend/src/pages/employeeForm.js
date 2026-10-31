@@ -46,9 +46,12 @@ export function validateForm(form, mode, original) {
   if (!f.employeeCode) errors.employeeCode = 'Enter the employee ID';
   else if (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(f.employeeCode)) errors.employeeCode = 'Use letters, numbers and . _ - / only (no spaces)';
   if (!f.fullName) errors.fullName = 'Enter the full name';
-  if(f.gender&&!GENDER_OPTIONS.some(o=>o.value===f.gender))errors.gender='Choose Male or Female';
-  if(f.dateOfBirth){const date=new Date(`${f.dateOfBirth}T00:00:00Z`);if(!/^\d{4}-\d{2}-\d{2}$/.test(f.dateOfBirth)||f.dateOfBirth<'0001-01-01'||Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==f.dateOfBirth)errors.dateOfBirth='Choose a valid birth date';}
-  if(f.fieldOfStudy?.length>150)errors.fieldOfStudy='At most 150 characters';
+  if(!f.gender)errors.gender='Choose Male or Female';
+  else if(!GENDER_OPTIONS.some(o=>o.value===f.gender))errors.gender='Choose Male or Female';
+  if(!f.dateOfBirth)errors.dateOfBirth='Choose the date of birth';
+  else {const date=new Date(`${f.dateOfBirth}T00:00:00Z`);if(!/^\d{4}-\d{2}-\d{2}$/.test(f.dateOfBirth)||f.dateOfBirth<'0001-01-01'||Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==f.dateOfBirth)errors.dateOfBirth='Choose a valid birth date';}
+  if(!f.fieldOfStudy)errors.fieldOfStudy='Enter the field of study';
+  else if(f.fieldOfStudy.length>150)errors.fieldOfStudy='At most 150 characters';
   if (!f.username) errors.username='Enter the username';
   else if(!(mode==='edit'&&f.username===original?.username)&&!/^[A-Za-z0-9][A-Za-z0-9._@+\-]{2,253}$/.test(f.username)) errors.username='Use 3–254 letters, numbers and . _ - @ + only';
   if (f.email && !EMAIL.test(f.email)) errors.email = 'Enter a valid email address';
@@ -84,7 +87,7 @@ export function buildPatch(form, original) {
   const was = clean(formFromEmployee(original));
   const body = {};
   for (const key of ['employeeCode', 'fullName', 'startDate', 'employmentType']) if (now[key] !== was[key]) body[key] = now[key];
-  for(const key of ['gender','dateOfBirth','fieldOfStudy'])if(now[key]!==was[key])body[key]=now[key]||null;
+  for(const key of ['gender','dateOfBirth','fieldOfStudy'])if(now[key]!==was[key])body[key]=now[key];
   if(now.username.toLowerCase()!==was.username.toLowerCase())body.username=now.username.toLowerCase();
   if(now.email!==was.email)body.email=now.email||null;
   if (now.phone !== was.phone) body.phone = now.phone || null;

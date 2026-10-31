@@ -98,9 +98,9 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
         <fieldset className="employee-form-group form-grid"><legend>Identity &amp; account</legend>
         <Field label="Employee ID" maxLength={40} autoComplete="off" {...bind('employeeCode')} />
         <Field label="Full name" maxLength={120} autoComplete="off" {...bind('fullName')} />
-        <Field as="select" label="Gender" placeholder="Select gender" options={GENDER_OPTIONS} {...bind('gender')} />
-        <Field label="Date of birth" type="date" min="0001-01-01" {...bind('dateOfBirth')} />
-        <Field className="full" label="Field of study" maxLength={150} placeholder="e.g. Economics" {...bind('fieldOfStudy')} />
+        <Field as="select" label="Gender" required placeholder="Select gender" options={GENDER_OPTIONS} {...bind('gender')} />
+        <Field label="Date of birth" required type="date" min="0001-01-01" {...bind('dateOfBirth')} />
+        <Field className="full" label="Field of study" required maxLength={150} placeholder="e.g. Economics" {...bind('fieldOfStudy')} />
         <Field label="Username" required minLength={3} maxLength={254} autoComplete="off" autoCapitalize="none" {...bind('username')} />
         {mode === 'create' && (
           <Field label="Temporary password" type="password" autoComplete="new-password" hint={`${MIN_PASSWORD}+ characters; change at first sign-in.`} {...bind('password')} />

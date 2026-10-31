@@ -77,6 +77,14 @@ router.get('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
   res.json(employee);
 }));
 
+const requireSuppliedPersonalDetails=(req,res,next)=>{
+  const fields={};
+  for(const key of ['gender','dateOfBirth','fieldOfStudy']){
+    if(Object.hasOwn(req.body??{},key) && (req.body[key]==null || (typeof req.body[key]==='string'&&!req.body[key].trim())))fields[key]='Required';
+  }
+  if(Object.keys(fields).length)return next(validationError(fields));
+  next();
+};
 const validateBirthDate=(req,res,next)=>{
   const date=req.body.dateOfBirth;
   if(date && (date<'0001-01-01'||date>companyDate()))return next(validationError({dateOfBirth:'Choose a valid birth date on or before today'}));
@@ -84,7 +92,7 @@ const validateBirthDate=(req,res,next)=>{
 };
 
 // Creates the login (users row, role 'employee') and the employee record together.
-router.post('/', validate(employeeCreate), validateBirthDate, wrap(async (req, res) => {
+router.post('/', requireSuppliedPersonalDetails, validate(employeeCreate), validateBirthDate, wrap(async (req, res) => {
   const b = {...req.body,username:req.body.username.toLowerCase()};
   const problem = passwordProblem(b.password);
   if (problem) throw validationError({ password: problem });
@@ -134,7 +142,7 @@ const EMPLOYEE_COLUMNS = {
 //    refuse the mismatch), in the same UPDATE statement as the department change.
 //  - while a position is held, job_title belongs to the position: a jobTitle in the request is ignored.
 //  - applyPositionSalary: true without a positionId is 422, so a salary can never be replaced by accident.
-router.patch('/:id', validate(idParams, 'params'), validate(employeeUpdate), validateBirthDate, wrap(async (req, res) => {
+router.patch('/:id', validate(idParams, 'params'), requireSuppliedPersonalDetails, validate(employeeUpdate), validateBirthDate, wrap(async (req, res) => {
   const { id } = req.params;
   const { applyPositionSalary, ...fields } = req.body;
   if(fields.username)fields.username=fields.username.toLowerCase();
@@ -162,6 +170,9 @@ router.patch('/:id', validate(idParams, 'params'), validate(employeeUpdate), val
     }
 
     const before = await findEmployee(db, id);
+    const missing={};
+    for(const key of ['gender','dateOfBirth','fieldOfStudy'])if(!(Object.hasOwn(fields,key)?fields[key]:before[key]))missing[key]='Required';
+    if(Object.keys(missing).length)throw validationError(missing);
     for (const [table, columns, key] of [['users', USER_COLUMNS, row.user_id], ['employees', EMPLOYEE_COLUMNS, id]]) {
       const { sets, params } = setClause(columns, fields);
       if (sets.length) await db.query(`UPDATE ${table} SET ${sets.join(', ')} WHERE id = $1`, [key, ...params]);

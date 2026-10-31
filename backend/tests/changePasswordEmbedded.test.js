@@ -32,7 +32,7 @@ before(async()=>{
 after(async()=>db.close());
 test('migration marks existing employees and new HR-created accounts use temporary passwords',async()=>{
  assert.equal(employee.user.mustChangePassword,true);assert.equal(hr.user.mustChangePassword,false);
- const r=await hr.agent.post('/api/employees').set('X-CSRF-Token',hr.csrf).send({employeeCode:'E-2',fullName:'New Person',username: 'new@pw.test', email:'new@pw.test',password:oldPassword,startDate:'2026-10-01',employmentType:'full_time',shiftId:Number(shift)});
+ const r=await hr.agent.post('/api/employees').set('X-CSRF-Token',hr.csrf).send({gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',employeeCode:'E-2',fullName:'New Person',username: 'new@pw.test', email:'new@pw.test',password:oldPassword,startDate:'2026-10-01',employmentType:'full_time',shiftId:Number(shift)});
  assert.equal(r.status,201,JSON.stringify(r.body));assert.equal((await login('new@pw.test',oldPassword)).user.mustChangePassword,true);
 });
 test('temporary sessions can only access password, session and logout endpoints',async()=>{

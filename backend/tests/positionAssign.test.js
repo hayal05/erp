@@ -9,7 +9,7 @@ const { loadAssignablePosition } = await import('../src/services/positions.js');
 const { translateDbError } = await import('../src/services/dbErrors.js');
 const { HttpError } = await import('../src/middleware/error.js');
 
-const goodEmployee = { employeeCode: 'EMP-001', fullName: 'Abebe Kebede', username: 'a@natra.test', email: 'a@natra.test', startDate: '2026-01-15', password: 'a-long-password' };
+const goodEmployee = { gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Test study',employeeCode: 'EMP-001', fullName: 'Abebe Kebede', username: 'a@natra.test', email: 'a@natra.test', startDate: '2026-01-15', password: 'a-long-password' };
 
 test('create accepts positionId (or null) and never reads salary figures or applyPositionSalary', () => {
   const ok = parse(employeeCreate, { ...goodEmployee, positionId: 7, basicMinor: 999, allowanceMinor: 5, applyPositionSalary: false });
