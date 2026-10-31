@@ -45,7 +45,7 @@ export default function Profile() {
 }
 
 export function ProfileDetails({profile,history,page,onPage,onRetry,summary,editing,busy,saveError,onSummaryChange,onSave,onEdit,onCancel}){
-  const contact=[['Username',profile.username],['Email',profile.email],['Phone',profile.phone]];
+  const contact=[['Gender',profile.gender==='male'?'Male':profile.gender==='female'?'Female':null],['Date of birth',profile.dateOfBirth?formatWorkDate(profile.dateOfBirth):null],['Field of study',profile.fieldOfStudy],['Username',profile.username],['Email',profile.email],['Phone',profile.phone]];
   const employment=[['Joined',formatWorkDate(profile.startDate)],['Time employed',tenure(profile.startDate,profile.today)],['Employment type',employmentLabel(profile.employmentType)],['Shift',profile.shift]];
   const facts=items=><dl className="profile-facts">{items.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value || 'Not provided'}</dd></div>)}</dl>;
   return <section className="stack portal-profile-page">
@@ -60,7 +60,7 @@ export function ProfileDetails({profile,history,page,onPage,onRetry,summary,edit
       </div>
     </header>
     <div className="employee-profile-grid">
-      <section className="card stack employee-profile-section"><h2><ContactRound size={18} aria-hidden="true"/>Account &amp; contact</h2>{facts(contact)}</section>
+      <section className="card stack employee-profile-section"><h2><ContactRound size={18} aria-hidden="true"/>Personal details &amp; contact</h2>{facts(contact)}</section>
       <section className="card stack employee-profile-section"><h2><Briefcase size={18} aria-hidden="true"/>Employment</h2>{facts(employment)}</section>
     </div>
     <section className="card stack employee-profile-section"><div className="row between"><h2>Experience</h2>{!editing&&<Button size="sm" onClick={onEdit}><Pencil size={14} aria-hidden="true"/>{profile.experienceSummary?'Edit':'Add'}</Button>}</div>

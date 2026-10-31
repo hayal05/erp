@@ -206,3 +206,15 @@ test('username is required independently of optional contact email',()=>{
  assert.deepEqual(buildPatch({...formFromEmployee(original),username:'NEW.LOGIN'},original),{username:'new.login'});
  const legacy={...employee,username:"legacy'name@test.co"};assert.deepEqual(validateForm(formFromEmployee(legacy),'edit',legacy),{});
 });
+
+test('personal details round-trip, trim and clear without changing existing employees',()=>{
+  const form={...filled,gender:'female',dateOfBirth:'2000-02-29',fieldOfStudy:' Economics '};
+  assert.deepEqual(validateForm(form,'create'),{});
+  const data=buildCreate(form);assert.equal(data.gender,'female');assert.equal(data.dateOfBirth,'2000-02-29');assert.equal(data.fieldOfStudy,'Economics');
+  const person={...employee,gender:'male',dateOfBirth:'1990-01-01',fieldOfStudy:'Accounting'};
+  const editing=formFromEmployee(person);assert.deepEqual(buildPatch(editing,person),{});
+  assert.deepEqual(buildPatch({...editing,gender:'',dateOfBirth:'',fieldOfStudy:''},person),{gender:null,dateOfBirth:null,fieldOfStudy:null});
+  assert.ok(validateForm({...form,gender:'other'},'create').gender);
+  assert.ok(validateForm({...form,dateOfBirth:'2001-02-29'},'create').dateOfBirth);
+  assert.ok(validateForm({...form,fieldOfStudy:'x'.repeat(151)},'create').fieldOfStudy);
+});

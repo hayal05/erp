@@ -5,7 +5,7 @@ const salary=['basicMinor','allowanceMinor','allowanceTaxable','allowancePension
 export const AUDIT_RECORDS={
  vacancy:{table:'internal_vacancies',entity:'vacancy',domains:HR,read:'vacancies.manage',fields:['title','description','departmentId','positionId','closingOn','status']},
  vacancy_application:{table:'vacancy_applications',entity:'vacancy_application',domains:HR,read:'vacancies.review',fields:['vacancyId','status']},
- employee:{table:'employees',entity:'employee',domains:HR,read:'employees.manage',fields:['employeeCode','fullName','username','email','phone','departmentId','departmentName','positionId','positionName','jobTitle','startDate','employmentType','shiftId','status']},
+ employee:{table:'employees',entity:'employee',domains:HR,read:'employees.manage',fields:['employeeCode','fullName','gender','dateOfBirth','fieldOfStudy','username','email','phone','departmentId','departmentName','positionId','positionName','jobTitle','startDate','employmentType','shiftId','status']},
  department:{table:'departments',entity:'department',domains:HR,read:'organization.manage',fields:['name']},
  position:{table:'positions',entity:'position',domains:HR,read:'organization.manage',fields:['name','departmentId',...salary]},
  salary_profile:{table:'employees',entity:'salary_profile',domains:HR,read:'salary_profiles.manage',fields:salary},

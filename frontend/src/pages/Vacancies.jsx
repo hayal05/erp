@@ -102,7 +102,7 @@ function Applications({vacancy,onClose,onChanged}){
  </div></Modal>;
 }
 function ApplicantProfile({profile:p}){
- const facts=[['Name',p.fullName],['Employee ID',p.employeeCode],['Username',p.username],['Department',p.department],['Position',p.position],['Email',p.email],['Phone',p.phone],['Employment type',employmentLabel(p.employmentType)],['Joined',p.startDate],['Experience in company',tenure(p.startDate,p.today)],['Shift',p.shift]];
+ const facts=[['Name',p.fullName],['Employee ID',p.employeeCode],['Username',p.username],['Gender',p.gender?label(p.gender):null],['Date of birth',p.dateOfBirth],['Field of study',p.fieldOfStudy],['Department',p.department],['Position',p.position],['Email',p.email],['Phone',p.phone],['Employment type',employmentLabel(p.employmentType)],['Joined',p.startDate],['Experience in company',tenure(p.startDate,p.today)],['Shift',p.shift]];
  return <><dl className="profile-facts">{facts.map(([name,value])=><div key={name}><dt>{name}</dt><dd>{value||'—'}</dd></div>)}</dl>
   <details className="applicant-extra"><summary>Experience</summary><p className="profile-summary">{p.experienceSummary||'Not provided'}</p></details><details className="applicant-extra"><summary>Position history</summary>
   <Table caption="Applicant position history" columns={[{key:'department',header:'Department'},{key:'position',header:'Position'},{key:'recordedOn',header:'Recorded on'}]} rows={p.positionHistory} empty="No position history"/></details>

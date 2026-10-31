@@ -24,6 +24,7 @@ export async function loadVacancies(db,user,query){
 // grants, leave/attendance records or photos. The copy cannot later be rewritten.
 async function profileSnapshot(db,employeeId){
  const {rows:[profile]}=await db.query(`SELECT e.employee_code AS "employeeCode",u.full_name AS "fullName",u.username,u.email,e.phone,
+ e.gender,to_char(e.date_of_birth,'YYYY-MM-DD') AS "dateOfBirth",e.field_of_study AS "fieldOfStudy",
  d.name AS department,COALESCE(p.name,e.job_title) AS position,e.employment_type AS "employmentType",
  to_char(e.start_date,'YYYY-MM-DD') AS "startDate",s.name AS shift,e.experience_summary AS "experienceSummary"
  FROM employees e JOIN users u ON u.id=e.user_id LEFT JOIN departments d ON d.id=e.department_id

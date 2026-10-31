@@ -11,6 +11,7 @@ import { hashPassword, passwordProblem } from '../services/password.js';
 import { likePattern, pageOffset, pageResult, setClause } from '../services/sql.js';
 import { translateDbError, validationError } from '../services/dbErrors.js';
 import { loadAssignablePosition, positionSalary } from '../services/positions.js';
+import {companyDate} from '../services/attendance.js';
 import { saveSalaryProfile } from '../services/salaryProfiles.js';
 import { employeeCreate, employeeListQuery, employeeUpdate, idParams, reasonBody } from '../services/hrSchemas.js';
 
@@ -27,11 +28,13 @@ const FROM = `FROM employees e
   LEFT JOIN positions p ON p.id = e.position_id`;
 const COLUMNS = `e.id, e.employee_code, e.user_id, u.full_name, u.username, u.email, e.phone, e.department_id,
   d.name AS department_name, e.position_id, p.name AS position_name, e.job_title, to_char(e.start_date, 'YYYY-MM-DD') AS start_date,
+  e.gender, to_char(e.date_of_birth, 'YYYY-MM-DD') AS date_of_birth, e.field_of_study,
   e.employment_type, e.status, e.shift_id, s.name AS shift_name, e.created_at`;
 
 const optId = (x) => (x == null ? null : Number(x));
 const toEmployee = (r) => ({
   id: Number(r.id), employeeCode: r.employee_code, userId: Number(r.user_id),
+  gender:r.gender, dateOfBirth:r.date_of_birth, fieldOfStudy:r.field_of_study,
   fullName: r.full_name, username: r.username, email: r.email, phone: r.phone,
   departmentId: optId(r.department_id), departmentName: r.department_name,
   positionId: optId(r.position_id), positionName: r.position_name ?? null, jobTitle: r.job_title,
@@ -74,8 +77,14 @@ router.get('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
   res.json(employee);
 }));
 
+const validateBirthDate=(req,res,next)=>{
+  const date=req.body.dateOfBirth;
+  if(date && (date<'0001-01-01'||date>companyDate()))return next(validationError({dateOfBirth:'Choose a valid birth date on or before today'}));
+  next();
+};
+
 // Creates the login (users row, role 'employee') and the employee record together.
-router.post('/', validate(employeeCreate), wrap(async (req, res) => {
+router.post('/', validate(employeeCreate), validateBirthDate, wrap(async (req, res) => {
   const b = {...req.body,username:req.body.username.toLowerCase()};
   const problem = passwordProblem(b.password);
   if (problem) throw validationError({ password: problem });
@@ -96,12 +105,12 @@ router.post('/', validate(employeeCreate), wrap(async (req, res) => {
       `INSERT INTO users (email, full_name, password_hash, role, must_change_password, username) VALUES ($1, $2, $3, 'employee', true, $4) RETURNING id`,
       [b.email??null, b.fullName, hash,b.username]);
     const { rows: [emp] } = await db.query(
-      `INSERT INTO employees (employee_code, user_id, phone, department_id, position_id, job_title, start_date, employment_type, shift_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      `INSERT INTO employees (employee_code, user_id, phone, department_id, position_id, job_title, start_date, employment_type, shift_id, gender, date_of_birth, field_of_study)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
       [b.employeeCode, user.id, b.phone ?? null, b.departmentId ?? null, position?.id ?? null, position ? position.name : b.jobTitle ?? null,
-        b.startDate, b.employmentType, shiftId]);
+        b.startDate, b.employmentType, shiftId, b.gender??null, b.dateOfBirth??null, b.fieldOfStudy??null]);
     await audit(db, { actorId: req.user.id, action: 'employee.create', entityType: 'employee', entityId: emp.id,
-      details: { username:b.username,employeeCode: b.employeeCode, userId: Number(user.id), departmentId: b.departmentId ?? null, shiftId: Number(shiftId),
+      details: { gender:b.gender??null,dateOfBirth:b.dateOfBirth??null,fieldOfStudy:b.fieldOfStudy??null,username:b.username,employeeCode: b.employeeCode, userId: Number(user.id), departmentId: b.departmentId ?? null, shiftId: Number(shiftId),
         positionId: position?.id ?? null, salaryApplied: Boolean(position) } });
     if (position) await saveSalaryProfile(db, { employeeId: emp.id, actorId: req.user.id, values: positionSalary(position), source: { type: 'position', positionId: position.id } });
     return findEmployee(db, emp.id);
@@ -112,6 +121,7 @@ router.post('/', validate(employeeCreate), wrap(async (req, res) => {
 const USER_COLUMNS = { fullName: 'full_name', email: 'email',username:'username' };
 const EMPLOYEE_COLUMNS = {
   employeeCode: 'employee_code', phone: 'phone', departmentId: 'department_id', positionId: 'position_id', jobTitle: 'job_title',
+  gender:'gender', dateOfBirth:'date_of_birth', fieldOfStudy:'field_of_study',
   startDate: 'start_date', employmentType: 'employment_type', shiftId: 'shift_id',
 };
 
@@ -124,7 +134,7 @@ const EMPLOYEE_COLUMNS = {
 //    refuse the mismatch), in the same UPDATE statement as the department change.
 //  - while a position is held, job_title belongs to the position: a jobTitle in the request is ignored.
 //  - applyPositionSalary: true without a positionId is 422, so a salary can never be replaced by accident.
-router.patch('/:id', validate(idParams, 'params'), validate(employeeUpdate), wrap(async (req, res) => {
+router.patch('/:id', validate(idParams, 'params'), validate(employeeUpdate), validateBirthDate, wrap(async (req, res) => {
   const { id } = req.params;
   const { applyPositionSalary, ...fields } = req.body;
   if(fields.username)fields.username=fields.username.toLowerCase();

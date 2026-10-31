@@ -14,6 +14,7 @@ const missing = () => new HttpError(404, 'Employee profile not found', 'not_foun
 // User identity always comes from the session; there is no employee-id input.
 router.get('/', wrap(async (req, res) => {
   const { rows: [r] } = await query(`SELECT e.id, e.employee_code, u.full_name, u.username,u.email, e.phone,
+    e.gender, to_char(e.date_of_birth,'YYYY-MM-DD') AS date_of_birth, e.field_of_study,
     d.name AS department, COALESCE(p.name,e.job_title) AS position, e.employment_type, e.status,
     to_char(e.start_date,'YYYY-MM-DD') AS start_date, s.name AS shift, e.experience_summary,
     to_char((now() AT TIME ZONE $2)::date,'YYYY-MM-DD') AS today
@@ -22,6 +23,7 @@ router.get('/', wrap(async (req, res) => {
   [req.user.id, profileTimeZone]);
   if (!r) throw missing();
   res.json({ employeeCode: r.employee_code, fullName: r.full_name, username:r.username,email: r.email, phone: r.phone,
+    gender:r.gender,dateOfBirth:r.date_of_birth,fieldOfStudy:r.field_of_study,
     department: r.department, position: r.position, employmentType: r.employment_type, status: r.status,
     startDate: r.start_date, shift: r.shift, experienceSummary: r.experience_summary, today: r.today });
 }));

@@ -392,3 +392,11 @@ HR posting/editing and review decisions require another HR reviewer or General A
 
 
 The employee Vacancies tab shows a personal count of active, unopened postings. Opening a vacancy's details or applying clears its unread status; loading the list does not. Read receipts persist across devices. Draft, closed, expired and already-applied vacancies do not count. The badge updates on navigation, opening/applying and returning to the app without polling. Migration `016_vacancy_views.sql` adds the read receipts.
+
+### Employee personal details
+
+Migration `017_employee_personal_details.sql` adds optional Gender, Date of birth and Field of study fields. Gender accepts only Male/Female (`male`/`female` in the API); birth dates must be real dates on or before the current company date. Field of study is limited to 150 characters.
+
+HR/Admin can register and edit these facts through the existing employee form and approval process. Employees can view them in their profile but cannot change them through self-service. New internal-vacancy applications include the saved facts in their immutable profile snapshot; previously submitted applications keep their original snapshot. Existing employee records retain empty values until supplied. Blank optional fields can be cleared when editing.
+
+Apply the migration before starting the updated server; the existing Render startup migration command handles this during deployment. No new environment variables are required.
