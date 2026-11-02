@@ -387,6 +387,10 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .dashboard-number { font-size: clamp(1.35rem,2vw,1.8rem); line-height: 1.25; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .dashboard-mini { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dashboard-mini .dashboard-number { font-size: 1.25rem; }
+.dashboard-gender { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; font-size: .8rem; }
+.dashboard-gender > div { display: flex; align-items: baseline; gap: 6px; }
+.dashboard-gender dt, .dashboard-gender dd { margin: 0; }
+.dashboard-gender dd { font-variant-numeric: tabular-nums; }
 .dashboard-employee { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
 .dashboard-tables { display: grid; grid-template-columns: minmax(0,1fr); align-items: start; gap: var(--space-md); }
 .dashboard-tables > section { min-width: 0; gap: var(--space-sm); }
