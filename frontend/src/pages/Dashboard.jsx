@@ -20,7 +20,9 @@ function DashboardContent({data:d}){
  const leaves=[{key:'employeeName',header:'Employee'},{key:'leaveType',header:'Leave'},{key:'dates',header:'Dates',render:r=><span className="nowrap">{r.start} – {r.end}</span>},{key:'days',header:'Days',align:'num'}];
  return <>
   <div className="dashboard-main-stats">
-   <article className="card dashboard-stat"><div className="row between"><h2>Employees</h2><WorkspaceLink to="/hr/employees" aria-label="View employees">View</WorkspaceLink></div><strong className="dashboard-number">{s.totalEmployees}</strong></article>
+   <article className="card dashboard-stat"><div className="row between"><h2>Employees</h2><WorkspaceLink to="/hr/employees" aria-label="View employees">View</WorkspaceLink></div><strong className="dashboard-number">{s.totalEmployees}</strong>
+    <dl className="dashboard-gender" aria-label="Employee gender share">{[['male','Male'],['female','Female'],['unspecified','Unspecified']].filter(([key])=>key!=='unspecified'||d.employeeGender?.[key]?.count>0).map(([key,label])=><div key={key}><dt>{label}</dt><dd><strong>{d.employeeGender?.[key]?.count??0}</strong> <span className="muted">({d.employeeGender?.[key]?.percentage??0}%)</span></dd></div>)}</dl>
+   </article>
    <article className="card dashboard-stat"><div className="row between"><h2>Present today</h2><WorkspaceLink to="/hr/attendance" aria-label="View attendance">View</WorkspaceLink></div><strong className="dashboard-number">{s.presentToday}</strong></article>
    <article className="card dashboard-stat dashboard-payroll"><div className="row between"><h2>Payroll · {p.month}</h2><WorkspaceLink to={`/hr/payroll?month=${p.month}`} aria-label="View payroll">View</WorkspaceLink></div><strong className="dashboard-number">{p.totalMinor===null?'—':formatMoney(p.totalMinor)}</strong><span className="muted">{p.status?`${p.currencyCode} net salary · ${p.status} · ${p.employeeCount} employees`:'No payroll yet'}</span></article>
   </div>

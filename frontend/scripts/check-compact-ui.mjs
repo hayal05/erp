@@ -11,7 +11,7 @@ const period={id:1,month:'2026-10',status:'paid',paidOn:'2026-10-30',currencyCod
 const entry={id:1,employeeCode:'E-1',employeeName:'Example Employee',basicMinor:100000,allowanceMinor:20000,grossMinor:120000,taxableIncomeMinor:120000,incomeTaxRate:10,incomeTaxFixedDeductionMinor:0,incomeTaxMinor:12000,otherTaxMinor:0,pensionableMinor:100000,employeePensionRate:7,employeePensionMinor:7000,employerPensionRate:11,employerPensionMinor:11000,otherDeductionsMinor:0,netMinor:101000,employerCostMinor:131000};
 const salary={entry,period,items:[]},calc={employeePensionRate:7,companyPensionRate:11,taxBase:'basic_plus_taxable_allowance',pensionBase:'basic'};
 const vacancy={id:1,title:'Internal officer',department:'Operations',position:'Officer',departmentId:1,positionId:1,closingOn:'2026-12-01',status:'open',acceptingApplications:true,unopened:true,applicationCount:0};
-const fixtures={'/dashboard':{date:'2026-10-30',stats:{totalEmployees:1,presentToday:1,lateToday:0,absentToday:0,onLeaveToday:0,pendingLeave:0},payroll:{...period,totalMinor:101000},recentAttendance:[],pendingLeave:[]},'/vacancies':{items:[vacancy],total:1,today:'2026-10-30'},'/employees':{items:[person],total:1},'/departments':{items:[{id:1,name:'Operations'}],total:1},'/departments/1/positions':{items:[{id:1,name:'Officer'}],total:1},'/payroll-settings/calculation':calc,'/payroll-settings/brackets':{items:[],problems:[]},'/payroll-settings/other-taxes':{items:[],bases:['gross','basic']},'/payroll-settings/attendance-deductions':{absenceDeductionEnabled:true,unpaidLeaveDeductionEnabled:true},'/deductions':{items:[]},'/payslips':{items:[{...period,netMinor:101000}],total:1},'/payslips/1':salary};
+const fixtures={'/dashboard':{employeeGender:{male:{count:1,percentage:100},female:{count:0,percentage:0},unspecified:{count:0,percentage:0}},date:'2026-10-30',stats:{totalEmployees:1,presentToday:1,lateToday:0,absentToday:0,onLeaveToday:0,pendingLeave:0},payroll:{...period,totalMinor:101000},recentAttendance:[],pendingLeave:[]},'/vacancies':{items:[vacancy],total:1,today:'2026-10-30'},'/employees':{items:[person],total:1},'/departments':{items:[{id:1,name:'Operations'}],total:1},'/departments/1/positions':{items:[{id:1,name:'Officer'}],total:1},'/payroll-settings/calculation':calc,'/payroll-settings/brackets':{items:[],problems:[]},'/payroll-settings/other-taxes':{items:[],bases:['gross','basic']},'/payroll-settings/attendance-deductions':{absenceDeductionEnabled:true,unpaidLeaveDeductionEnabled:true},'/deductions':{items:[]},'/payslips':{items:[{...period,netMinor:101000}],total:1},'/payslips/1':salary};
 globalThis.__compactReview={user:null,fixtures};
 globalThis.document={body:{},documentElement:{dataset:{theme:'dark'}}};
 const extraExports={
@@ -98,6 +98,14 @@ try{
  const html=await render('pages/SalaryDetailDialog.jsx','SalaryDetails',{data:salary});
  for(const label of ['Basic salary','Allowance','Gross salary','Taxable income','Income tax','Employee pension','Net salary','Total employer cost'])assert.ok(html.includes(label),`Salary detail lost ${label}`);
  assert.ok(html.includes('1,010.00')&&html.includes('1,310.00'),'Saved net/employer totals changed');
+ const genderDashboard=async(employeeGender,totalEmployees)=>render('pages/Dashboard.jsx','DashboardContent',{data:{...fixtures['/dashboard'],stats:{...fixtures['/dashboard'].stats,totalEmployees},employeeGender}});
+ const genderMarkup=await genderDashboard({male:{count:2,percentage:66.7},female:{count:1,percentage:33.3},unspecified:{count:0,percentage:0}},3);
+ for(const value of ['Employee gender share','Male','Female','<strong>2</strong>','<strong>1</strong>','(66.7%)','(33.3%)'])assert.ok(genderMarkup.includes(value),`Dashboard gender share lost ${value}`);
+ assert.ok(!genderMarkup.includes('Unspecified'),'Unneeded unspecified gender shown');
+ const legacyGender=await genderDashboard({male:{count:1,percentage:50},female:{count:0,percentage:0},unspecified:{count:1,percentage:50}},2);
+ assert.ok(legacyGender.includes('Unspecified')&&legacyGender.includes('(50%)'),'Missing gender records hidden');
+ const emptyGender=await genderDashboard({male:{count:0,percentage:0},female:{count:0,percentage:0},unspecified:{count:0,percentage:0}},0);
+ assert.ok(emptyGender.includes('(0%)')&&!/NaN|Infinity/.test(emptyGender),'Empty employee percentages invalid');
  const skeleton=await render('components/Skeleton.jsx','default',{variant:'dashboard'});
  assert.ok(skeleton.includes('role="status"')&&skeleton.includes('aria-hidden="true"'),'Skeleton announcements/decorations lost');
  const field=await render('components/Field.jsx','default',{label:'Employee search',type:'search',placeholder:'Name or ID',error:'Example error'});
