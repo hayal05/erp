@@ -130,7 +130,6 @@ export function EmployeeLeaveBalances({items,year}){
   return <ul className="leave-balances" aria-label={`Leave balances for ${year ?? 'this year'}`}>
     {items.map(balance=>{const view=balanceView(balance);return <li key={view.id} className={`card${view.empty?' leave-empty':''}`}>
       <div className="row between leave-balance-heading"><strong>{view.name}</strong><span className="leave-headline">{balance.hasBalance?`${dayWord(balance.remaining)} left`:'No limit'}</span></div>
-      <small className="muted">{balance.hasBalance&&<>Total {balance.total} · </>}Used {balance.used} · Pending {balance.pending}{balance.adjusted?` · Adjustment ${balance.adjusted>0?'+':''}${balance.adjusted}`:''}{!balance.hasBalance?' · Unpaid':''}</small>
     </li>;})}
   </ul>;
 }
