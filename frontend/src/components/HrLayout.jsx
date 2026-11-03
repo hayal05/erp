@@ -39,6 +39,7 @@ export default function HrLayout() {
   };
   const now = useClock();
   const audit = auditScope(pathname,user);
+  const accountName = isAdmin(user) ? 'Master Admin' : user.fullName;
 
   useEffect(() => { setMenuOpen(false); if(accountRef.current)accountRef.current.open=false; }, [pathname]); // close the phone drawer after navigating
   useEffect(() => {
@@ -87,9 +88,9 @@ export default function HrLayout() {
         <ThemeToggle />
         <WorkspaceSwitcher />
         <details className="management-account" ref={accountRef}>
-          <summary className="user-chip" title={user.fullName} aria-label={`Account: ${user.fullName}`}>
-            <span className="avatar" aria-hidden="true">{initials(user.fullName)}</span>
-            <span className="user-text"><strong>{user.fullName}</strong><small className="muted">{workspaceArea(pathname)==='finance'?'Finance':isAdmin(user)?'Admin':'HR'}</small></span>
+          <summary className="user-chip" title={accountName} aria-label={`Account: ${accountName}`}>
+            <span className="avatar" aria-hidden="true">{initials(accountName)}</span>
+            <span className="user-text"><strong>{accountName}</strong><small className="muted">{workspaceArea(pathname)==='finance'?'Finance':isAdmin(user)?'Admin':'HR'}</small></span>
             <ChevronDown size={16} aria-hidden="true" />
           </summary>
           <div className="management-account-options">
