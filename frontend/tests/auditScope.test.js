@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {auditScope} from '../src/api/auditScope.js';
 const admin={role:'hr',permissions:['access.manage','employees.manage','organization.manage','attendance.manage','announcements.manage','settlements.manage','payroll_settings.manage','payroll.prepare','payroll.approve','payroll.pay']};
 test('the footer is hidden on dashboard, QR, leave, reports and workflow-only screens',()=>{
- for(const prefix of ['/hr','/finance'])for(const suffix of ['', '/', '/qr','/qr/','/leave','/leave/','/payroll/company-costs','/payroll/company-costs/','/approvals','/employees/1/profile','/employees/1/profile/','/not-a-page']){
+ for(const prefix of ['/hr','/finance'])for(const suffix of ['', '/', '/qr','/qr/','/leave','/leave/','/payroll/company-costs','/payroll/company-costs/','/approvals','/not-a-page']){
   assert.equal(auditScope(prefix+suffix,admin),null,prefix+suffix);
  }
 });
@@ -11,6 +11,7 @@ test('editable sections retain the footer in both management workspaces',()=>{
  for(const prefix of ['/hr','/finance']){
   assert.deepEqual(auditScope(prefix+'/settings/payroll',admin),{area:'payroll_settings',label:'Payroll settings'});
   assert.deepEqual(auditScope(prefix+'/settings',admin),{area:'settings',label:'Settings'});
+  assert.equal(auditScope(prefix+'/employees/1/profile',admin).area,'employees');
   assert.equal(auditScope(prefix+'/retirement',admin).area,'retirement');
   assert.equal(auditScope(prefix+'/departments/12',admin).area,'departments');
   assert.equal(auditScope(prefix+'/access-management',admin).area,'access');

@@ -1,3 +1,4 @@
+import EmployeeAttachments from './EmployeeAttachments.jsx';
 import {useState} from 'react';
 import {Link,useLocation,useParams} from 'react-router-dom';
 import {workspacePath} from '../api/workspaces.js';
@@ -51,5 +52,6 @@ export function EmployeeProfileDetails({profile:p,page=1,onPage,loading=false}){
     {(history.total>SIZE||page>1)&&<Pager page={page} pageSize={SIZE} total={history.total} onPage={onPage} disabled={loading}/>}
    </section>
   </div>
+  <div className="admin-profile-records"><EmployeeAttachments key={`${p.id}-incoming`} employeeId={p.id} direction="incoming"/><EmployeeAttachments key={`${p.id}-outgoing`} employeeId={p.id} direction="outgoing"/></div>
  </>;
 }

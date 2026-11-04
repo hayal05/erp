@@ -863,3 +863,10 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .admin-profile-columns > section, .admin-profile-records > section { min-width: 0; }
 @media (max-width: 1100px) { .admin-profile-columns { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 700px) { .admin-profile-columns, .admin-profile-records { grid-template-columns: minmax(0,1fr); } }
+
+.attachment-upload { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: var(--space-xs); }
+.attachment-upload .field { min-width: 0; margin: 0; }
+.attachment-upload input { width: 100%; min-width: 0; font-size: .8rem; }
+.attachment-limit { grid-column: 1 / -1; }
+.employee-attachments .table { min-width: 360px; }
+.attachment-name { display: grid; gap: 2px; min-width: 140px; max-width: 300px; overflow-wrap: anywhere; }

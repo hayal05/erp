@@ -1,3 +1,4 @@
+import {parseAttachment,sendAttachment} from '../services/employeeAttachments.js';
 import {Router} from 'express';
 import {query,withTransaction} from '../db/pool.js';
 import {requirePermission} from '../middleware/auth.js';
@@ -26,6 +27,11 @@ export default function changeRequestRoutes(operations){
   const {rows}=await query(`SELECT ${columns} ${joins} ${where} ORDER BY c.id DESC LIMIT $3 OFFSET $4`,[...params,limit,(page-1)*limit]);
   res.json({items:rows.map(r=>present(req.user,r)),page,pageSize:limit,total:count.n});
  }));
+ router.get('/:id/attachment',wrap(async(req,res)=>{
+  const {rows:[row]}=await query('SELECT * FROM change_requests WHERE id=$1',[idOf(req)]);
+  if(!row||row.status!=='pending'||row.method!=='POST'||!/^\/api\/employees\/\d+\/attachments$/.test(row.path)||!(Number(row.requester_id)===req.user.id||canReview(req.user,row)))throw new HttpError(404,'Proposed attachment not found','not_found');
+  const file=parseAttachment(decrypt(row.payload_cipher));sendAttachment(res,file,file.bytes);
+ }));
  router.get('/:id',wrap(async(req,res)=>{
   const {rows:[row]}=await query(`SELECT ${columns} ${joins} WHERE c.id=$1`,[idOf(req)]);
   if(!row||!visible(req.user,row))throw new HttpError(404,'Request not found','not_found');
@@ -41,6 +47,7 @@ export default function changeRequestRoutes(operations){
   const {rows:[hint]}=await query('SELECT method,path FROM change_requests WHERE id=$1',[id]);
   if(!hint)throw new HttpError(404,'Request not found','not_found');
   const policy=approvalPolicy(hint.method,hint.path);
+  const rollbackTasks=[];
   const result=await withTransaction(async db=>{
    await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
    // Serialize application with ordinary writes in the affected domain. The locks
@@ -61,7 +68,7 @@ export default function changeRequestRoutes(operations){
     if(!hasPermission(requester,row.permission))throw new HttpError(409,'Requester no longer has the required access','requester_unavailable');
     if(await fingerprint(db,policy)!==row.fingerprint)throw new HttpError(409,'Related records have changed. Withdraw this request and submit it again.','stale_request');
     const {rows:[start]}=await db.query('SELECT COALESCE(max(id),0) AS id FROM audit_logs');
-    const response=await approvalTransaction.run(transactionClient(db,reviewer.id),()=>executeRouter(operations,req,{method:row.method,path:row.path,body:decrypt(row.payload_cipher),user:requester}));
+    const response=await approvalTransaction.run(transactionClient(db,reviewer.id,task=>rollbackTasks.push(task)),()=>executeRouter(operations,req,{method:row.method,path:row.path,body:decrypt(row.payload_cipher),user:requester}));
     applied={status:response.status,body:response.data};
     if(response.status>=400)throw new HttpError(response.status,'The requested change failed validation','operation_failed');
     const {rows:records}=await db.query('SELECT DISTINCT ON (entity_type,entity_id) entity_type,entity_id,details FROM audit_logs WHERE id>$1 AND actor_user_id=$2 ORDER BY entity_type,entity_id,id DESC',[start.id,requester.id]);
@@ -71,7 +78,8 @@ export default function changeRequestRoutes(operations){
    await db.query('UPDATE change_requests SET status=$2,reviewer_id=$3,reviewed_at=now(),review_reason=$4,payload_cipher=NULL WHERE id=$1',[id,status,reviewer.id,reason||null]);
    await audit(db,{actorId:reviewer.id,action:`change.${decision}`,entityType:'change_request',entityId:id,reason:reason||null,details:{requestedBy:Number(row.requester_id)}});
    return {id,status,...(applied?{applied}:{})};
-  }).catch(error=>{
+  }).catch(async error=>{
+   for(const cleanup of rollbackTasks)await cleanup().catch(()=>{});
    if(['40001','40P01'].includes(error.code))throw new HttpError(409,'Related records changed concurrently. Refresh and review again.','conflict');
    throw error;
   });

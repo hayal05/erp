@@ -8,6 +8,10 @@ const db=new PGlite({extensions:{btree_gist}}),q=(sql,args)=>db.query(sql,args);
 const {pool}=await import('../src/db/pool.js');pool.query=q;pool.connect=async()=>({query:q,release(){}});
 const {app}=await import('../src/server.js'),{seedAdmin}=await import('../src/db/seed.js'),{hashPassword}=await import('../src/services/password.js'),{signIn}=await import('./hrClient.js');
 const {default:request}=await import('supertest');
+const {attachmentDeps}=await import('../src/routes/employeeAttachments.js');
+const files=new Map();let uploaded=0;attachmentDeps.store={upload:async f=>{const id=`private-file-${++uploaded}`;files.set(id,f.bytes);return id;},download:async id=>files.get(id),delete:async id=>files.delete(id)};
+const pdf=Buffer.from('%PDF-1.7\nEmployment letter\n%%EOF');
+const fileBody=extra=>({direction:'incoming',fileName:'Employment letter.pdf',fileBase64:pdf.toString('base64'),...extra});
 const password='password-123';let admin,hr,finance,plain,target,legacy,root;
 before(async()=>{
  const dir=new URL('../../database/migrations/',import.meta.url);
@@ -44,6 +48,67 @@ test('profile history is isolated, stable across pages, preserves names and uses
  const old=(await hr.get(`/api/employees/${legacy}/profile`)).body;assert.equal(old.dateOfBirth,null);assert.equal(old.fieldOfStudy,null);assert.equal(old.experienceSummary,'');assert.equal(old.positionHistory.total,1);
  await q('UPDATE employees SET experience_summary=$2 WHERE id=$1',[target,'Updated employee experience']);
  assert.equal((await hr.get(`/api/employees/${target}/profile`)).body.experienceSummary,'Updated employee experience');
+});
+test('attachment uploads are private, scoped to employee and direction, paginated, and downloadable by management',async()=>{
+ const before=uploaded;
+ const incoming=await admin.post(`/api/employees/${target}/attachments`).send(fileBody());assert.equal(incoming.status,201,JSON.stringify(incoming.body));
+ const outgoing=await admin.post(`/api/employees/${target}/attachments`).send(fileBody({direction:'outgoing',fileName:'Response.pdf'}));assert.equal(outgoing.status,201);
+ assert.equal(uploaded,before+2);
+ const list=await finance.get(`/api/employees/${target}/attachments?direction=incoming&pageSize=1`);assert.equal(list.status,200);assert.equal(list.body.total,1);assert.equal(list.body.items[0].fileName,'Employment letter.pdf');assert.ok(!JSON.stringify(list.body).includes('private-file'));
+ assert.equal((await finance.get(`/api/employees/${target}/attachments?direction=outgoing`)).body.items[0].fileName,'Response.pdf');
+ const download=await finance.get(`/api/employees/${target}/attachments/${incoming.body.id}/download`);assert.equal(download.status,200);assert.equal(download.headers['content-type'],'application/pdf');assert.ok(download.headers['content-disposition'].startsWith('attachment;'));assert.deepEqual(download.body,pdf);
+ assert.equal((await finance.get(`/api/employees/${legacy}/attachments/${incoming.body.id}/download`)).status,404);
+ assert.equal((await plain.get(`/api/employees/${target}/attachments?direction=incoming`)).status,403);
+ assert.equal((await finance.post(`/api/employees/${target}/attachments`).send(fileBody())).status,403);
+ const logs=await hr.get('/api/audit-history?area=employees');assert.ok(logs.body.items.some(i=>i.type==='employee_attachment'));
+});
+test('HR file proposals retain encrypted content, allow reviewer downloads and publish only after approval',async()=>{
+ const before=uploaded;
+ const proposed=await hr.post(`/api/employees/${target}/attachments`).send(fileBody({fileName:'Approval letter.pdf'}));assert.equal(proposed.status,202,JSON.stringify(proposed.body));assert.equal(uploaded,before);
+ const id=proposed.body.requestId;
+ const pending=(await q('SELECT payload_cipher,payload_preview FROM change_requests WHERE id=$1',[id])).rows[0];assert.equal(pending.payload_preview.fileBase64,'[protected]');assert.ok(!pending.payload_cipher.includes(pdf.toString('base64')));
+ assert.equal((await finance.get(`/api/employees/${target}/attachments?direction=incoming`)).body.total,1);
+ const preview=await admin.get(`/api/change-requests/${id}/attachment`);assert.equal(preview.status,200);assert.deepEqual(preview.body,pdf);
+ assert.equal((await hr.get(`/api/change-requests/${id}/attachment`)).status,200);assert.equal((await finance.get(`/api/change-requests/${id}/attachment`)).status,404);
+ assert.equal((await hr.post(`/api/change-requests/${id}/approve`).send({})).status,403);
+ const approved=await admin.post(`/api/change-requests/${id}/approve`).send({});assert.equal(approved.status,200,JSON.stringify(approved.body));assert.equal(uploaded,before+1);
+ assert.equal((await finance.get(`/api/employees/${target}/attachments?direction=incoming`)).body.total,2);
+ assert.equal((await admin.get(`/api/change-requests/${id}/attachment`)).status,404);assert.equal((await q('SELECT payload_cipher FROM change_requests WHERE id=$1',[id])).rows[0].payload_cipher,null);
+});
+test('invalid uploads do not queue or reach storage; withdrawn proposals never publish',async()=>{
+ const before=uploaded;
+ for(const body of [fileBody({fileName:'x.exe'}),fileBody({fileName:'x.png'}),fileBody({direction:'bad'})])assert.equal((await hr.post(`/api/employees/${target}/attachments`).send(body)).status,400);
+ assert.equal((await admin.post('/api/employees/999999/attachments').send(fileBody())).status,404);
+ const proposed=await hr.post(`/api/employees/${target}/attachments`).send(fileBody({fileName:'Withdrawn.pdf'}));assert.equal(proposed.status,202);
+ assert.equal((await hr.post(`/api/change-requests/${proposed.body.requestId}/cancel`).send({})).status,200);
+ assert.equal((await admin.get(`/api/change-requests/${proposed.body.requestId}/attachment`)).status,404);assert.equal(uploaded,before);
+});
+test('approval rollback removes uploaded objects and leaves the proposal available for retry',async()=>{
+ const proposed=await hr.post(`/api/employees/${target}/attachments`).send(fileBody({fileName:'Retry letter.pdf'}));assert.equal(proposed.status,202);
+ const before=files.size,count=(await q('SELECT count(*)::int AS n FROM employee_attachments')).rows[0].n;
+ await db.exec(`CREATE FUNCTION fail_attachment_approval() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='change.approve' AND NEW.entity_type='employee_attachment' THEN RAISE EXCEPTION 'test rollback'; END IF; RETURN NEW; END; $$; CREATE TRIGGER attachment_failure BEFORE INSERT ON audit_logs FOR EACH ROW EXECUTE FUNCTION fail_attachment_approval();`);
+ assert.equal((await admin.post(`/api/change-requests/${proposed.body.requestId}/approve`).send({})).status,500);
+ assert.equal(files.size,before);assert.equal((await q('SELECT count(*)::int AS n FROM employee_attachments')).rows[0].n,count);
+ await db.exec('DROP TRIGGER attachment_failure ON audit_logs; DROP FUNCTION fail_attachment_approval();');
+ assert.equal((await admin.post(`/api/change-requests/${proposed.body.requestId}/approve`).send({})).status,200);
+});
+test('authorized document uploads can exceed the ordinary 100 KB JSON cap; storage errors leave no metadata',async()=>{
+ const larger=Buffer.concat([pdf,Buffer.alloc(150*1024)]),body=fileBody({fileName:'Large letter.pdf',fileBase64:larger.toString('base64')});
+ const path=`/api/employees/${target}/attachments`;
+ assert.equal((await request(app).post(path).send(body)).status,401);
+ assert.equal((await finance.post(path).send(body)).status,403);
+ const saved=await admin.post(path).send(body);assert.equal(saved.status,201,JSON.stringify(saved.body));
+ assert.equal((await finance.get(`${path}/${saved.body.id}/download`)).body.length,larger.length);
+ const count=(await q('SELECT count(*)::int AS n FROM employee_attachments')).rows[0].n,original=attachmentDeps.store.upload;
+ attachmentDeps.store.upload=async()=>{throw new Error('Provider upload failed');};
+ try{assert.equal((await admin.post(path).send(fileBody({fileName:'Failed.pdf'}))).status,500);}finally{attachmentDeps.store.upload=original;}
+ assert.equal((await q('SELECT count(*)::int AS n FROM employee_attachments')).rows[0].n,count);
+});
+test('independent incoming and outgoing proposals can both be approved without making each other stale',async()=>{
+ const incoming=await hr.post(`/api/employees/${target}/attachments`).send(fileBody({fileName:'Concurrent incoming.pdf'}));
+ const outgoing=await hr.post(`/api/employees/${target}/attachments`).send(fileBody({direction:'outgoing',fileName:'Concurrent outgoing.pdf'}));
+ assert.equal(incoming.status,202);assert.equal(outgoing.status,202);
+ for(const id of [incoming.body.requestId,outgoing.body.requestId]){const approved=await admin.post(`/api/change-requests/${id}/approve`).send({});assert.equal(approved.status,200,JSON.stringify(approved.body));}
 });
 test('anonymous, ordinary employees, invalid IDs/pages and locked sessions cannot access admin profiles',async()=>{
  const path=`/api/employees/${target}/profile`;
