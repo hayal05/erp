@@ -1,3 +1,5 @@
+import {Link,useLocation} from 'react-router-dom';
+import {workspacePath} from '../api/workspaces.js';
 import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {usePermission} from '../api/auth.jsx';
 import { useCallback, useEffect, useState } from 'react';
@@ -78,7 +80,8 @@ export default function Employees() {
     { key: 'status', header: 'Status', render: (r) => <Badge tone={r.status === 'active' ? 'ok' : 'neutral'}>{r.status === 'active' ? 'Active' : 'Inactive'}</Badge> },
     { key: 'actions', header: <span className="sr-only">Actions</span>, className: 'nowrap', render: (r) => (
       <span className="row">
-        <Button size="sm" onClick={() => setDialog({ employee: r })} aria-label={`${canManage?'Edit':'View'} ${r.fullName}`}>{canManage?'Edit':'View'}</Button>
+        <EmployeeProfileLink employee={r}/>
+        {canManage&&<Button size="sm" onClick={() => setDialog({ employee: r })} aria-label={`Edit ${r.fullName}`}>Edit</Button>}
         <Button size="sm" onClick={() => setSalaryEmployee(r)} aria-label={`Salary for ${r.fullName}`}>Salary</Button>
         {canManage && (r.status === 'active'
           ? <Button size="sm" variant="danger" onClick={() => setConfirm({ employee: r, reason: '', busy: false })} aria-label={`Deactivate ${r.fullName}`}>Deactivate</Button>
@@ -128,4 +131,9 @@ export default function Employees() {
       </Modal>
     </section>
   );
+}
+
+export function EmployeeProfileLink({employee}){
+ const {pathname}=useLocation();
+ return <Link className="btn sm" to={workspacePath(`/hr/employees/${employee.id}/profile`,pathname)} aria-label={`Profile for ${employee.fullName}`}>Profile</Link>;
 }

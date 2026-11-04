@@ -1,6 +1,6 @@
 // Append-only audit trail (the table rejects UPDATE/DELETE). Pass the transaction client as `db`
 // so the audit row commits or rolls back together with the change it describes.
-const SENSITIVE_KEY = /pass(word)?|token|secret|hash|csrf|authorization|cookie|session|photo|selfie|api[_-]?key|credential|private[_-]?key|database[_-]?url|connection[_-]?string/i;
+const SENSITIVE_KEY = /fileBase64|pass(word)?|token|secret|hash|csrf|authorization|cookie|session|photo|selfie|api[_-]?key|credential|private[_-]?key|database[_-]?url|connection[_-]?string/i;
 const MAX_DETAILS_BYTES = 8_192;
 
 // Deep copy with secret-looking keys replaced, so credentials can never reach the log by accident.

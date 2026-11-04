@@ -6,7 +6,7 @@ const record=(type,entity=AUDIT_RECORDS[type].entity)=>({entity,fields:AUDIT_REC
 const extra=(entity,permission,domains,fields)=>({entity,fields,allowed:user=>hasPermission(user,permission)&&domains.some(p=>hasPermission(user,p))});
 const sources={
  retirement:record('retirement_settings'),vacancy:record('vacancy'),application:record('vacancy_application'),
- employee:record('employee'),salary:record('salary_profile'),department:record('department'),position:record('position'),
+ attachment:record('employee_attachment'),employee:record('employee'),salary:record('salary_profile'),department:record('department'),position:record('position'),
  attendance:record('attendance_record'),leave:record('leave_request'),announcement:record('announcement'),
  payroll:record('payroll_period'),entry:record('payroll_period','payroll_entry'),access:record('access_employee'),
  settlement:record('settlement_period'),calculation:record('payroll_settings'),
@@ -19,7 +19,7 @@ const sources={
  request:extra('change_request','approvals.read',['audit.hr','audit.finance'],['department','requestedBy']),
 };
 export const AUDIT_AREAS={
- all:Object.keys(sources),retirement:['retirement'],vacancies:['vacancy','application'],employees:['employee','salary'],departments:['department','position'],attendance:['attendance'],
+ all:Object.keys(sources),retirement:['retirement'],vacancies:['vacancy','application'],employees:['employee','salary','attachment'],departments:['department','position'],attendance:['attendance'],
  leave:['leave','balance'],announcements:['announcement'],payroll:['payroll','entry','deduction'],
  payroll_settings:['calculation','brackets','tax'],settlements:['settlement'],access:['access'],settings:['shift','holiday'],approvals:['request'],
 };

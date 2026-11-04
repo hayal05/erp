@@ -1,3 +1,4 @@
+import employeeAttachmentRoutes from './routes/employeeAttachments.js';
 import retirementRoutes from './routes/retirement.js';
 import vacancyRoutes from './routes/vacancies.js';
 import {incrementalReads} from './middleware/incrementalReads.js';
@@ -45,9 +46,9 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
 
   app.use(helmet());
   app.use(cors);
-  // 100 kb everywhere except the selfie submit, which parses its own larger body after the role guard (routes/attendance.js).
+  // Larger selfie/document bodies are parsed only by their guarded upload routes.
   const json = express.json({ limit: '100kb' });
-  app.use((req, res, next) => (req.path === '/api/attendance/scan' ? next() : json(req, res, next)));
+  app.use((req, res, next) => ((req.path === '/api/attendance/scan'||(req.method==='POST'&&/^\/api\/employees\/\d+\/attachments\/?$/.test(req.path))) ? next() : json(req, res, next)));
 
   // Lightweight liveness check for UptimeRobot. Deliberately does not touch the database.
   app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
@@ -70,6 +71,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   operations.use('/api/retirement', retirementRoutes);
   operations.use('/api/vacancies', vacancyRoutes);
   operations.use('/api/announcements', announcementRoutes);
+  operations.use('/api/employees', employeeAttachmentRoutes);
   operations.use('/api/employees', employeeRoutes);
   operations.use('/api/departments', departmentRoutes);
   operations.use('/api/positions', positionRoutes);
@@ -91,6 +93,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use('/api/access-management', accessManagementRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/profile', profileRoutes);
+  app.use('/api/employees', employeeAttachmentRoutes);
   app.use('/api/employees', employeeRoutes);
   app.use('/api/departments', departmentRoutes);
   app.use('/api/positions', positionRoutes); // edit/delete by id; list+create live under /api/departments/:id/positions (6.3)

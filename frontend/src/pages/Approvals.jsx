@@ -1,3 +1,4 @@
+import AttachmentDownload from '../components/AttachmentDownload.jsx';
 import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {useEffect,useState} from 'react';
 import {get,post} from '../api/client.js';
@@ -10,7 +11,7 @@ import Table,{Badge,Pager} from '../components/Table.jsx';
 
 function ProposedValues({value,depth=0}){
  if(value===null||typeof value!=='object')return <span className="approval-value">{value===null?'None':typeof value==='boolean'?(value?'Yes':'No'):String(value)}</span>;
- const entries=Object.entries(value);
+ const entries=Object.entries(value).filter(([key])=>key!=='fileBase64');
  if(!entries.length)return <span className="muted">{Array.isArray(value)?'No items':'No fields'}</span>;
  const fields=<dl className="approval-values">{entries.map(([key,item])=><div key={key}><dt>{Array.isArray(value)?`Row ${Number(key)+1}`:fieldLabel(key)}</dt><dd><ProposedValues value={item} depth={depth+1}/></dd></div>)}</dl>;
  return depth>0?<details className="approval-nested"><summary>{entries.length} {Array.isArray(value)?'items':'fields'}</summary>{fields}</details>:fields;
@@ -56,6 +57,7 @@ export default function Approvals(){
     {selected.reviewed_at&&<><div><dt>Reviewed by</dt><dd>{selected.reviewer_name}</dd></div><div><dt>Reviewed on</dt><dd>{when(selected.reviewed_at)}</dd></div></>}
    </dl>
    {selected.review_reason&&<p className="approval-value"><span className="muted">Review note: </span>{selected.review_reason}</p>}
+   {selected.status==='pending'&&selected.payload_preview?.fileBase64&&(selected.canReview||selected.canCancel)&&<div><AttachmentDownload path={`/change-requests/${selected.id}/attachment`} fileName={selected.payload_preview.fileName} disabled={busy}>Download proposed file</AttachmentDownload></div>}
    <section className="stack approval-proposal"><h3>Proposed changes</h3><ProposedValues value={selected.payload_preview}/></section>
    {error&&<p className="form-error" role="alert">{error}</p>}
    {(selected.canReview||selected.canCancel)&&<Field as="textarea" rows={2} label="Review note" hint={selected.canReview?'Required to reject.':undefined} value={reason} maxLength={1000} onChange={e=>setReason(e.target.value)} disabled={busy}/>}

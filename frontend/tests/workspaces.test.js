@@ -54,7 +54,7 @@ test('the approval inbox is available in HR and Finance workspaces and excluded 
 
 
 test('both administrative roles can open every sidebar section in their own workspace',()=>{
- for(const [user,prefix]of [[hr,'/hr'],[finance,'/finance']])for(const suffix of ['/retirement','/employees','/departments/1','/attendance','/qr','/leave','/vacancies','/announcements','/settings','/settings/payroll','/payroll/company-costs','/settlements','/access-management'])assert.equal(canOpenPath(user,prefix+suffix),true,prefix+suffix);
+ for(const [user,prefix]of [[hr,'/hr'],[finance,'/finance']])for(const suffix of ['/employees/1/profile','/retirement','/employees','/departments/1','/attendance','/qr','/leave','/vacancies','/announcements','/settings','/settings/payroll','/payroll/company-costs','/settlements','/access-management'])assert.equal(canOpenPath(user,prefix+suffix),true,prefix+suffix);
 });
 
 

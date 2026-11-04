@@ -411,3 +411,15 @@ Retirement is available in the HR/Admin and Finance sidebars. HR and General Adm
 The report defaults to active employees and supports inactive/all employees, search, retirement-status filters and pagination. Ages and retirement dates use birth dates and the company’s current date. February 29 anniversaries fall on February 28 in non-leap years. Missing or future birth dates are flagged as missing birth date and have no calculated retirement date. “Within one year” excludes dates already reached. Setting the age only recalculates the report; it never automatically deactivates an employee or changes payroll. Sidebar clicks use the existing incremental refresh.
 
 The Dashboard includes one Retirement card with active-employee counts: **Nearing · 3 months** (after today through the date three calendar months ahead, inclusive) and **Passed** (retirement date today or earlier). Missing/future birth dates and inactive employees do not enter these counts. Until the age is configured, the card shows “Retirement age not set”. The card links to Retirement and updates from the saved/approved setting on sidebar refresh.
+
+
+### Administrative employee profiles
+
+The Profile action in Employees opens `/hr/employees/:id/profile` (or `/finance/employees/:id/profile`). HR, Finance and General Admin can view personal details, employment, contact/account information, employee-maintained experience and paginated position history, including inactive employees. The profile uses the existing `employees.read` permission; ordinary employees use their own portal profile. Personal and employment facts are read-only; administrative edits remain in the Employees table. HR/Admin can add attachments and see the bottom audit footer; Finance can view and download. History dates are recording dates in the company timezone, not appointment dates. Attachment storage requires migration 020 below.
+
+
+### Employee attachments
+
+Migration `020_employee_attachments.sql` adds Incoming and Outgoing attachment columns to administrative employee profiles. Supported files: PDF, DOC/DOCX, XLS/XLSX, JPEG, PNG, GIF and WebP, up to 5 MB each. Lists are independently paginated. HR/Admin upload; management users with `employees.read` download. Files are served as downloads after authorization and are never included in employee self-service profiles.
+
+General Admin uploads publish immediately. HR uploads are encrypted in the existing approval queue until another HR reviewer or General Admin approves them. The requester and eligible reviewers can download the proposed file before approval; Finance cannot read pending HR file contents. Rejection/withdrawal clears pending encrypted content. Only approved files upload to Cloudinary as authenticated raw assets with random IDs and original extensions. The database then keeps metadata, not the file content. Downloads proxy a short-lived private provider URL through the authenticated API. Reuse the existing `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET`; no new variables. Cloudinary account restrictions for document delivery must allow your file types. No file preview runs inside the app.

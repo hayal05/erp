@@ -98,6 +98,25 @@ try{
  const html=await render('pages/SalaryDetailDialog.jsx','SalaryDetails',{data:salary});
  for(const label of ['Basic salary','Allowance','Gross salary','Taxable income','Income tax','Employee pension','Net salary','Total employer cost'])assert.ok(html.includes(label),`Salary detail lost ${label}`);
  assert.ok(html.includes('1,010.00')&&html.includes('1,310.00'),'Saved net/employer totals changed');
+ const adminProfile={...person,departmentName:'Operations',positionName:'Officer',shiftName:'Day',gender:'female',dateOfBirth:'1995-11-05',fieldOfStudy:'Economics',experienceSummary:'Planning experience',positionHistory:{items:[{id:1,department:'Historic department',position:'Former Officer',recordedOn:'2025-01-02',baseline:true}],total:1}};
+ const adminProfileHtml=await render('pages/EmployeeProfile.jsx','EmployeeProfileDetails',{profile:adminProfile});
+ for(const text of ['Personal details','Employment','Contact &amp; account','Experience','Position history','Female','Economics','Planning experience','Historic department','Former Officer','Starting record'])assert.ok(adminProfileHtml.includes(text),`Admin employee profile lost ${text}`);
+ assert.ok(!adminProfileHtml.includes('<textarea'),'Admin profile unexpectedly edits employee facts');
+ for(const title of ['Incoming attachments','Outgoing attachments'])assert.ok(adminProfileHtml.includes(title),`Profile missing ${title}`);
+ const legacyProfile=await render('pages/EmployeeProfile.jsx','EmployeeProfileDetails',{profile:{...adminProfile,gender:null,dateOfBirth:null,fieldOfStudy:null,email:null,phone:null,experienceSummary:'',positionHistory:{items:[],total:0}}});
+ assert.ok(legacyProfile.includes('No experience added.')&&legacyProfile.includes('No position history recorded.'),'Legacy profile empty states lost');
+ const historyPage=await render('pages/EmployeeProfile.jsx','EmployeeProfileDetails',{profile:{...adminProfile,positionHistory:{...adminProfile.positionHistory,total:12}},page:2,loading:true});
+ assert.ok(historyPage.includes('Previous')&&historyPage.includes('aria-busy="true"'),'Profile history pagination/loading lost');
+ for(const prefix of ['/hr','/finance']){
+  const profileLink=await render('pages/Employees.jsx','EmployeeProfileLink',{employee:person},prefix+'/employees');
+  assert.ok(profileLink.includes(`href="${prefix}/employees/1/profile"`)&&profileLink.includes('Profile for Example Employee'),'Employee profile link lost workspace or accessible name');
+ }
+ const fileItems=[{id:7,fileName:'Employment letter.pdf',byteSize:2048,uploadedBy:'hr.example',uploadedAt:'2026-11-04T12:00:00Z'}];
+ const attachmentList=await render('pages/EmployeeAttachments.jsx','AttachmentList',{employeeId:1,items:fileItems});
+ for(const text of ['Employment letter.pdf','hr.example','2 KB','Download Employment letter.pdf'])assert.ok(attachmentList.includes(text),`Attachment list lost ${text}`);
+ const previousUser=globalThis.__compactReview.user;globalThis.__compactReview.user={role:'employee',permissions:permissionsFor({role:'employee',accessRoles:['finance']})};
+ const financeProfile=await render('pages/EmployeeProfile.jsx','EmployeeProfileDetails',{profile:adminProfile});
+ assert.ok(!financeProfile.includes('type="file"')&&financeProfile.includes('Incoming attachments'),'Finance can upload or cannot view attachments');globalThis.__compactReview.user=previousUser;
  const retireRows=[{id:1,employeeCode:'RET-1',fullName:'Retiring Employee',department:'Operations',position:'Officer',employmentStatus:'active',dateOfBirth:'1966-11-04',age:60,retirementDate:'2026-11-04',daysRemaining:0,status:'reached'},{id:2,employeeCode:'RET-2',fullName:'Upcoming Employee',employmentStatus:'active',dateOfBirth:'1966-11-05',age:59,retirementDate:'2026-11-05',daysRemaining:1,status:'within_year'},{id:3,employeeCode:'RET-3',fullName:'Legacy Employee',employmentStatus:'inactive',dateOfBirth:null,age:null,retirementDate:null,daysRemaining:null,status:'missing_birth_date'},{id:4,employeeCode:'RET-4',fullName:'Overdue Employee',employmentStatus:'active',dateOfBirth:'1966-11-03',age:60,retirementDate:'2026-11-03',daysRemaining:-1,status:'reached'}];
  const retireMarkup=await render('pages/Retirement.jsx','RetirementTable',{items:retireRows});
  for(const text of ['Retiring Employee','1966-11-04','1966-11-05','Retirement age reached','Within one year','Missing birth date','Today','1 day','1 day overdue','Inactive'])assert.ok(retireMarkup.includes(text),`Retirement report lost ${text}`);

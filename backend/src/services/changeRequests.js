@@ -7,7 +7,7 @@ const key=crypto.createHash('sha256').update('change-approval:'+config.sessionSe
 export function encrypt(body){const iv=crypto.randomBytes(12),c=crypto.createCipheriv('aes-256-gcm',key,iv);return Buffer.concat([iv,c.update(JSON.stringify(body)),c.final(),c.getAuthTag()]).toString('base64');}
 export function decrypt(text){try{const b=Buffer.from(text,'base64'),c=crypto.createDecipheriv('aes-256-gcm',key,b.subarray(0,12));c.setAuthTag(b.subarray(-16));return JSON.parse(Buffer.concat([c.update(b.subarray(12,-16)),c.final()]).toString());}catch{throw new HttpError(409,'This request can no longer be read. Cancel it and submit again.','unreadable_request');}}
 export const dedupe=(method,path,body)=>crypto.createHmac('sha256',key).update(method+path+JSON.stringify(body)).digest('hex');
-const hidden=/password|token|secret|hash|csrf|cookie|authorization|credential|key/i;
+const hidden=/fileBase64|password|token|secret|hash|csrf|cookie|authorization|credential|key/i;
 export function preview(body,depth=0){if(depth>6)return '[nested value omitted]';if(Array.isArray(body))return body.map(v=>preview(v,depth+1));if(body&&typeof body==='object')return Object.fromEntries(Object.entries(body).map(([k,v])=>[k,hidden.test(k)?'[protected]':preview(v,depth+1)]));return typeof body==='string'?body.slice(0,5000):body;}
 export async function fingerprint(db,policy){
  const parts=[];

@@ -11,6 +11,7 @@ test('editable sections retain the footer in both management workspaces',()=>{
  for(const prefix of ['/hr','/finance']){
   assert.deepEqual(auditScope(prefix+'/settings/payroll',admin),{area:'payroll_settings',label:'Payroll settings'});
   assert.deepEqual(auditScope(prefix+'/settings',admin),{area:'settings',label:'Settings'});
+  assert.equal(auditScope(prefix+'/employees/1/profile',admin).area,'employees');
   assert.equal(auditScope(prefix+'/retirement',admin).area,'retirement');
   assert.equal(auditScope(prefix+'/departments/12',admin).area,'departments');
   assert.equal(auditScope(prefix+'/access-management',admin).area,'access');
