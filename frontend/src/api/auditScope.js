@@ -1,6 +1,7 @@
 import {allowed} from './workspaces.js';
 export function auditScope(pathname,user){
  const path=pathname.replace(/^\/(hr|finance)(?=\/|$)/,'').replace(/\/+$/,'');
+ if(/^\/employees\/[^/]+\/profile$/.test(path))return null;
  // Reports and workflow-only screens do not have an editable-record footer.
  if(path==='/payroll/company-costs'||path.startsWith('/payroll/company-costs/'))return null;
  const scopes=[['/retirement','retirement','Retirement',['employees.manage']],['/vacancies','vacancies','Internal vacancies',['vacancies.manage','vacancies.review']],['/settings/payroll','payroll_settings','Payroll settings',['payroll_settings.manage']],

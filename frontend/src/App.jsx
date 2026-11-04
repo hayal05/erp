@@ -1,3 +1,4 @@
+import EmployeeProfile from './pages/EmployeeProfile.jsx';
 import Retirement from './pages/Retirement.jsx';
 import Vacancies from './pages/Vacancies.jsx';
 import Skeleton from './components/Skeleton.jsx';
@@ -91,6 +92,7 @@ export default function App() {
           <Route path="vacancies" element={<Vacancies />} />
           <Route path="retirement" element={<Retirement />} />
           <Route path="employees" element={<Employees />} />
+          <Route path="employees/:id/profile" element={<EmployeeProfile />} />
           <Route path="departments" element={<Departments />} />
           <Route path="departments/:id" element={<DepartmentDetail />} />
           <Route path="attendance" element={<Attendance />} />
@@ -111,6 +113,7 @@ export default function App() {
           <Route path="vacancies" element={<Vacancies />} />
           <Route path="retirement" element={<Retirement />} />
           <Route path="employees" element={<Employees />} />
+          <Route path="employees/:id/profile" element={<EmployeeProfile />} />
           <Route path="departments" element={<Departments />} />
           <Route path="departments/:id" element={<DepartmentDetail />} />
           <Route path="attendance" element={<Attendance />} />

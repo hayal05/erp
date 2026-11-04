@@ -1,3 +1,4 @@
+import {config} from '../config.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import {protectPrivilegedAccount,accountConflict} from '../services/accountSafeguards.js';
 import { Router } from 'express';
@@ -8,7 +9,7 @@ import { noStore } from '../middleware/noStore.js';
 import { validate } from '../middleware/validate.js';
 import { audit, diffFields } from '../services/audit.js';
 import { hashPassword, passwordProblem } from '../services/password.js';
-import { likePattern, pageOffset, pageResult, setClause } from '../services/sql.js';
+import { likePattern, pageOffset, pageResult, pageSchema, setClause } from '../services/sql.js';
 import { translateDbError, validationError } from '../services/dbErrors.js';
 import { loadAssignablePosition, positionSalary } from '../services/positions.js';
 import {companyDate} from '../services/attendance.js';
@@ -75,6 +76,22 @@ router.get('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
   const employee = await findEmployee({ query }, req.params.id);
   if (!employee) throw notFound();
   res.json(employee);
+}));
+
+// Administrative profile is read-only; position history is paged in the same snapshot.
+router.get('/:id/profile',validate(idParams,'params'),validate(pageSchema,'query'),wrap(async(req,res)=>{
+ const profile=await withTransaction(async db=>{
+  await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  const {rows:[r]}=await db.query(`SELECT ${COLUMNS},e.experience_summary,
+   to_char(now() AT TIME ZONE $2,'YYYY-MM-DD') AS today ${FROM} WHERE e.id=$1`,[req.params.id,config.company.timezone]);
+  if(!r)throw notFound();
+  const {rows}=await db.query(`SELECT id,department_name AS department,position_name AS position,
+   to_char(recorded_at AT TIME ZONE $4,'YYYY-MM-DD') AS "recordedOn",is_baseline AS baseline
+   FROM employee_position_history WHERE employee_id=$1 ORDER BY recorded_at DESC,id DESC LIMIT $2 OFFSET $3`,[req.params.id,req.query.pageSize,pageOffset(req.query),config.company.timezone]);
+  const {rows:[count]}=await db.query('SELECT count(*)::int AS total FROM employee_position_history WHERE employee_id=$1',[req.params.id]);
+  return {...toEmployee(r),experienceSummary:r.experience_summary,today:r.today,
+   positionHistory:pageResult(rows.map(row=>({...row,id:Number(row.id)})),req.query,count.total)};
+ });res.json(profile);
 }));
 
 const requireSuppliedPersonalDetails=(req,res,next)=>{

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {auditScope} from '../src/api/auditScope.js';
 const admin={role:'hr',permissions:['access.manage','employees.manage','organization.manage','attendance.manage','announcements.manage','settlements.manage','payroll_settings.manage','payroll.prepare','payroll.approve','payroll.pay']};
 test('the footer is hidden on dashboard, QR, leave, reports and workflow-only screens',()=>{
- for(const prefix of ['/hr','/finance'])for(const suffix of ['', '/', '/qr','/qr/','/leave','/leave/','/payroll/company-costs','/payroll/company-costs/','/approvals','/not-a-page']){
+ for(const prefix of ['/hr','/finance'])for(const suffix of ['', '/', '/qr','/qr/','/leave','/leave/','/payroll/company-costs','/payroll/company-costs/','/approvals','/employees/1/profile','/employees/1/profile/','/not-a-page']){
   assert.equal(auditScope(prefix+suffix,admin),null,prefix+suffix);
  }
 });
