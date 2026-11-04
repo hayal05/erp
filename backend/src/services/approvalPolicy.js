@@ -1,6 +1,7 @@
 // Only fixed administrative operations may enter the queue. Daily attendance, QR,
 // personal profiles/passwords and existing leave decisions do not use this wrapper.
 const rules=[
+ ['hr','employees.manage',/^\/api\/retirement\/settings$/,['retirement_settings']],
  ['hr','vacancies.review',/^\/api\/vacancies\/\d+\/applications\/\d+$/,['vacancy_applications']],
  ['hr','vacancies.manage',/^\/api\/vacancies(?:\/\d+)?$/,['internal_vacancies','positions','departments']],
  ['hr','employees.manage',/^\/api\/employees(?:\/\d+(?:\/(?:activate|deactivate))?)?$/,['employees','users','salary_profiles','positions','departments','shifts']],

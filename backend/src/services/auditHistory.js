@@ -3,6 +3,7 @@ import {hasPermission} from './permissions.js';
 const HR=['audit.hr'],FIN=['audit.finance'],BOTH=['audit.hr','audit.finance'];
 const salary=['basicMinor','allowanceMinor','allowanceTaxable','allowancePensionable','pensionApplies'];
 export const AUDIT_RECORDS={
+ retirement_settings:{table:'retirement_settings',entity:'retirement_settings',domains:HR,read:'employees.manage',singleton:true,fields:['retirementAge']},
  vacancy:{table:'internal_vacancies',entity:'vacancy',domains:HR,read:'vacancies.manage',fields:['title','description','departmentId','positionId','closingOn','status']},
  vacancy_application:{table:'vacancy_applications',entity:'vacancy_application',domains:HR,read:'vacancies.review',fields:['vacancyId','status']},
  employee:{table:'employees',entity:'employee',domains:HR,read:'employees.manage',fields:['employeeCode','fullName','gender','dateOfBirth','fieldOfStudy','username','email','phone','departmentId','departmentName','positionId','positionName','jobTitle','startDate','employmentType','shiftId','status']},

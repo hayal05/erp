@@ -843,3 +843,12 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .portal-leave-page .table th, .portal-leave-page .table td { white-space: nowrap; }
 @media (max-width: 700px) { .portal-leave-page .leave-balances { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 360px) { .portal-leave-page .leave-balances { grid-template-columns: minmax(0,1fr); } }
+
+.retirement-heading h1 { margin: 0; }
+.retirement-age { display: flex; align-items: end; gap: var(--space-sm); }
+.retirement-age .field { width: 130px; }
+.retirement-filters { flex-wrap: wrap; }
+.retirement-filters .field { margin: 0; }
+.retirement-filters .field:first-child { width: min(300px,100%); }
+.retirement-page .table { min-width: 1100px; }
+.retirement-page .table th, .retirement-page .table td { white-space: nowrap; }

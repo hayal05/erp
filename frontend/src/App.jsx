@@ -1,3 +1,4 @@
+import Retirement from './pages/Retirement.jsx';
 import Vacancies from './pages/Vacancies.jsx';
 import Skeleton from './components/Skeleton.jsx';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
@@ -88,6 +89,7 @@ export default function App() {
           <Route path="access-management" element={<AccessManagement />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="vacancies" element={<Vacancies />} />
+          <Route path="retirement" element={<Retirement />} />
           <Route path="employees" element={<Employees />} />
           <Route path="departments" element={<Departments />} />
           <Route path="departments/:id" element={<DepartmentDetail />} />
@@ -107,6 +109,7 @@ export default function App() {
           <Route path="access-management" element={<AccessManagement />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="vacancies" element={<Vacancies />} />
+          <Route path="retirement" element={<Retirement />} />
           <Route path="employees" element={<Employees />} />
           <Route path="departments" element={<Departments />} />
           <Route path="departments/:id" element={<DepartmentDetail />} />
