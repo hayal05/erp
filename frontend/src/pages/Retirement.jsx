@@ -8,14 +8,20 @@ import Table,{Badge,Pager} from '../components/Table.jsx';
 import {useToast} from '../components/Toast.jsx';
 const statusOptions=[{value:'reached',label:'Retirement age reached'},{value:'within_year',label:'Within one year'},{value:'later',label:'More than one year'},{value:'missing_birth_date',label:'Missing birth date'},{value:'not_configured',label:'Age not set'}];
 const labels=Object.fromEntries(statusOptions.map(o=>[o.value,o.label]));
-const dayText=n=>`${Math.abs(n).toLocaleString()} ${Math.abs(n)===1?'day':'days'}`;
+function remainingTime(days){
+ if(days==null||!Number.isFinite(days))return '—';
+ if(days===0)return 'Today';
+ const months=Math.round(Math.abs(days)*12/365.25),years=Math.floor(months/12),rest=months%12;
+ const text=Math.abs(days)<365.25/12?'<1 month':`≈ ${years} ${years===1?'year':'years'} ${rest} ${rest===1?'month':'months'}`;
+ return days<0?`${text} overdue`:text;
+}
 export function RetirementTable({items=[],loading=false,error='',onRetry}){
  return <Table caption="Employee retirement" columns={[
   {key:'employeeCode',header:'ID'},{key:'fullName',header:'Employee'},{key:'department',header:'Department',render:r=>r.department||'—'},
   {key:'position',header:'Position',render:r=>r.position||'—'},{key:'employmentStatus',header:'Employment',render:r=>r.employmentStatus==='active'?'Active':'Inactive'},
   {key:'dateOfBirth',header:'Birth date',render:r=>r.dateOfBirth||'—'},{key:'age',header:'Age',align:'num',render:r=>r.age??'—'},
   {key:'retirementDate',header:'Retirement date',render:r=>r.retirementDate||'—'},
-  {key:'daysRemaining',header:'Time remaining',render:r=>r.daysRemaining===null?'—':r.daysRemaining===0?'Today':r.daysRemaining<0?`${dayText(r.daysRemaining)} overdue`:dayText(r.daysRemaining)},
+  {key:'daysRemaining',header:'Time remaining',render:r=>remainingTime(r.daysRemaining)},
   {key:'status',header:'Status',render:r=><Badge tone={r.status==='reached'?'danger':r.status==='within_year'?'warn':'neutral'}>{labels[r.status]||r.status}</Badge>}
  ]} rows={items} loading={loading} error={error} onRetry={onRetry} empty="No employees found"/>;
 }
