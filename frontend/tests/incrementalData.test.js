@@ -32,3 +32,10 @@ test('a forbidden refresh clears cached data and throws instead of serving a cac
  await assert.rejects(get('/employees'),e=>e.status===403);
  assert.equal(readBaseline('/api/employees').entry,undefined);
 });
+
+test('scope changes clear baselines even when activity permissions stay identical',()=>{
+ const user={id:5,permissions:['attendance.read'],customGrants:[{scopeType:'departments',departmentIds:[1]}]};
+ syncIncrementalIdentity({user});decodeIncrementalData('/attendance-records',full({items:[{id:1}]}),readBaseline('/attendance-records'));
+ const prior=readBaseline('/attendance-records');syncIncrementalIdentity({user:{...user,customGrants:[{scopeType:'departments',departmentIds:[2]}]}});
+ assert.equal(readBaseline('/attendance-records').entry,undefined);assert.throws(()=>decodeIncrementalData('/attendance-records',full({items:[{id:1}]}),prior),/Session changed/);
+});

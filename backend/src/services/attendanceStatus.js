@@ -1,3 +1,4 @@
+import {scopeSql} from './accessScope.js';
 import { config } from '../config.js';
 import { HttpError } from '../middleware/error.js';
 import { dayNumber as strictDayNumber } from './workdays.js'; // rejects impossible dates (2026-02-30)
@@ -113,12 +114,13 @@ export function fillWindow({ from, to } = {}, today) {
 // list calls it for the dates on screen and leave approval calls it for the approved range.
 // `today` / `time` default to the company-timezone date and wall-clock time now (injectable for tests).
 // Returns { onLeave, absent } = how many rows were created.
-export async function fillAttendanceGaps(db, { from, to, employeeId = null, now = new Date(), timeZone = config.company.timezone }) {
+export async function fillAttendanceGaps(db, { from, to, employeeId = null, now = new Date(), timeZone = config.company.timezone, user=null }) {
   const a = strictDayNumber(from), b = strictDayNumber(to); // throws on impossible dates
   if (b < a) throw new Error('to must be on or after from');
   if (b - a + 1 > MAX_FILL_DAYS) throw new Error(`A fill is limited to ${MAX_FILL_DAYS} days`);
   const p = companyParts(now, timeZone);
   const clock = `${String(Math.floor(p.seconds / 3600)).padStart(2, '0')}:${String(Math.floor((p.seconds % 3600) / 60)).padStart(2, '0')}:${String(p.seconds % 60).padStart(2, '0')}`;
+  const args=[from,to,p.date,clock,employeeId],scope=user?scopeSql(user,'attendance.read','e',args):'TRUE';
   const { rows } = await db.query(
     `WITH cand AS (
        SELECT e.id AS employee_id, g.d::date AS work_date,
@@ -128,7 +130,7 @@ export async function fillAttendanceGaps(db, { from, to, employeeId = null, now 
          FROM generate_series($1::date, $2::date, interval '1 day') AS g(d)
          CROSS JOIN employees e
          JOIN shifts s ON s.id = e.shift_id
-        WHERE e.status = 'active' AND e.start_date <= g.d::date
+        WHERE ${scope} AND e.status = 'active' AND e.start_date <= g.d::date
           AND ($5::bigint IS NULL OR e.id = $5)
           AND EXTRACT(ISODOW FROM g.d)::int = ANY (s.work_days)
           AND NOT EXISTS (SELECT 1 FROM holidays h WHERE h.holiday_date = g.d::date))
@@ -137,7 +139,7 @@ export async function fillAttendanceGaps(db, { from, to, employeeId = null, now 
        FROM cand WHERE on_leave OR closed
      ON CONFLICT ON CONSTRAINT attendance_one_per_day DO NOTHING
      RETURNING status`,
-    [from, to, p.date, clock, employeeId]);
+    args);
   return { onLeave: rows.filter((r) => r.status === 'on_leave').length, absent: rows.filter((r) => r.status === 'absent').length };
 }
 

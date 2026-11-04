@@ -6,7 +6,7 @@ import AuditBottomBar from './AuditBottomBar.jsx';
 import {auditScope} from '../api/auditScope.js';
 import ApprovalNotice from './ApprovalNotice.jsx';
 import WorkspaceSwitcher from './WorkspaceSwitcher.jsx';
-import {canOpenPath,workspacePath,workspaceArea,isAdmin} from '../api/workspaces.js';
+import {canOpenPath,workspacePath,workspaceArea,isAdmin,allowed} from '../api/workspaces.js';
 import { useAuth } from '../api/auth.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import { HR_NAV, QR_PATH, formatClock, initials, layoutMode } from './hrNav.js';
@@ -90,7 +90,7 @@ export default function HrLayout() {
         <details className="management-account" ref={accountRef}>
           <summary className="user-chip" title={accountName} aria-label={`Account: ${accountName}`}>
             <span className="avatar" aria-hidden="true">{initials(accountName)}</span>
-            <span className="user-text"><strong>{accountName}</strong><small className="muted">{workspaceArea(pathname)==='finance'?'Finance':isAdmin(user)?'Admin':'HR'}</small></span>
+            <span className="user-text"><strong>{accountName}</strong><small className="muted">{workspaceArea(pathname)==='finance'?'Finance':isAdmin(user)?'Admin':user?.customGrants?.length?user.customGrants.map(g=>g.name).join(', '):'HR'}</small></span>
             <ChevronDown size={16} aria-hidden="true" />
           </summary>
           <div className="management-account-options">
@@ -101,7 +101,7 @@ export default function HrLayout() {
 
       <aside id="hr-nav" className={`sidebar${menuOpen ? ' open' : ''}`}>
         <nav aria-label="Main">
-          {HR_NAV.filter(item => canOpenPath(user,workspacePath(item.to,pathname))).map((item) => {
+          {HR_NAV.filter(item => (item.key!=='dashboard'||allowed(user,'dashboard.read'))&&canOpenPath(user,workspacePath(item.to,pathname))).map((item) => {
             const Icon = ICONS[item.key];
             return (
               <NavLink key={item.key} to={workspacePath(item.to,pathname)} end={item.end} onClick={visitSection} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>

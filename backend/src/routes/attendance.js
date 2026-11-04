@@ -50,7 +50,7 @@ router.post('/scan', scanJson, wrap(async (req, res) => {
   if (emp.status !== 'active') throw new HttpError(403, 'Your employee record is inactive. Contact HR.', 'employee_inactive');
 
   try {
-    const checked = await checkQrToken({ query }, token);
+    const checked = await checkQrToken({ query }, token,{employeeId:Number(emp.id)});
     await assertQrNotScanned({ query }, checked.id, emp.id);
   } catch (e) {
     if (e instanceof HttpError) scanLimits.user.fail(key);

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import {config} from '../config.js';
 import {HttpError} from '../middleware/error.js';
 import {hasPermission} from './permissions.js';
-import {withAccess,loadAccessRoles} from './accessGrants.js';
+import {userAccess,loadAccessRoles} from './accessGrants.js';
 const key=crypto.createHash('sha256').update('change-approval:'+config.sessionSecret).digest();
 export function encrypt(body){const iv=crypto.randomBytes(12),c=crypto.createCipheriv('aes-256-gcm',key,iv);return Buffer.concat([iv,c.update(JSON.stringify(body)),c.final(),c.getAuthTag()]).toString('base64');}
 export function decrypt(text){try{const b=Buffer.from(text,'base64'),c=crypto.createDecipheriv('aes-256-gcm',key,b.subarray(0,12));c.setAuthTag(b.subarray(-16));return JSON.parse(Buffer.concat([c.update(b.subarray(12,-16)),c.final()]).toString());}catch{throw new HttpError(409,'This request can no longer be read. Cancel it and submit again.','unreadable_request');}}
@@ -24,7 +24,7 @@ export async function currentUser(db,id){
  const {rows:[u]}=await db.query('SELECT id,role,username,email,full_name,is_active,must_change_password FROM users WHERE id=$1',[id]);
  if(!u||!u.is_active||u.must_change_password)throw new HttpError(409,'Requester must have an active account and completed password setup','requester_unavailable');
  const {rows}=await db.query("SELECT 1 FROM employees WHERE user_id=$1 AND status<>'active'",[id]);if(rows.length)throw new HttpError(409,'Requester is no longer active','requester_unavailable');
- return withAccess({id:Number(u.id),role:u.role,username:u.username,email:u.email,fullName:u.full_name},await loadAccessRoles(db,id));
+ return userAccess(db,{id:Number(u.id),role:u.role,username:u.username,email:u.email,fullName:u.full_name},await loadAccessRoles(db,id));
 }
 export const canReview=(user,row)=>user.id!==Number(row.requester_id)&&hasPermission(user,row.permission)&&
- (hasPermission(user,'access.manage')||user.accessRoles?.includes(row.department));
+ (hasPermission(user,'access.manage')||user.accessRoles?.includes(row.department)||hasPermission(user,`changes.${row.department}.approve`));

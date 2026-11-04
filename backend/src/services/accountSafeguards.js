@@ -2,7 +2,7 @@ import {HttpError} from '../middleware/error.js';
 import {hasPermission} from './permissions.js';
 export async function protectPrivilegedAccount(db,actor,userId){
  if(hasPermission(actor,'access.manage'))return;
- const {rows}=await db.query('SELECT 1 FROM access_grants WHERE user_id=$1 AND revoked_at IS NULL LIMIT 1',[userId]);
+ const {rows}=await db.query('SELECT 1 FROM access_grants WHERE user_id=$1 AND revoked_at IS NULL UNION ALL SELECT 1 FROM custom_access_grants WHERE user_id=$1 AND revoked_at IS NULL LIMIT 1',[userId]);
  if(rows.length)throw new HttpError(403,'Only Admin can change privileged account username or activation','forbidden');
 }
 export function accountConflict(error){

@@ -1,3 +1,4 @@
+import {assertAttendanceScope} from '../services/accessScope.js';
 import {AUDIT_AREAS,loadAuditActivity} from '../services/auditActivity.js';
 import {Router} from 'express';
 import {withTransaction} from '../db/pool.js';
@@ -20,6 +21,7 @@ router.get('/:type/:id',validate({type:v.enum({required:true,values:Object.keys(
  if(!canReadAudit(req.user,type))throw new HttpError(403,'You do not have access to this record history','forbidden');
  const result=await withTransaction(async db=>{
   await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  if(type==='attendance_record'){await assertAttendanceScope(db,req.user,'attendance.manage',id);await assertAttendanceScope(db,req.user,'audit.hr',id);}
   const {rows:[record]}=await db.query(`SELECT ${type==='access_employee'?'id,user_id':c.singleton?'1 AS present':'id'} FROM ${c.table}${c.singleton?'':' WHERE id=$1'}`,c.singleton?[]:[id]);
   if(!record||(c.singleton&&id!==1))throw new HttpError(404,'Record not found','not_found');
   let condition='a.entity_type=$1 AND a.entity_id=$2';let args=[c.entity,String(id)];

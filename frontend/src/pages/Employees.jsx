@@ -41,8 +41,7 @@ export default function Employees() {
   // Dropdown sources. Both lists are small; the API caps pageSize at 100.
   useEffect(() => {
     const ctrl = new AbortController();
-    Promise.all([get('/departments', { pageSize: 100 }, { signal: ctrl.signal }), get('/shifts', { pageSize: 100 }, { signal: ctrl.signal })])
-      .then(([d, s]) => setLookups({ departments: d.items, shifts: s.items }))
+    get('/employees/lookups',undefined,{signal:ctrl.signal}).then(setLookups)
       .catch((e) => { if (e.name !== 'AbortError') toast.error(`Could not load departments and shifts: ${e.message}`); });
     return () => ctrl.abort();
   }, [toast, reload, pageRefresh]);
