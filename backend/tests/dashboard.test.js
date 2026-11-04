@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {loadDashboard} from '../src/services/dashboard.js';
 function fixture(payroll){
  const calls=[],responses=[{rows:[{today:'2026-10-28',clock:'18:00:00',month:'2026-10'}]},
- {rows:[{total_employees:5,male:3,female:1,unspecified:1,present_today:2,late_today:1,absent_today:1,on_leave_today:1,pending_leave:3}]},
+ {rows:[{retirement_age:60,retirement_nearing:2,retirement_passed:1,total_employees:5,male:3,female:1,unspecified:1,present_today:2,late_today:1,absent_today:1,on_leave_today:1,pending_leave:3}]},
  {rows:payroll?[payroll]:[]},{rows:[{id:'4',employee_code:'E4',full_name:'Employee',work_date:'2026-10-28',status:'late',check_in:'09:10',check_out:null}]},
  {rows:[{id:'7',employee_code:'E4',full_name:'Employee',leave_type:'Annual',start_date:'2026-11-02',end_date:'2026-11-03',days:2}]}];
  return {calls,db:{query:async(sql,params)=>{calls.push({sql,params});return responses.shift();}}};
@@ -11,6 +11,7 @@ function fixture(payroll){
 test('dashboard returns all metrics and bounded lists with stored monthly net total',async()=>{
  const {db,calls}=fixture({status:'approved',total_minor:'320000',currency_code:'ETB',employee_count:2});
  const d=await loadDashboard(db,{now:'2026-10-28T15:00:00Z'});
+ assert.deepEqual(d.retirement,{retirementAge:60,nearing:2,passed:1});
  assert.deepEqual(d.employeeGender,{male:{count:3,percentage:60},female:{count:1,percentage:20},unspecified:{count:1,percentage:20}});
  assert.equal(d.stats.totalEmployees,5);assert.equal(d.stats.presentToday,2);assert.equal(d.stats.lateToday,1);
  assert.equal(d.stats.absentToday,1);assert.equal(d.stats.onLeaveToday,1);assert.equal(d.stats.pendingLeave,3);assert.equal(d.payroll.totalMinor,320000);

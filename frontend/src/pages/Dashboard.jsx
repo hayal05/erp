@@ -25,6 +25,9 @@ function DashboardContent({data:d}){
    </article>
    <article className="card dashboard-stat"><div className="row between"><h2>Present today</h2><WorkspaceLink to="/hr/attendance" aria-label="View attendance">View</WorkspaceLink></div><strong className="dashboard-number">{s.presentToday}</strong></article>
    <article className="card dashboard-stat dashboard-payroll"><div className="row between"><h2>Payroll · {p.month}</h2><WorkspaceLink to={`/hr/payroll?month=${p.month}`} aria-label="View payroll">View</WorkspaceLink></div><strong className="dashboard-number">{p.totalMinor===null?'—':formatMoney(p.totalMinor)}</strong><span className="muted">{p.status?`${p.currencyCode} net salary · ${p.status} · ${p.employeeCount} employees`:'No payroll yet'}</span></article>
+   <article className="card dashboard-stat dashboard-retirement"><div className="row between"><h2>Retirement</h2><WorkspaceLink to="/hr/retirement" aria-label="View retirement">View</WorkspaceLink></div>
+    {d.retirement?.retirementAge!=null?<dl className="dashboard-retirement-counts"><div><dt>Nearing · 3 months</dt><dd className="dashboard-number">{d.retirement.nearing}</dd></div><div><dt>Passed</dt><dd className="dashboard-number">{d.retirement.passed}</dd></div></dl>:<span className="muted">Retirement age not set</span>}
+   </article>
   </div>
   <div className="dashboard-small-stats">
    {[['Late today',s.lateToday],['Absent today',s.absentToday],['On leave today',s.onLeaveToday],['Pending leave',s.pendingLeave]].map(([label,n])=><article className="card dashboard-mini" key={label}><h2>{label}</h2><strong className="dashboard-number">{n}</strong></article>)}

@@ -377,7 +377,7 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .dashboard { min-width: 0; }
 .dashboard-heading h1, .dashboard h2 { margin: 0; }
 .dashboard-heading time { font-size: .85rem; }
-.dashboard-main-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-sm); }
+.dashboard-main-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--space-sm); }
 .dashboard-small-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--space-sm); }
 .dashboard .card { min-width: 0; }
 .dashboard .card h2 { font-size: .9rem; }
@@ -401,10 +401,9 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .workspace-grid > a { display: flex; align-items: center; min-height: var(--tap); text-decoration: none; font-weight: 600; }
 .workspace-grid > a:hover { background: var(--surface-2); }
 @media (min-width: 1400px) { .dashboard-tables { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-@media (max-width: 1100px) { .dashboard-small-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 1100px) { .dashboard-main-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } .dashboard-small-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 700px) {
   .dashboard-main-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .dashboard-payroll { grid-column: 1 / -1; }
 }
 
 /* Employee form: salary of a position, alone (new employee) or beside the current salary (position change) — task 6.10 */
@@ -852,3 +851,8 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .retirement-filters .field:first-child { width: min(300px,100%); }
 .retirement-page .table { min-width: 1100px; }
 .retirement-page .table th, .retirement-page .table td { white-space: nowrap; }
+
+.dashboard-retirement-counts { display: grid; gap: var(--space-xs); margin: 0; }
+.dashboard-retirement-counts > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.dashboard-retirement-counts dt { font-size: .8rem; }
+.dashboard-retirement-counts dd { margin: 0; }

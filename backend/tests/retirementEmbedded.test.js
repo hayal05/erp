@@ -63,10 +63,12 @@ test('HR changes wait for another HR reviewer or Admin; audit footer records app
  const before=(await q('SELECT id,status FROM employees ORDER BY id')).rows;
  const pending=await hr.put('/api/retirement/settings').send({retirementAge:62,version:2});assert.equal(pending.status,202,JSON.stringify(pending.body));
  assert.equal((await admin.get('/api/retirement')).body.settings.retirementAge,60);
+ assert.equal((await admin.get('/api/dashboard')).body.retirement.retirementAge,60);
  assert.equal((await hr.post(`/api/change-requests/${pending.body.requestId}/approve`).send({})).status,403);
  assert.equal((await finance.post(`/api/change-requests/${pending.body.requestId}/approve`).send({})).status,403);
  const approved=await hr2.post(`/api/change-requests/${pending.body.requestId}/approve`).send({});assert.equal(approved.status,200,JSON.stringify(approved.body));
  assert.deepEqual((await admin.get('/api/retirement')).body.settings,{retirementAge:62,version:3});
+ assert.equal((await admin.get('/api/dashboard')).body.retirement.retirementAge,62);
  const audit=await hr.get('/api/audit-history?area=retirement');assert.equal(audit.status,200);assert.ok(audit.body.summary.modified);assert.ok(audit.body.summary.approved);
  assert.equal((await finance.get('/api/audit-history?area=retirement')).status,403);
  assert.deepEqual((await q('SELECT id,status FROM employees ORDER BY id')).rows,before);
