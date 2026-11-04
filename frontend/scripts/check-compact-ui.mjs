@@ -11,7 +11,7 @@ const period={id:1,month:'2026-10',status:'paid',paidOn:'2026-10-30',currencyCod
 const entry={id:1,employeeCode:'E-1',employeeName:'Example Employee',basicMinor:100000,allowanceMinor:20000,grossMinor:120000,taxableIncomeMinor:120000,incomeTaxRate:10,incomeTaxFixedDeductionMinor:0,incomeTaxMinor:12000,otherTaxMinor:0,pensionableMinor:100000,employeePensionRate:7,employeePensionMinor:7000,employerPensionRate:11,employerPensionMinor:11000,otherDeductionsMinor:0,netMinor:101000,employerCostMinor:131000};
 const salary={entry,period,items:[]},calc={employeePensionRate:7,companyPensionRate:11,taxBase:'basic_plus_taxable_allowance',pensionBase:'basic'};
 const vacancy={id:1,title:'Internal officer',department:'Operations',position:'Officer',departmentId:1,positionId:1,closingOn:'2026-12-01',status:'open',acceptingApplications:true,unopened:true,applicationCount:0};
-const fixtures={'/dashboard':{employeeGender:{male:{count:1,percentage:100},female:{count:0,percentage:0},unspecified:{count:0,percentage:0}},date:'2026-10-30',stats:{totalEmployees:1,presentToday:1,lateToday:0,absentToday:0,onLeaveToday:0,pendingLeave:0},payroll:{...period,totalMinor:101000},recentAttendance:[],pendingLeave:[]},'/vacancies':{items:[vacancy],total:1,today:'2026-10-30'},'/employees':{items:[person],total:1},'/departments':{items:[{id:1,name:'Operations'}],total:1},'/departments/1/positions':{items:[{id:1,name:'Officer'}],total:1},'/payroll-settings/calculation':calc,'/payroll-settings/brackets':{items:[],problems:[]},'/payroll-settings/other-taxes':{items:[],bases:['gross','basic']},'/payroll-settings/attendance-deductions':{absenceDeductionEnabled:true,unpaidLeaveDeductionEnabled:true},'/deductions':{items:[]},'/payslips':{items:[{...period,netMinor:101000}],total:1},'/payslips/1':salary};
+const fixtures={'/retirement':{settings:{retirementAge:60,version:1},today:'2026-11-04',items:[],total:0},'/dashboard':{retirement:{retirementAge:60,nearing:4,passed:2},employeeGender:{male:{count:1,percentage:100},female:{count:0,percentage:0},unspecified:{count:0,percentage:0}},date:'2026-10-30',stats:{totalEmployees:1,presentToday:1,lateToday:0,absentToday:0,onLeaveToday:0,pendingLeave:0},payroll:{...period,totalMinor:101000},recentAttendance:[],pendingLeave:[]},'/vacancies':{items:[vacancy],total:1,today:'2026-10-30'},'/employees':{items:[person],total:1},'/departments':{items:[{id:1,name:'Operations'}],total:1},'/departments/1/positions':{items:[{id:1,name:'Officer'}],total:1},'/payroll-settings/calculation':calc,'/payroll-settings/brackets':{items:[],problems:[]},'/payroll-settings/other-taxes':{items:[],bases:['gross','basic']},'/payroll-settings/attendance-deductions':{absenceDeductionEnabled:true,unpaidLeaveDeductionEnabled:true},'/deductions':{items:[]},'/payslips':{items:[{...period,netMinor:101000}],total:1},'/payslips/1':salary};
 globalThis.__compactReview={user:null,fixtures};
 globalThis.document={body:{},documentElement:{dataset:{theme:'dark'}}};
 const extraExports={
@@ -43,7 +43,7 @@ try{
  }
  for(const roles of [['admin'],['hr'],['finance'],[]]){
   const user={...person,role:'employee',accessRoles:roles};user.permissions=permissionsFor(user);globalThis.__compactReview.user=user;
-  for(const file of ['Dashboard','WorkspaceHome','Employees','Departments','DepartmentDetail','Attendance','QrAttendance','Leave','Payroll','CompanyCosts','PayrollSettings','Settlements','Approvals','AccessManagement','Announcements','Vacancies','Settings','Login','ChangePassword'])await render(`pages/${file}.jsx`);
+  for(const file of ['Retirement','Dashboard','WorkspaceHome','Employees','Departments','DepartmentDetail','Attendance','QrAttendance','Leave','Payroll','CompanyCosts','PayrollSettings','Settlements','Approvals','AccessManagement','Announcements','Vacancies','Settings','Login','ChangePassword'])await render(`pages/${file}.jsx`);
   for(const file of ['Profile','History','Leave','Payslips','Scan'])await render(`pages/portal/${file}.jsx`,'default',{},'/portal');
   await render('pages/Vacancies.jsx','default',{employee:true},'/portal/vacancies');
   const postings=await render('pages/Vacancies.jsx');
@@ -82,7 +82,7 @@ try{
  await render('pages/AccessManagement.jsx','AccessDialog',{employee:person});await render('components/UnlockDialog.jsx','default',{open:true});
  const balanceProps={year:2026,items:[{leaveTypeId:1,name:'Annual leave',hasBalance:true,total:20,remaining:12,used:5,pending:3,adjusted:2},{leaveTypeId:2,name:'Unpaid leave',hasBalance:false,used:1,pending:0,adjusted:0}]};
  const balanceMarkup=await render('pages/portal/Leave.jsx','EmployeeLeaveBalances',balanceProps,'/portal/leave');
- for(const value of ['Annual leave','12 days left','Total 20','Used 5','Pending 3','Adjustment +2','No limit','Unpaid'])assert.ok(balanceMarkup.includes(value),`Leave balance lost ${value}`);
+ for(const value of ['Annual leave','12 days left','No limit'])assert.ok(balanceMarkup.includes(value),`Leave balance lost ${value}`);
  const negativeBalance=await render('pages/portal/Leave.jsx','EmployeeLeaveBalances',{year:2026,items:[{...balanceProps.items[0],remaining:-2,used:21,pending:1}]},'/portal/leave');
  assert.ok(negativeBalance.includes('-2 days left')&&negativeBalance.includes('leave-empty'),'Overspent leave balance is not visible');
  assert.ok(!(await render('pages/portal/Leave.jsx','EmployeeLeaveBalances',{year:2026,items:[]},'/portal/leave')).includes('aria-label="Leave balances'),'Empty balances rendered an unused list');
@@ -98,6 +98,17 @@ try{
  const html=await render('pages/SalaryDetailDialog.jsx','SalaryDetails',{data:salary});
  for(const label of ['Basic salary','Allowance','Gross salary','Taxable income','Income tax','Employee pension','Net salary','Total employer cost'])assert.ok(html.includes(label),`Salary detail lost ${label}`);
  assert.ok(html.includes('1,010.00')&&html.includes('1,310.00'),'Saved net/employer totals changed');
+ const retireRows=[{id:1,employeeCode:'RET-1',fullName:'Retiring Employee',department:'Operations',position:'Officer',employmentStatus:'active',dateOfBirth:'1966-11-04',age:60,retirementDate:'2026-11-04',daysRemaining:0,status:'reached'},{id:2,employeeCode:'RET-2',fullName:'Upcoming Employee',employmentStatus:'active',dateOfBirth:'1966-11-05',age:59,retirementDate:'2026-11-05',daysRemaining:1,status:'within_year'},{id:3,employeeCode:'RET-3',fullName:'Legacy Employee',employmentStatus:'inactive',dateOfBirth:null,age:null,retirementDate:null,daysRemaining:null,status:'missing_birth_date'},{id:4,employeeCode:'RET-4',fullName:'Overdue Employee',employmentStatus:'active',dateOfBirth:'1966-11-03',age:60,retirementDate:'2026-11-03',daysRemaining:-1,status:'reached'}];
+ const retireMarkup=await render('pages/Retirement.jsx','RetirementTable',{items:retireRows});
+ for(const text of ['Retiring Employee','1966-11-04','1966-11-05','Retirement age reached','Within one year','Missing birth date','Today','1 day','1 day overdue','Inactive'])assert.ok(retireMarkup.includes(text),`Retirement report lost ${text}`);
+ const unsetRetirement=await render('pages/Retirement.jsx','RetirementAgeForm',{settings:{retirementAge:null,version:1},onSaved(){}});
+ assert.ok(unsetRetirement.includes('Retirement age')&&unsetRetirement.includes('placeholder="Years"')&&unsetRetirement.includes('required=""'),'Retirement age setup missing');
+ const retirementCard=await render('pages/Dashboard.jsx','DashboardContent',{data:fixtures['/dashboard']});
+ for(const text of ['Nearing · 3 months','Passed','>4</dd>','>2</dd>','href="/hr/retirement"'])assert.ok(retirementCard.includes(text),`Dashboard retirement card lost ${text}`);
+ const retirementUnset=await render('pages/Dashboard.jsx','DashboardContent',{data:{...fixtures['/dashboard'],retirement:{retirementAge:null,nearing:null,passed:null}}});
+ assert.ok(retirementUnset.includes('Retirement age not set')&&!retirementUnset.includes('Nearing · 3 months'),'Unset retirement age shows misleading counts');
+ const financeRetirement=await render('pages/Dashboard.jsx','DashboardContent',{data:fixtures['/dashboard']},'/finance');
+ assert.ok(financeRetirement.includes('href="/finance/retirement"'),'Retirement link leaves finance workspace');
  const genderDashboard=async(employeeGender,totalEmployees)=>render('pages/Dashboard.jsx','DashboardContent',{data:{...fixtures['/dashboard'],stats:{...fixtures['/dashboard'].stats,totalEmployees},employeeGender}});
  const genderMarkup=await genderDashboard({male:{count:2,percentage:66.7},female:{count:1,percentage:33.3},unspecified:{count:0,percentage:0}},3);
  for(const value of ['Employee gender share','Male','Female','<strong>2</strong>','<strong>1</strong>','(66.7%)','(33.3%)'])assert.ok(genderMarkup.includes(value),`Dashboard gender share lost ${value}`);

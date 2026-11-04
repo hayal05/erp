@@ -402,3 +402,12 @@ Migration `018_required_employee_personal_details.sql` backfills the two user-su
 HR changes retain independent approval; General Admin changes remain immediate. Employees can view these facts in their profile but cannot modify them through self-service. New internal-vacancy applications include the saved facts in the immutable profile snapshot; previously submitted applications keep their original snapshot.
 
 Apply migrations before starting the updated server; the existing Render startup migration command handles this during deployment. No new environment variables are required. Schema/data changes can make pending employee proposals stale; those must be resubmitted.
+
+
+### Retirement report
+
+Retirement is available in the HR/Admin and Finance sidebars. HR and General Admin can set a whole-number retirement age (18–100 years); Finance has view access. Migration `019_retirement_settings.sql` starts with no retirement age configured. HR changes require another HR user or General Admin to approve them; General Admin changes apply immediately. Changes appear in the bottom audit bar.
+
+The report defaults to active employees and supports inactive/all employees, search, retirement-status filters and pagination. Ages and retirement dates use birth dates and the company’s current date. February 29 anniversaries fall on February 28 in non-leap years. Missing or future birth dates are flagged as missing birth date and have no calculated retirement date. “Within one year” excludes dates already reached. Setting the age only recalculates the report; it never automatically deactivates an employee or changes payroll. Sidebar clicks use the existing incremental refresh.
+
+The Dashboard includes one Retirement card with active-employee counts: **Nearing · 3 months** (after today through the date three calendar months ahead, inclusive) and **Passed** (retirement date today or earlier). Missing/future birth dates and inactive employees do not enter these counts. Until the age is configured, the card shows “Retirement age not set”. The card links to Retirement and updates from the saved/approved setting on sidebar refresh.

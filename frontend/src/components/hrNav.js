@@ -6,6 +6,7 @@ export const HR_NAV = [
   { key: 'dashboard', label: 'Dashboard', to: '/hr', end: true },
   { key: 'employees', label: 'Employees', to: '/hr/employees' },
   { key: 'departments', label: 'Departments', to: '/hr/departments' },
+  { key: 'retirement', label: 'Retirement', to: '/hr/retirement' },
   { key: 'attendance', label: 'Attendance', to: '/hr/attendance' },
   { key: 'qr', label: 'QR Attendance', to: '/hr/qr' },
   { key: 'leave', label: 'Leave', to: '/hr/leave' },

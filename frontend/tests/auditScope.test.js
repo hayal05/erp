@@ -11,6 +11,7 @@ test('editable sections retain the footer in both management workspaces',()=>{
  for(const prefix of ['/hr','/finance']){
   assert.deepEqual(auditScope(prefix+'/settings/payroll',admin),{area:'payroll_settings',label:'Payroll settings'});
   assert.deepEqual(auditScope(prefix+'/settings',admin),{area:'settings',label:'Settings'});
+  assert.equal(auditScope(prefix+'/retirement',admin).area,'retirement');
   assert.equal(auditScope(prefix+'/departments/12',admin).area,'departments');
   assert.equal(auditScope(prefix+'/access-management',admin).area,'access');
   assert.equal(auditScope(prefix+'/attendance/',admin).area,'attendance');
@@ -23,6 +24,7 @@ test('a page must be editable by the current user for its footer to appear',()=>
  assert.equal(auditScope('/hr/settings/payroll',hr),null);
  assert.equal(auditScope('/hr/employees',hr).area,'employees');
  assert.equal(auditScope('/hr/payroll',hr).area,'payroll');
+ assert.equal(auditScope('/finance/retirement',finance),null);
  assert.equal(auditScope('/finance/employees',finance),null);
  assert.equal(auditScope('/finance/attendance',finance),null);
  assert.equal(auditScope('/finance/settings/payroll',finance).area,'payroll_settings');

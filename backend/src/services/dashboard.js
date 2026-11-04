@@ -6,6 +6,12 @@ export async function loadDashboard(db,{now=null}={}){
  const {rows:[stats]}=await db.query(`WITH employee_totals AS (
   SELECT count(*)::int AS total_employees,count(*) FILTER(WHERE gender='male')::int AS male,
    count(*) FILTER(WHERE gender='female')::int AS female,count(*) FILTER(WHERE gender IS NULL)::int AS unspecified FROM employees
+ ), retirement_dates AS (
+  SELECT s.retirement_age,(e.date_of_birth+make_interval(years=>s.retirement_age))::date AS retirement_date
+  FROM retirement_settings s LEFT JOIN employees e ON e.status='active' AND e.date_of_birth<=$1::date
+ ), retirement_totals AS (
+  SELECT retirement_age,count(*) FILTER(WHERE retirement_date>$1::date AND retirement_date<=($1::date+INTERVAL '3 months')::date)::int AS nearing,
+   count(*) FILTER(WHERE retirement_date<=$1::date)::int AS passed FROM retirement_dates GROUP BY retirement_age
  ), classified AS (
   SELECT CASE WHEN a.id IS NOT NULL THEN a.status
    WHEN EXTRACT(ISODOW FROM $1::date)::int=ANY(s.work_days) AND NOT EXISTS(SELECT 1 FROM holidays h WHERE h.holiday_date=$1::date)
@@ -13,7 +19,9 @@ export async function loadDashboard(db,{now=null}={}){
       THEN 'on_leave' WHEN $2::time>s.end_time THEN 'absent' END END AS status,a.check_in_at
   FROM employees e JOIN shifts s ON s.id=e.shift_id LEFT JOIN attendance_records a ON a.employee_id=e.id AND a.work_date=$1::date
   WHERE e.status='active' AND e.start_date<=$1::date)
- SELECT (SELECT total_employees FROM employee_totals) AS total_employees,
+ SELECT (SELECT retirement_age FROM retirement_totals) AS retirement_age,
+  (SELECT nearing FROM retirement_totals) AS retirement_nearing,(SELECT passed FROM retirement_totals) AS retirement_passed,
+  (SELECT total_employees FROM employee_totals) AS total_employees,
   (SELECT male FROM employee_totals) AS male,(SELECT female FROM employee_totals) AS female,
   (SELECT unspecified FROM employee_totals) AS unspecified,
   count(*) FILTER(WHERE status IN ('present','late') OR (status='incomplete' AND check_in_at IS NOT NULL))::int AS present_today,
@@ -36,7 +44,8 @@ export async function loadDashboard(db,{now=null}={}){
  const totalMinor=payroll?Number(payroll.total_minor):null;
  if(totalMinor!==null&&!Number.isSafeInteger(totalMinor))throw new Error('Payroll total exceeds safe money range');
  const employeeGender=Object.fromEntries(['male','female','unspecified'].map(key=>[key,{count:stats[key],percentage:stats.total_employees?Math.round(stats[key]/stats.total_employees*1000)/10:0}]));
- return {employeeGender,date:clock.today,timeZone:config.company.timezone,stats:{totalEmployees:stats.total_employees,presentToday:stats.present_today,lateToday:stats.late_today,absentToday:stats.absent_today,onLeaveToday:stats.on_leave_today,pendingLeave:stats.pending_leave},
+ const retirement={retirementAge:stats.retirement_age,nearing:stats.retirement_age===null?null:stats.retirement_nearing,passed:stats.retirement_age===null?null:stats.retirement_passed};
+ return {retirement,employeeGender,date:clock.today,timeZone:config.company.timezone,stats:{totalEmployees:stats.total_employees,presentToday:stats.present_today,lateToday:stats.late_today,absentToday:stats.absent_today,onLeaveToday:stats.on_leave_today,pendingLeave:stats.pending_leave},
   payroll:{month:clock.month,status:payroll?.status??null,totalMinor,currencyCode:payroll?.currency_code??'ETB',employeeCount:payroll?.employee_count??0},
   recentAttendance:recent.map(r=>({id:Number(r.id),employeeCode:r.employee_code,employeeName:r.full_name,date:r.work_date,status:r.status,checkIn:r.check_in,checkOut:r.check_out})),
   pendingLeave:pending.map(r=>({id:Number(r.id),employeeCode:r.employee_code,employeeName:r.full_name,leaveType:r.leave_type,start:r.start_date,end:r.end_date,days:r.days}))};
