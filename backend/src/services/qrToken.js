@@ -46,18 +46,23 @@ export function tokenProblem(row) {
 // The token remains usable by other employees until expiry or replacement. Legacy consumed
 // tokens stay invalid. A shared lock prevents regeneration/deletion during a scan transaction
 // without serializing different employees scanning the same displayed code.
-export async function checkQrToken(db, token, { lock = false } = {}) {
+export async function checkQrToken(db, token, { lock = false,employeeId=null } = {}) {
+  const scope=employeeId===null?'TRUE':`EXISTS(SELECT 1 FROM employees se WHERE se.id=$2 AND (
+   EXISTS(SELECT 1 FROM access_grants ag WHERE ag.user_id=u.id AND ag.access_role IN ('hr','admin') AND ag.revoked_at IS NULL)
+   OR EXISTS(SELECT 1 FROM custom_access_grants cg JOIN custom_access_roles cr ON cr.id=cg.role_id WHERE cg.user_id=u.id AND cg.revoked_at IS NULL AND 'attendance.qr'=ANY(cr.permissions)
+    AND (cg.scope_type='all' OR se.department_id=ANY(cg.department_ids) OR se.id=ANY(cg.employee_ids)))))`;
   const { rows: [row] } = await db.query(
-    `SELECT t.id, t.issued_by_session_id,
+    `SELECT ${scope} AS scope_ok,t.id, t.issued_by_session_id,u.id AS issuer_user_id,u.role AS issuer_role,
             t.used_at IS NOT NULL AS used,
             t.expires_at <= now() AS expired,
-            (s.id IS NOT NULL AND s.expires_at > now() AND u.is_active AND EXISTS (SELECT 1 FROM access_grants ag WHERE ag.user_id=u.id AND ag.access_role IN ('hr','admin') AND ag.revoked_at IS NULL)) AS issuer_ok
+            (s.id IS NOT NULL AND s.expires_at > now() AND u.is_active AND NOT EXISTS(SELECT 1 FROM employees ie WHERE ie.user_id=u.id AND ie.status<>'active') AND (EXISTS (SELECT 1 FROM access_grants ag WHERE ag.user_id=u.id AND ag.access_role IN ('hr','admin') AND ag.revoked_at IS NULL) OR EXISTS(SELECT 1 FROM custom_access_grants cg JOIN custom_access_roles cr ON cr.id=cg.role_id WHERE cg.user_id=u.id AND cg.revoked_at IS NULL AND 'attendance.qr'=ANY(cr.permissions)))) AS issuer_ok
        FROM attendance_tokens t
        LEFT JOIN sessions s ON s.id = t.issued_by_session_id
        LEFT JOIN users u ON u.id = s.user_id
-      WHERE t.token_hash = $1${lock ? ' FOR SHARE OF t' : ''}`, [hashQrToken(token)]);
+      WHERE t.token_hash = $1${lock ? ' FOR SHARE OF t' : ''}`, employeeId===null?[hashQrToken(token)]:[hashQrToken(token),employeeId]);
   const problem = tokenProblem(row);
   if (problem) throw problem;
+  if(row.scope_ok===false)throw new HttpError(403,'This QR code is not assigned to your employee record.','qr_scope');
   return { id: row.id, issuedBySessionId: row.issued_by_session_id };
 }
 

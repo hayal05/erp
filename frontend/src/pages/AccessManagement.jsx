@@ -1,3 +1,4 @@
+import CustomAccessRoles,{CustomAssignments} from './CustomAccessRoles.jsx';
 import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {useEffect,useState} from 'react';
 import {usePermission,useAuth} from '../api/auth.jsx';
@@ -12,8 +13,9 @@ const roleName=role=>({hr:'HR',finance:'Finance',admin:'Admin'}[role]||role);
 const stamp=value=>value?new Date(value).toLocaleString():'—';
 export default function AccessManagement(){
  const {user}=useAuth();
+ const [tab,setTab]=useState('employees');
  if(!user?.permissions?.includes('access.read'))return <section><h1>Access Management</h1><p role="alert">You do not have access to this page.</p></section>;
- return <AccessList />;
+ return <div className="stack">{user.permissions.includes('access.manage')&&<nav className="tabs" aria-label="Access management sections"><button className={tab==='employees'?'active':''} onClick={()=>setTab('employees')}>Employees</button><button className={tab==='roles'?'active':''} onClick={()=>setTab('roles')}>Custom roles</button></nav>}{tab==='roles'?<CustomAccessRoles/>:<AccessList/>}</div>;
 }
 function AccessList(){
   const pageRefresh = usePageRefresh();
@@ -32,7 +34,7 @@ function AccessList(){
   <Table caption="Employee access" columns={[
    {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'department',header:'Department'},{key:'position',header:'Position'},
    {key:'active',header:'Account',render:r=><Badge tone={r.active?'ok':'neutral'}>{r.active?'Active':'Inactive'}</Badge>},
-   {key:'accessRoles',header:'Additional access',render:r=><span className="access-role-list">{r.accessRoles.length?r.accessRoles.map(role=><Badge key={role} tone="info">{roleName(role)}</Badge>):<span className="muted">Employee only</span>}</span>},
+   {key:'accessRoles',header:'Additional access',render:r=><span className="access-role-list">{(r.accessRoles.length||r.customRoles?.length)?[...r.accessRoles,...(r.customRoles??[])].map(role=><Badge key={role} tone="info">{roleName(role)}</Badge>):<span className="muted">Employee only</span>}</span>},
    {key:'actions',header:'Actions',render:r=><Button size="sm" aria-label={`${canManage?'Manage':'View'} access for ${r.fullName}`} onClick={()=>setSelected(r)}>{canManage?'Manage':'View'}</Button>},
   ]} rows={data.items} loading={data.loading} error={data.error} onRetry={refresh} empty="No registered employees found" />
   <Pager page={page} pageSize={SIZE} total={data.total} onPage={setPage} disabled={data.loading}/>
@@ -69,7 +71,8 @@ function AccessDialog({employee,onClose,onChanged}){
    <Button size="sm" type="submit" variant="primary" busy={busy} disabled={active.includes(role)}>Grant {roleName(role)}</Button>
   </form>)}
   {canManage&&revoke&&<form className="stack access-revoke" onSubmit={remove}><h3>Revoke {roleName(revoke.role)} access?</h3><Field as="textarea" rows={2} autoFocus label="Reason" required minLength={3} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} disabled={busy}/><div className="row end"><Button size="sm" disabled={busy} onClick={()=>setRevoke(null)}>Cancel</Button><Button size="sm" type="submit" variant="danger" busy={busy}>Revoke access</Button></div></form>}
-  <h2>Access history</h2>
+  {canManage&&<CustomAssignments employee={employee} onChanged={onChanged}/>}
+  <h2>Standard access history</h2>
   <Table caption="Grant and revocation history" columns={[
    {key:'role',header:'Access',render:r=><Badge tone="info">{roleName(r.role)}</Badge>},{key:'grantedBy',header:'Granted by'},{key:'grantedAt',header:'Granted on',render:r=>stamp(r.grantedAt)},
    {key:'revokedBy',header:'Revoked by',render:r=>r.revokedBy||'—'},{key:'revokedAt',header:'Revoked on',render:r=>stamp(r.revokedAt)},{key:'revokeReason',header:'Reason',render:r=>r.revokeReason?<details className="access-reason"><summary>View reason</summary><p>{r.revokeReason}</p></details>:'—'},

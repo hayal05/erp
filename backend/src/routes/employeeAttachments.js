@@ -1,3 +1,4 @@
+import {employeeParamScope} from '../services/accessScope.js';
 import {approvalTransaction} from '../services/approvalExecution.js';
 import express,{Router} from 'express';
 import {query,withTransaction} from '../db/pool.js';
@@ -12,7 +13,7 @@ import {audit} from '../services/audit.js';
 import {attachmentStore} from '../services/attachmentStore.js';
 import {attachmentListQuery,attachmentParams,parseAttachment,sendAttachment,MAX_ATTACHMENT_BASE64} from '../services/employeeAttachments.js';
 export const attachmentDeps={store:attachmentStore};
-const router=Router();router.use(noStore,requirePermission('employees.read'));
+const router=Router();router.use(noStore,requirePermission('employees.read'));router.param('id',employeeParamScope({query}));
 const exists=async(db,id)=>{if(!(await db.query('SELECT id FROM employees WHERE id=$1',[id])).rows.length)throw new HttpError(404,'Employee not found','not_found');};
 router.get('/:id/attachments',validate(idParams,'params'),validate(attachmentListQuery,'query'),wrap(async(req,res)=>{
  res.json(await withTransaction(async db=>{

@@ -7,10 +7,10 @@ export function allowed(user,permission){
 }
 export const isAdmin=user=>allowed(user,'access.manage');
 export const canUseWorkspace=(user,area)=>area==='portal'?user?.role==='employee'
- :area==='finance'?allowed(user,'payroll.approve'):area==='hr'?(isAdmin(user)||allowed(user,'employees.manage')):false;
+ :area==='finance'?allowed(user,'payroll.approve'):area==='hr'?(isAdmin(user)||allowed(user,'employees.manage')||!!user?.customGrants?.some(g=>g.permissions?.length)):false;
 export function workspaceOptions(user){
  return [canUseWorkspace(user,'portal')&&{key:'portal',label:'My employee portal',to:'/portal'},
-  canUseWorkspace(user,'hr')&&{key:'hr',label:isAdmin(user)?'Admin workspace':'HR workspace',to:'/hr'},
+  canUseWorkspace(user,'hr')&&{key:'hr',label:isAdmin(user)?'Admin workspace':user?.customGrants?.length?'Management workspace':'HR workspace',to:'/hr'},
   canUseWorkspace(user,'finance')&&{key:'finance',label:'Finance workspace',to:'/finance'}].filter(Boolean);
 }
 export const workspaceArea=pathname=>pathname==='/finance'||pathname.startsWith('/finance/')?'finance':'hr';

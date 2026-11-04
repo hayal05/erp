@@ -870,3 +870,13 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .attachment-limit { grid-column: 1 / -1; }
 .employee-attachments .table { min-width: 360px; }
 .attachment-name { display: grid; gap: 2px; min-width: 140px; max-width: 300px; overflow-wrap: anywhere; }
+
+.access-activity-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-sm); }
+.access-activity-grid fieldset { min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
+.access-activity-grid legend { font-weight: 600; font-size: .9rem; }
+.access-activity { display: flex; align-items: start; gap: 8px; padding: 5px 0; font-size: .85rem; }
+.access-activity input { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; }
+.access-scope-results { max-height: 210px; overflow: auto; }
+.access-selected { display: flex; flex-wrap: wrap; gap: 4px; }
+.custom-assignments { border-top: 1px solid var(--border); padding-top: var(--space-sm); }
+@media (max-width: 700px) { .access-activity-grid { grid-template-columns: minmax(0,1fr); } }

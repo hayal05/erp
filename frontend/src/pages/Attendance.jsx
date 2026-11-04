@@ -70,8 +70,8 @@ export default function Attendance() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    Promise.all([get('/departments', { pageSize: 100 }, { signal: ctrl.signal }), get('/employees', { pageSize: 100 }, { signal: ctrl.signal })])
-      .then(([d, e]) => setLookups({ departments: d.items, employees: e.items }))
+    get('/attendance-records/lookups',undefined,{signal:ctrl.signal})
+      .then(r=>setLookups(r))
       .catch((e) => { if (e.name !== 'AbortError') toast.error(`Could not load the filter lists: ${e.message}`); });
     return () => ctrl.abort();
   }, [toast, pageRefresh]);
@@ -115,7 +115,7 @@ export default function Attendance() {
       </span>
     ) },
     { key: 'actions', header: <span className="sr-only">Actions</span>, className: 'nowrap', render: (r) => (
-      <Button size="sm" onClick={() => setCorrecting(r)} aria-label={`Correct attendance of ${r.fullName} on ${formatWorkDate(r.workDate)}`}>Correct</Button>
+      r.canCorrect!==false&&<Button size="sm" onClick={() => setCorrecting(r)} aria-label={`Correct attendance of ${r.fullName} on ${formatWorkDate(r.workDate)}`}>Correct</Button>
     ) },
   ];
 

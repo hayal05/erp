@@ -1,4 +1,4 @@
-import { withAccess } from '../services/accessGrants.js';
+import { userAccess } from '../services/accessGrants.js';
 import crypto from 'node:crypto';
 import cookieParser from 'cookie-parser';
 import { config } from '../config.js';
@@ -49,7 +49,7 @@ export async function loadSession(req, res, next) {
     if (Number(r.idle_ms) > TOUCH_AFTER_MS) await query('UPDATE sessions SET last_seen_at = now() WHERE id = $1', [r.id]);
 
     req.session = { id: r.id, userId: Number(r.user_id), csrfToken: r.csrf_token, locked: r.locked };
-    req.user = withAccess({ id: Number(r.user_id), role: r.role, username:r.username,email: r.email, fullName: r.full_name, mustChangePassword: !!r.must_change_password }, r.access_roles);
+    req.user = await userAccess({query},{ id: Number(r.user_id), role: r.role, username:r.username,email: r.email, fullName: r.full_name, mustChangePassword: !!r.must_change_password }, r.access_roles);
     next();
   } catch (err) {
     next(err);

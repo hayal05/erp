@@ -1,3 +1,4 @@
+import {scopeSql,employeeParamScope,permissionScope} from '../services/accessScope.js';
 import {config} from '../config.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import {protectPrivilegedAccount,accountConflict} from '../services/accountSafeguards.js';
@@ -20,6 +21,7 @@ import { employeeCreate, employeeListQuery, employeeUpdate, idParams, reasonBody
 // there is deliberately no DELETE route. Deactivate instead; that also blocks their login.
 const router = Router();
 router.use(noStore, requirePermission('employees.read'));
+router.param('id',employeeParamScope({query}));
 router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('employees.manage')(req,res,next));
 
 const FROM = `FROM employees e
@@ -51,7 +53,7 @@ const notFound = () => new HttpError(404, 'Employee not found', 'not_found');
 router.get('/', validate(employeeListQuery, 'query'), wrap(async (req, res) => {
   const q = req.query;
   const params = [];
-  const where = [];
+  const where = [scopeSql(req.user,'employees.read','e',params)];
   if (q.search) {
     params.push(likePattern(q.search));
     const n = `$${params.length}`;
@@ -72,6 +74,12 @@ router.get('/', validate(employeeListQuery, 'query'), wrap(async (req, res) => {
   res.json(pageResult(rows.map(toEmployee), q, total));
 }));
 
+router.get('/lookups',wrap(async(req,res)=>{
+ const args=[],condition=scopeSql(req.user,'employees.read','e',args);
+ const {rows:departments}=permissionScope(req.user,'employees.read')===null?await query('SELECT id,name FROM departments ORDER BY name'):await query(`SELECT DISTINCT d.id,d.name FROM departments d JOIN employees e ON e.department_id=d.id WHERE ${condition} ORDER BY d.name`,args);
+ const {rows:shifts}=await query('SELECT id,name FROM shifts ORDER BY name');
+ res.json({departments:departments.map(r=>({...r,id:Number(r.id)})),shifts:shifts.map(r=>({...r,id:Number(r.id)}))});
+}));
 router.get('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
   const employee = await findEmployee({ query }, req.params.id);
   if (!employee) throw notFound();

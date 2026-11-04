@@ -59,7 +59,7 @@ export async function applyScan({ employeeId, userId, token, workDate, photoId, 
   if (!isPhotoId(photoId)) throw new HttpError(500, 'Invalid photo reference', 'server_error');
 
   return run(async (db) => {
-    const tok = await checkQrToken(db, token, { lock: true });
+    const tok = await checkQrToken(db, token, { lock: true,employeeId });
     const { rows: receipts } = await db.query(
       `INSERT INTO attendance_token_scans (token_id, employee_id) VALUES ($1, $2)
        ON CONFLICT (token_id, employee_id) DO NOTHING RETURNING token_id`, [tok.id, employeeId]);

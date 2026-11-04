@@ -1,3 +1,4 @@
+import customAccessRoutes from './routes/customAccess.js';
 import employeeAttachmentRoutes from './routes/employeeAttachments.js';
 import retirementRoutes from './routes/retirement.js';
 import vacancyRoutes from './routes/vacancies.js';
@@ -90,6 +91,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use('/api/vacancies', vacancyRoutes);
   app.use('/api/announcements', announcementRoutes);
   app.use('/api/audit-history', auditHistoryRoutes);
+  app.use('/api/custom-access', customAccessRoutes);
   app.use('/api/access-management', accessManagementRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/profile', profileRoutes);

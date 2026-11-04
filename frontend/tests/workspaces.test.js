@@ -61,3 +61,10 @@ test('both administrative roles can open every sidebar section in their own work
 test('internal vacancies are available in both management workspaces and the employee portal',()=>{
  assert.equal(canOpenPath(hr,'/hr/vacancies'),true);assert.equal(canOpenPath(finance,'/finance/vacancies'),true);assert.equal(canOpenPath(employee,'/hr/vacancies'),false);assert.equal(canOpenPath(employee,'/portal/vacancies'),true);
 });
+
+test('custom attendance roles receive a management workspace and only ticked pages',()=>{
+ const user={role:'employee',permissions:['self.profile','attendance.read','attendance.qr.read'],customGrants:[{name:'Team Leader',permissions:['attendance.read','attendance.qr.read'],scopeType:'departments',departmentIds:[1]}]};
+ assert.deepEqual(workspaceOptions(user).map(x=>x.key),['portal','hr']);
+ assert.equal(canOpenPath(user,'/hr/attendance'),true);assert.equal(canOpenPath(user,'/hr/qr'),true);
+ for(const path of ['/hr/employees','/hr/payroll','/hr/access-management','/hr/departments'])assert.equal(canOpenPath(user,path),false,path);
+});

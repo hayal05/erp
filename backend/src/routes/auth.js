@@ -1,4 +1,4 @@
-import { withAccess, loadAccessRoles } from '../services/accessGrants.js';
+import { userAccess, loadAccessRoles } from '../services/accessGrants.js';
 import changePasswordRoutes from './changePassword.js';
 import { Router } from 'express';
 import { query } from '../db/pool.js';
@@ -55,7 +55,7 @@ router.post('/login', wrap(async (req, res) => {
   const { csrfToken } = await createSession(req, res, user);
   await query('UPDATE users SET last_login_at = now() WHERE id = $1', [user.id]);
   await audit({ query }, { actorId: user.id, action: 'auth.login', entityType: 'user', entityId: user.id, details: { role: user.role, ip: req.ip } });
-  res.json({ user: withAccess(publicUser(user), await loadAccessRoles({ query }, user.id)), csrfToken, locked: false });
+  res.json({ user: await userAccess({query},publicUser(user), await loadAccessRoles({ query }, user.id)), csrfToken, locked: false });
 }));
 
 // Idempotent: no session is fine. With a session, the CSRF layer has already verified the token.

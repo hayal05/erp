@@ -1,3 +1,4 @@
+import {scopeSql} from './accessScope.js';
 import {AUDIT_RECORDS,canReadAudit,auditChanges} from './auditHistory.js';
 import {hasPermission} from './permissions.js';
 import {HttpError} from '../middleware/error.js';
@@ -5,7 +6,7 @@ import {pageOffset,pageResult} from './sql.js';
 const record=(type,entity=AUDIT_RECORDS[type].entity)=>({entity,fields:AUDIT_RECORDS[type].fields,allowed:user=>canReadAudit(user,type)});
 const extra=(entity,permission,domains,fields)=>({entity,fields,allowed:user=>hasPermission(user,permission)&&domains.some(p=>hasPermission(user,p))});
 const sources={
- retirement:record('retirement_settings'),vacancy:record('vacancy'),application:record('vacancy_application'),
+ custom_role:record('custom_access_role'),custom_grant:record('custom_access_grant'),retirement:record('retirement_settings'),vacancy:record('vacancy'),application:record('vacancy_application'),
  attachment:record('employee_attachment'),employee:record('employee'),salary:record('salary_profile'),department:record('department'),position:record('position'),
  attendance:record('attendance_record'),leave:record('leave_request'),announcement:record('announcement'),
  payroll:record('payroll_period'),entry:record('payroll_period','payroll_entry'),access:record('access_employee'),
@@ -21,7 +22,7 @@ const sources={
 export const AUDIT_AREAS={
  all:Object.keys(sources),retirement:['retirement'],vacancies:['vacancy','application'],employees:['employee','salary','attachment'],departments:['department','position'],attendance:['attendance'],
  leave:['leave','balance'],announcements:['announcement'],payroll:['payroll','entry','deduction'],
- payroll_settings:['calculation','brackets','tax'],settlements:['settlement'],access:['access'],settings:['shift','holiday'],approvals:['request'],
+ payroll_settings:['calculation','brackets','tax'],settlements:['settlement'],access:['access','custom_role','custom_grant'],settings:['shift','holiday'],approvals:['request'],
 };
 // Permission predicates use the same record capabilities as individual history.
 // The area is only a filter: choosing another area can never widen access.
@@ -30,14 +31,16 @@ export async function loadAuditActivity(db,user,query){
  if(!selected.length)throw new HttpError(403,'You do not have access to this section audit history','forbidden');
  const roles=hasPermission(user,'access.manage')?['hr','finance']:(user.accessRoles??[]).filter(r=>['hr','finance'].includes(r));
  const args=[selected.map(s=>s.entity),user.id,roles,user.permissions??[]];
+ const attendanceScope=scopeSql(user,'attendance.manage','se',args),auditScope=scopeSql(user,'audit.hr','se',args);
  const cte=`WITH events AS (SELECT a.id,a.action,a.entity_type,a.entity_id,a.occurred_at AS at,u.full_name AS actor,u.username,a.actor_user_id,a.reason,a.details,
  EXISTS(SELECT 1 FROM access_grants g WHERE g.user_id=a.actor_user_id AND g.access_role='admin'
    AND g.granted_at<=a.occurred_at AND (g.revoked_at IS NULL OR g.revoked_at>a.occurred_at)) AS was_admin
  FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_user_id
  WHERE a.entity_type=ANY($1::text[]) AND a.action<>'attendance.photo_view'
+ AND (a.entity_type<>'attendance_record' OR EXISTS(SELECT 1 FROM attendance_records sr JOIN employees se ON se.id=sr.employee_id WHERE sr.id::text=a.entity_id AND ${attendanceScope} AND ${auditScope}))
  AND (a.entity_type<>'change_request' OR EXISTS(SELECT 1 FROM change_requests c WHERE c.id::text=a.entity_id
    AND (c.requester_id=$2 OR (c.department=ANY($3::text[]) AND c.permission=ANY($4::text[]))))))`;
- const {rows}=await db.query(`${cte} SELECT * FROM events ORDER BY at DESC,id DESC LIMIT $5 OFFSET $6`,[...args,query.pageSize,pageOffset(query)]);
+ const {rows}=await db.query(`${cte} SELECT * FROM events ORDER BY at DESC,id DESC LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,query.pageSize,pageOffset(query)]);
  const summaryFilter=query.area==='approvals'?'true':"entity_type<>'change_request' AND action<>'vacancy.apply'";
  const {rows:[metadata]}=await db.query(`${cte}, latest_modified AS (
  SELECT * FROM events WHERE ${summaryFilter} AND action !~ '(^|\\.)(approve|pay)$' ORDER BY at DESC,id DESC LIMIT 1

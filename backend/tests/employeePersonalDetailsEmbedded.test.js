@@ -20,6 +20,7 @@ before(async()=>{
  legacyId=(await q("INSERT INTO employees(employee_code,user_id,start_date,shift_id) VALUES('LEGACY',$1,'2020-01-01',$2) RETURNING id",[user,shift])).rows[0].id;
  await db.exec(await fs.readFile(new URL('017_employee_personal_details.sql',dir),'utf8'));
  await db.exec(await fs.readFile(new URL('018_required_employee_personal_details.sql',dir),'utf8'));
+ for(const f of files.filter(f=>f>'018_required_employee_personal_details.sql'))await db.exec(await fs.readFile(new URL(f,dir),'utf8'));
  root=(await seedAdmin({username:'root',password})).id;admin=await signIn(app,{username:'root',password});
  for(const role of ['hr','finance']){const e=await create({username:`${role}.details`});await q('UPDATE users SET must_change_password=false WHERE id=$1',[e.userId]);await q('INSERT INTO access_grants(user_id,access_role,granted_by_user_id) VALUES($1,$2,$3)',[e.userId,role,root]);const client=await signIn(app,{username:`${role}.details`,password});if(role==='hr')hr=client;else finance=client;}
 });

@@ -16,7 +16,7 @@ import { buildScanUrl, expiryFrom, formatCountdown, remainingSeconds } from './q
 export default function QrAttendance() {
   const pageRefresh = usePageRefresh();
   const toast = useToast();
-  const canManage=usePermission('attendance.qr');
+  const canManage=usePermission('attendance.qr'),canLock=usePermission('attendance.qr.lock');
   const [status,setStatus]=useState(null);
   useEffect(()=>{if(canManage)return undefined;const ctrl=new AbortController();get('/qr/status',undefined,{signal:ctrl.signal}).then(setStatus).catch(e=>{if(e.name!=='AbortError')setStatus({error:e.message});});return()=>ctrl.abort();},[canManage, pageRefresh]);
   const { locked, setLocked } = useAuth();
@@ -89,15 +89,15 @@ export default function QrAttendance() {
           {!canManage?(status?.error||(!status?<Skeleton variant="line" label="Loading QR status…" />:status.active?`Active until ${new Date(status.expiresAt).toLocaleString()}`:'No active code.')):live ? <>Expires in <strong>{formatCountdown(remaining)}</strong></> : null}
         </p>
         {error && <p className="field-error" role="alert">{error}</p>}
-        {canManage ? <div className="qr-actions">
-          <Button variant="primary" busy={busy} onClick={generate}>
+        {(canManage||canLock) ? <div className="qr-actions">
+          <Button variant="primary" busy={busy} disabled={!canManage} onClick={generate}>
             {qr ? <><RefreshCw size={16} aria-hidden="true" /> Generate again</> : 'Generate QR'}
           </Button>
-          {locked ? (
+          {canLock&&(locked ? (
             <Button className="qr-unlock" onClick={() => setUnlocking(true)}><Unlock size={16} aria-hidden="true" /> Unlock</Button>
           ) : (
             <Button busy={locking} onClick={lock}><Lock size={16} aria-hidden="true" /> Lock</Button>
-          )}
+          ))}
         </div> : <span className="badge neutral">View only</span>}
       </div>
       <UnlockDialog open={unlocking} onClose={() => setUnlocking(false)}

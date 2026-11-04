@@ -1,3 +1,4 @@
+import {assertReviewScope,requestVisibilitySql} from '../services/requestScope.js';
 import {parseAttachment,sendAttachment} from '../services/employeeAttachments.js';
 import {Router} from 'express';
 import {query,withTransaction} from '../db/pool.js';
@@ -14,28 +15,30 @@ const columns=`c.id,c.requester_id,c.department,c.permission,c.method,c.path,c.p
 const joins='FROM change_requests c JOIN users u ON u.id=c.requester_id LEFT JOIN users r ON r.id=c.reviewer_id';
 const idOf=req=>{const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<1)throw new HttpError(400,'Invalid request ID','validation');return id;};
 const visible=(user,row)=>hasPermission(user,'approvals.read');
-const present=(user,row)=>({...row,id:Number(row.id),canReview:row.status==='pending'&&canReview(user,row),canCancel:row.status==='pending'&&Number(row.requester_id)===user.id});
+const present=async(db,user,row)=>{let review=row.status==='pending'&&canReview(user,row);if(review)try{await assertReviewScope(db,user,row);}catch{review=false;}return {...row,id:Number(row.id),canReview:review,canCancel:row.status==='pending'&&Number(row.requester_id)===user.id};};
 export default function changeRequestRoutes(operations){
  const router=Router();router.use(noStore,requirePermission('approvals.read'));
  router.get('/',wrap(async(req,res)=>{
   const view=req.query.view??'pending',page=Math.max(1,Number(req.query.page)||1),limit=20;
   if(!['pending','all','mine'].includes(view)||!Number.isSafeInteger(page)||page>1000000)throw new HttpError(400,'Invalid filter','validation');
   const roles=['hr','finance'];
-  const where=`WHERE (c.requester_id=$1 OR (c.department=ANY($2::text[])))${view==='pending'?" AND c.status='pending'":view==='mine'?' AND c.requester_id=$1':''}`;
-  const params=[req.user.id,roles];
+  const params=[req.user.id,roles],visibility=requestVisibilitySql(req.user,params);
+  const where=`WHERE ${visibility} AND (c.requester_id=$1 OR (c.department=ANY($2::text[])))${view==='pending'?" AND c.status='pending'":view==='mine'?' AND c.requester_id=$1':''}`;
   const {rows:[count]}=await query(`SELECT count(*)::int AS n FROM change_requests c ${where}`,params);
-  const {rows}=await query(`SELECT ${columns} ${joins} ${where} ORDER BY c.id DESC LIMIT $3 OFFSET $4`,[...params,limit,(page-1)*limit]);
-  res.json({items:rows.map(r=>present(req.user,r)),page,pageSize:limit,total:count.n});
+  const {rows}=await query(`SELECT ${columns} ${joins} ${where} ORDER BY c.id DESC LIMIT $${params.length+1} OFFSET $${params.length+2}`,[...params,limit,(page-1)*limit]);
+  res.json({items:await Promise.all(rows.map(r=>present({query},req.user,r))),page,pageSize:limit,total:count.n});
  }));
  router.get('/:id/attachment',wrap(async(req,res)=>{
   const {rows:[row]}=await query('SELECT * FROM change_requests WHERE id=$1',[idOf(req)]);
   if(!row||row.status!=='pending'||row.method!=='POST'||!/^\/api\/employees\/\d+\/attachments$/.test(row.path)||!(Number(row.requester_id)===req.user.id||canReview(req.user,row)))throw new HttpError(404,'Proposed attachment not found','not_found');
+  if(Number(row.requester_id)!==req.user.id)await assertReviewScope({query},req.user,row);
   const file=parseAttachment(decrypt(row.payload_cipher));sendAttachment(res,file,file.bytes);
  }));
  router.get('/:id',wrap(async(req,res)=>{
-  const {rows:[row]}=await query(`SELECT ${columns} ${joins} WHERE c.id=$1`,[idOf(req)]);
+  const args=[idOf(req)],visibility=requestVisibilitySql(req.user,args);
+  const {rows:[row]}=await query(`SELECT ${columns} ${joins} WHERE c.id=$1 AND ${visibility}`,args);
   if(!row||!visible(req.user,row))throw new HttpError(404,'Request not found','not_found');
-  res.json(present(req.user,row));
+  res.json(await present({query},req.user,row));
  }));
  router.post('/:id/:decision',wrap(async(req,res)=>{
   const id=idOf(req),decision=req.params.decision;
@@ -53,13 +56,14 @@ export default function changeRequestRoutes(operations){
    // Serialize application with ordinary writes in the affected domain. The locks
    // precede the first snapshot read, preventing stale checks from racing a write.
    if(decision==='approve'&&policy){
-    const tables=[...new Set([...policy.tables,'users','employees','access_grants'])].sort();
+    const tables=[...new Set([...policy.tables,'users','employees','access_grants','custom_access_roles','custom_access_grants'])].sort();
     await db.query(`LOCK TABLE ${tables.join(',')} IN SHARE ROW EXCLUSIVE MODE`);
    }
    const {rows:[row]}=await db.query('SELECT * FROM change_requests WHERE id=$1 FOR UPDATE',[id]);
    const reviewer=await currentUser(db,req.user.id);
    if(!row||!visible(reviewer,row))throw new HttpError(403,'You cannot review this request','forbidden');
    if(decision==='cancel'?Number(row.requester_id)!==reviewer.id:!canReview(reviewer,row))throw new HttpError(403,'A different authorized person must review this request','forbidden');
+   if(decision!=='cancel')await assertReviewScope(db,reviewer,row);
    if(row.status!=='pending')return {id,status:row.status};
    let applied;
    if(decision==='approve'){

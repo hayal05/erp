@@ -1,3 +1,4 @@
+import {scopeSql,assertAttendanceScope,coversEmployee} from '../services/accessScope.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
@@ -22,6 +23,7 @@ export const recordDeps = { photos, fillGaps: (q) => fillGapsFor(q) }; // swappa
 
 const router = Router();
 router.use(noStore, requirePermission('attendance.read'));
+router.param('id',(req,res,next,id)=>{if(!Number.isSafeInteger(Number(id))||Number(id)<1)return next(new HttpError(400,'Invalid record ID','validation'));assertAttendanceScope({query},req.user,['GET','HEAD'].includes(req.method)?'attendance.read':'attendance.manage',Number(id)).then(()=>next(),next);});
 router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('attendance.manage')(req,res,next));
 
 // $1 is always the company timezone: times are shown as wall-clock HH:MM there, never in the browser's zone.
@@ -57,25 +59,31 @@ const notFound = () => new HttpError(404, 'Attendance record not found', 'not_fo
 // (idempotent, existing rows are never touched); see fillWindow for which dates.
 export async function fillGapsFor(q, today = companyDate()) {
   const window = fillWindow(q, today);
-  return window ? fillAttendanceGaps({ query }, window) : null;
+  return window ? fillAttendanceGaps({ query }, {...window,user:q.scopeUser}) : null;
 }
 
 // GET /?page&pageSize&from&to&employeeId&departmentId&status -> { items, page, pageSize, total, today }, newest date first.
 // `today` is the company-timezone date, so the page can offer "Today" without trusting the browser's clock or zone.
+router.get('/lookups',wrap(async(req,res)=>{
+ const args=[],condition=scopeSql(req.user,'attendance.read','e',args);
+ const {rows:employees}=await query(`SELECT e.id,e.employee_code AS "employeeCode",u.full_name AS "fullName",e.department_id AS "departmentId",d.name AS "departmentName" FROM employees e JOIN users u ON u.id=e.user_id LEFT JOIN departments d ON d.id=e.department_id WHERE ${condition} ORDER BY lower(u.full_name),e.id`,args);
+ const departments=[...new Map(employees.filter(e=>e.departmentId!==null).map(e=>[String(e.departmentId),{id:Number(e.departmentId),name:e.departmentName}])).values()];res.json({employees:employees.map(e=>({...e,id:Number(e.id)})),departments});
+}));
 router.get('/', validate(attendanceListQuery, 'query'), wrap(async (req, res) => {
   const today = companyDate();
   const q = { ...req.query };
   if (q.from && q.to && q.from > q.to) throw validationError({ to: 'Must be on or after the start date' });
   Object.assign(q, attendanceRange(q, today));
   if (q.from && q.to && q.from > q.to) return res.json({ ...pageResult([], q, 0), today });
-  await recordDeps.fillGaps(q);
+  await recordDeps.fillGaps({...q,scopeUser:req.user});
   const filters = [[q.from, 'a.work_date >= $?'], [q.to, 'a.work_date <= $?'], [q.employeeId, 'a.employee_id = $?'],
     [q.departmentId, 'e.department_id = $?'], [q.status, 'a.status = $?']].filter(([value]) => value !== undefined);
   // Placeholders are numbered from `base` (the data query reserves $1 for the timezone). Column names are fixed text above.
-  const build = (base) => ({
-    sql: filters.length ? `WHERE ${filters.map(([, c], i) => c.replace('$?', `$${base + i + 1}`)).join(' AND ')}` : '',
-    params: filters.map(([value]) => value),
-  });
+  const build = base => {
+    const params=filters.map(([value])=>value),args=base?[config.company.timezone,...params]:params;
+    const condition=scopeSql(req.user,'attendance.read','e',args);
+    return {sql:`WHERE ${[...filters.map(([,c],i)=>c.replace('$?',`$${base+i+1}`)),condition].join(' AND ')}`,params:base?args.slice(1):args};
+  };
   const data = build(1), count = build(0);
   const [{ rows }, { rows: [{ n: total }] }] = await Promise.all([
     query(`SELECT ${COLUMNS} ${FROM} ${data.sql}
@@ -83,7 +91,7 @@ router.get('/', validate(attendanceListQuery, 'query'), wrap(async (req, res) =>
     [config.company.timezone, ...data.params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n ${FROM} ${count.sql}`, count.params),
   ]);
-  res.json({ ...pageResult(rows.map(toRecord), q, total), today });
+  res.json({ ...pageResult(rows.map(r=>({...toRecord(r),canCorrect:coversEmployee(req.user,'attendance.manage',r.employee_id,r.department_id)})), q, total), today });
 }));
 
 // PATCH /:id: HR correction (spec 8). A reason is REQUIRED. Body (all optional except reason; omitted = unchanged):

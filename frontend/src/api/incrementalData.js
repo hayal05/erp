@@ -3,7 +3,7 @@ const snapshots=new Map();let bytes=0,epoch=0,identity;
 const MAX_BYTES=4*1024*1024,MAX_ENTRIES=64;
 export function clearIncrementalData(){snapshots.clear();bytes=0;epoch++;}
 export function syncIncrementalIdentity(data){
-  const next=JSON.stringify([data?.user?.id,data?.user?.permissions,data?.locked]);
+  const next=JSON.stringify([data?.user?.id,data?.user?.permissions,data?.user?.customGrants,data?.locked]);
   if(identity!==next){clearIncrementalData();identity=next;}
 }
 export function readBaseline(url){return {entry:snapshots.get(url),epoch};}
