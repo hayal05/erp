@@ -34,3 +34,10 @@ export const ACTIVITY_DEPENDENCIES={
  'changes.hr.approve':['approvals.read'],'changes.finance.approve':['approvals.read']
 };
 export function expandActivities(ids){const out=new Set(ids);for(const id of out)for(const required of ACTIVITY_DEPENDENCIES[id]??[])out.add(required);return [...out].sort();}
+
+// Scope applies to each selected activity. Unsupported company-wide operations never
+// inherit a department grant, nor do their implicit dependencies survive on their own.
+export function activityScopePlan(activities,scopeType='all'){
+ const included=scopeType==='all'?activities:activities.filter(id=>expandActivities([id]).every(p=>SCOPED_ACTIVITIES.includes(p)));
+ return {permissions:expandActivities(included),excluded:activities.filter(id=>!included.includes(id))};
+}

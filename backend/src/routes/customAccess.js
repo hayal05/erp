@@ -8,7 +8,7 @@ import {validationError} from '../services/dbErrors.js';
 import {audit} from '../services/audit.js';
 import {pageSchema,pageOffset,pageResult} from '../services/sql.js';
 import {idParams} from '../services/hrSchemas.js';
-import {ACTIVITY_GROUPS,ACTIVITY_IDS,SCOPED_ACTIVITIES,expandActivities} from '../../../shared/accessActivities.mjs';
+import {ACTIVITY_GROUPS,ACTIVITY_IDS,SCOPED_ACTIVITIES,expandActivities,activityScopePlan} from '../../../shared/accessActivities.mjs';
 const router=Router();router.use(noStore,requirePermission('access.manage'));
 const roleDto=r=>({...r,permissions:expandActivities(r.activities),id:Number(r.id)});
 function roleBody(body){
@@ -17,7 +17,7 @@ function roleBody(body){
  const a=body.activities;if(!Array.isArray(a)||!a.length||a.length>ACTIVITY_IDS.length||a.some(p=>!ACTIVITY_IDS.includes(p)))throw validationError({activities:'Select allowed activities from the list'});
  return {name,activities:[...new Set(a)].sort(),permissions:expandActivities(a)};
 }
-const limitedCompatible=permissions=>permissions.every(p=>SCOPED_ACTIVITIES.includes(p));
+const hasScopedActivities=activities=>activityScopePlan(activities,'departments').permissions.length>0;
 router.get('/roles',wrap(async(req,res)=>{const {rows}=await query('SELECT id,name,activities,permissions,version FROM custom_access_roles ORDER BY lower(name),id');const {rows:departments}=await query('SELECT id,name FROM departments ORDER BY lower(name),id');res.json({items:rows.map(roleDto),departments:departments.map(d=>({...d,id:Number(d.id)})),groups:ACTIVITY_GROUPS,scopedActivities:SCOPED_ACTIVITIES});}));
 router.post('/roles',wrap(async(req,res)=>{
  const b=roleBody(req.body);
@@ -28,7 +28,7 @@ router.put('/roles/:id',validate(idParams,'params'),wrap(async(req,res)=>{
  const saved=await withTransaction(async db=>{
   const {rows:[before]}=await db.query('SELECT * FROM custom_access_roles WHERE id=$1 FOR UPDATE',[req.params.id]);if(!before)throw new HttpError(404,'Role not found','not_found');
   if(before.version!==req.body.version)throw new HttpError(409,'Role changed. Open it again before saving.','conflict');
-  if(!limitedCompatible(b.permissions)&&(await db.query("SELECT 1 FROM custom_access_grants WHERE role_id=$1 AND revoked_at IS NULL AND scope_type<>'all' LIMIT 1",[before.id])).rows.length)throw validationError({activities:'Revoke limited-scope assignments before adding company-wide activities'});
+  if(!hasScopedActivities(b.activities)&&(await db.query("SELECT 1 FROM custom_access_grants WHERE role_id=$1 AND revoked_at IS NULL AND scope_type<>'all' LIMIT 1",[before.id])).rows.length)throw validationError({activities:'Keep at least one employee-scoped activity while department or employee assignments are active'});
   const {rows:[r]}=await db.query('UPDATE custom_access_roles SET name=$2,activities=$3,permissions=$4,version=version+1,updated_by=$5,updated_at=now() WHERE id=$1 RETURNING id,name,activities,permissions,version',[before.id,b.name,b.activities,b.permissions,req.user.id]);
   await audit(db,{actorId:req.user.id,action:'access_role.update',entityType:'custom_access_role',entityId:r.id,details:{changes:{name:{from:before.name,to:b.name},activities:{from:before.activities,to:b.activities}}}});return roleDto(r);
  }).catch(e=>{if(e.code==='23505')throw validationError({name:'This role name already exists'});throw e;});res.json(saved);
@@ -45,7 +45,7 @@ router.post('/employees/:id/custom-grants',validate(idParams,'params'),validate(
  if(b.scopeType==='all'&&(departmentIds.length||employeeIds.length)||b.scopeType==='departments'&&(!departmentIds.length||employeeIds.length)||b.scopeType==='employees'&&(!employeeIds.length||departmentIds.length))throw validationError({scopeType:'Select records for the chosen scope only'});
  const saved=await withTransaction(async db=>{
   const {rows:[role]}=await db.query('SELECT * FROM custom_access_roles WHERE id=$1 FOR UPDATE',[b.roleId]);if(!role)throw new HttpError(404,'Role not found','not_found');
-  if(b.scopeType!=='all'&&!limitedCompatible(expandActivities(role.activities)))throw validationError({scopeType:'This role includes company-wide activities. Choose All employees.'});
+  if(b.scopeType!=='all'&&!hasScopedActivities(role.activities))throw validationError({scopeType:'This role has no employee-scoped activities. Add one or choose All employees.'});
   const {rows:[e]}=await db.query("SELECT e.user_id,e.status,u.is_active,u.role FROM employees e JOIN users u ON u.id=e.user_id WHERE e.id=$1 FOR UPDATE OF e,u",[req.params.id]);
   if(!e||e.role!=='employee')throw new HttpError(404,'Registered employee not found','not_found');if(e.status!=='active'||!e.is_active)throw new HttpError(409,'Activate the employee before granting access','inactive_employee');
   for(const [table,ids] of [['departments',departmentIds],['employees',employeeIds]])if(ids.length&&(await db.query(`SELECT id FROM ${table} WHERE id=ANY($1::bigint[])`,[ids])).rows.length!==ids.length)throw validationError({scopeType:'One or more selected records no longer exist'});

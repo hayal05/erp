@@ -268,3 +268,22 @@ test('individual employee scope works for the expanded activities without becomi
  scopeStatus(await admin.post(`/api/custom-access/employees/${one.id}/custom-grants/${grants.body.items[0].id}/revoke`).send({reason:'End assignment'}),204);
  scopeStatus(await client.get(`/api/salary-profiles/${inside.id}`),403);
 });
+
+test('mixed roles can be assigned to departments; company-wide activities stay unavailable for that grant',async()=>{
+ const limited=await person('mixed.department.manager',depA),unrestricted=await person('mixed.company.manager',depB);
+ let mixed=await newRole('Mixed manager',['employees.manage','leave.manage','payroll.pay','payroll_settings.manage','organization.manage']);
+ await assign(limited.id,mixed.id,'departments',[depA]);await assign(unrestricted.id,mixed.id,'all');
+ const me=await limited.client.get('/api/auth/me');scopeStatus(me);
+ for(const permission of ['employees.manage','leave.manage','leave.read'])assert.ok(me.body.user.permissions.includes(permission));
+ for(const permission of ['payroll.pay','payroll_settings.manage','organization.manage','payroll.read','audit.finance'])assert.ok(!me.body.user.permissions.includes(permission),permission);
+ scopeStatus(await limited.client.patch('/api/payroll-settings/calculation').send({companyPensionRate:13}),403);
+ scopeStatus(await limited.client.post(`/api/payroll/periods/${flexPeriod}/pay`).send({paidOn:companyDate()}),403);
+ scopeStatus(await limited.client.post('/api/departments').send({name:'Outside authority'}),403);
+ scopeStatus(await limited.client.patch(`/api/employees/${inside.id}`).send({phone:'555111222'}),202);
+ scopeStatus(await limited.client.patch(`/api/employees/${outside.id}`).send({phone:'555111222'}),404);
+ const company=await unrestricted.client.get('/api/auth/me');scopeStatus(company);assert.ok(company.body.user.permissions.includes('payroll.pay'));assert.ok(company.body.user.permissions.includes('organization.manage'));
+ const update=await admin.put(`/api/custom-access/roles/${mixed.id}`).send({name:mixed.name,version:mixed.version,activities:[...mixed.activities,'announcements.manage']});scopeStatus(update);mixed=update.body;
+ assert.ok(!(await limited.client.get('/api/auth/me')).body.user.permissions.includes('announcements.manage'));
+ assert.ok((await unrestricted.client.get('/api/auth/me')).body.user.permissions.includes('announcements.manage'));
+ scopeStatus(await admin.put(`/api/custom-access/roles/${mixed.id}`).send({name:mixed.name,version:mixed.version,activities:['payroll.pay']}),400);
+});
