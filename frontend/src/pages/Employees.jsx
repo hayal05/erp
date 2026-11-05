@@ -24,7 +24,7 @@ function useDebounced(value, ms = 300) {
 
 export default function Employees() {
   const pageRefresh = usePageRefresh();
-  const canManage=usePermission('employees.manage');
+  const canManage=usePermission('employees.manage'),canReadSalary=usePermission('payroll.read');
   const toast = useToast();
   const [filters, setFilters] = useState({ search: '', status: '', departmentId: '' });
   const [page, setPage] = useState(1);
@@ -80,9 +80,9 @@ export default function Employees() {
     { key: 'actions', header: <span className="sr-only">Actions</span>, className: 'nowrap', render: (r) => (
       <span className="row">
         <EmployeeProfileLink employee={r}/>
-        {canManage&&<Button size="sm" onClick={() => setDialog({ employee: r })} aria-label={`Edit ${r.fullName}`}>Edit</Button>}
-        <Button size="sm" onClick={() => setSalaryEmployee(r)} aria-label={`Salary for ${r.fullName}`}>Salary</Button>
-        {canManage && (r.status === 'active'
+        {canManage&&r.canManage!==false&&<Button size="sm" onClick={() => setDialog({ employee: r })} aria-label={`Edit ${r.fullName}`}>Edit</Button>}
+        {canReadSalary&&<Button size="sm" onClick={() => setSalaryEmployee(r)} aria-label={`Salary for ${r.fullName}`}>Salary</Button>}
+        {canManage && r.canManage!==false && (r.status === 'active'
           ? <Button size="sm" variant="danger" onClick={() => setConfirm({ employee: r, reason: '', busy: false })} aria-label={`Deactivate ${r.fullName}`}>Deactivate</Button>
           : <Button size="sm" onClick={() => changeStatus(r, 'activate')} aria-label={`Activate ${r.fullName}`}>Activate</Button>)}
       </span>
@@ -93,7 +93,7 @@ export default function Employees() {
     <section className="stack employees-page">
       <div className="row between">
         <h1>Employees</h1>
-        {canManage && <Button size="sm" variant="primary" onClick={() => setDialog({ employee: null })} disabled={!lookups.shifts.length}
+        {canManage && lookups.canCreate!==false && <Button size="sm" variant="primary" onClick={() => setDialog({ employee: null })} disabled={!lookups.shifts.length}
           title={lookups.shifts.length ? undefined : 'Create a shift first (Settings)'}><Plus size={16} aria-hidden="true" /> Add employee</Button>}
       </div>
 
@@ -110,7 +110,7 @@ export default function Employees() {
       <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPage={setPage} disabled={state.loading} />
 
       {dialog && (
-        <EmployeeDialog key={dialog.employee?.id ?? 'new'} employee={dialog.employee} departments={lookups.departments} shifts={lookups.shifts}
+        <EmployeeDialog key={dialog.employee?.id ?? 'new'} employee={dialog.employee} departments={(lookups.writeDepartments??lookups.departments).filter(d=>dialog.employee||!lookups.createDepartmentIds||lookups.createDepartmentIds.includes(d.id))} shifts={lookups.shifts}
           onClose={() => setDialog(null)} onSaved={() => { setDialog(null); refresh(); }} />
       )}
 

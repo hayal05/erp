@@ -10,6 +10,7 @@ test('scope unions are per activity, and a broader read grant does not broaden c
  assert.equal(permissionScope({...u,accessRoles:['hr']},'attendance.manage'),null);
 });
 test('required activities expand transitively while protected Admin rights cannot come from custom grants',()=>{
+ assert.ok(expandActivities(['employees.manage']).every(p=>SCOPED_ACTIVITIES.includes(p)));
  const permissions=expandActivities(['attendance.manage']);for(const p of ['attendance.read','audit.hr','approvals.read'])assert.ok(permissions.includes(p));assert.ok(permissions.every(p=>SCOPED_ACTIVITIES.includes(p)));
  const u={role:'employee',customGrants:[{permissions:['access.manage','audit.access','attendance.read','*']}]};assert.ok(permissionsFor(u).includes('attendance.read'));assert.ok(!permissionsFor(u).includes('access.manage'));assert.ok(!permissionsFor(u).includes('audit.access'));assert.ok(!permissionsFor(u).includes('*'));
 });

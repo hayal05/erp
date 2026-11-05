@@ -1,4 +1,4 @@
-import {scopeSql,employeeParamScope,permissionScope} from '../services/accessScope.js';
+import {scopeSql,employeeParamScope,permissionScope,coversEmployee,assertDepartmentScope,assertEmployeeScope} from '../services/accessScope.js';
 import {config} from '../config.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import {protectPrivilegedAccount,accountConflict} from '../services/accountSafeguards.js';
@@ -12,9 +12,9 @@ import { audit, diffFields } from '../services/audit.js';
 import { hashPassword, passwordProblem } from '../services/password.js';
 import { likePattern, pageOffset, pageResult, pageSchema, setClause } from '../services/sql.js';
 import { translateDbError, validationError } from '../services/dbErrors.js';
-import { loadAssignablePosition, positionSalary } from '../services/positions.js';
+import { loadAssignablePosition, positionSalary, toPosition } from '../services/positions.js';
 import {companyDate} from '../services/attendance.js';
-import { saveSalaryProfile } from '../services/salaryProfiles.js';
+import { saveSalaryProfile, loadSalaryProfile } from '../services/salaryProfiles.js';
 import { employeeCreate, employeeListQuery, employeeUpdate, idParams, reasonBody } from '../services/hrSchemas.js';
 
 // Employees are never hard-deleted (attendance, leave and payroll history point at them):
@@ -71,14 +71,33 @@ router.get('/', validate(employeeListQuery, 'query'), wrap(async (req, res) => {
     [...params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n FROM employees e JOIN users u ON u.id = e.user_id ${whereSql}`, params),
   ]);
-  res.json(pageResult(rows.map(toEmployee), q, total));
+  res.json(pageResult(rows.map(r=>({...toEmployee(r),canManage:coversEmployee(req.user,'employees.manage',r.id,r.department_id)})), q, total));
 }));
 
 router.get('/lookups',wrap(async(req,res)=>{
  const args=[],condition=scopeSql(req.user,'employees.read','e',args);
  const {rows:departments}=permissionScope(req.user,'employees.read')===null?await query('SELECT id,name FROM departments ORDER BY name'):await query(`SELECT DISTINCT d.id,d.name FROM departments d JOIN employees e ON e.department_id=d.id WHERE ${condition} ORDER BY d.name`,args);
  const {rows:shifts}=await query('SELECT id,name FROM shifts ORDER BY name');
- res.json({departments:departments.map(r=>({...r,id:Number(r.id)})),shifts:shifts.map(r=>({...r,id:Number(r.id)}))});
+ const manageScope=permissionScope(req.user,'employees.manage');
+ const {rows:writeDepartments}=manageScope===null?await query('SELECT id,name FROM departments ORDER BY name'):await query('SELECT id,name FROM departments WHERE id=ANY($1::bigint[]) OR id IN (SELECT department_id FROM employees WHERE id=ANY($2::bigint[])) ORDER BY name',[manageScope.departmentIds,manageScope.employeeIds]);
+ res.json({departments:departments.map(r=>({...r,id:Number(r.id)})),writeDepartments:writeDepartments.map(r=>({...r,id:Number(r.id)})),canCreate:manageScope===null||manageScope.departmentIds.length>0,createDepartmentIds:manageScope?.departmentIds??null,shifts:shifts.map(r=>({...r,id:Number(r.id)}))});
+}));
+// Assignment lookups do not grant access to organization-wide administration.
+router.get('/positions',requirePermission('employees.manage'),wrap(async(req,res)=>{
+ const departmentId=Number(req.query.departmentId);
+ if(!Number.isSafeInteger(departmentId)||departmentId<1)throw new HttpError(400,'Choose a department','validation');
+ const scope=permissionScope(req.user,'employees.manage');
+ if(scope!==null&&!scope.departmentIds.includes(departmentId)){
+  const {rows}=await query('SELECT 1 FROM employees WHERE id=ANY($1::bigint[]) AND department_id=$2 LIMIT 1',[scope.employeeIds,departmentId]);
+  if(!rows.length)assertDepartmentScope(req.user,'employees.manage',departmentId);
+ }
+ const {rows}=await query('SELECT * FROM positions WHERE department_id=$1 ORDER BY lower(name),id LIMIT 100',[departmentId]);
+ const {rows:[count]}=await query('SELECT count(*)::int AS total FROM positions WHERE department_id=$1',[departmentId]);
+ res.json({items:rows.map(toPosition),total:count.total});
+}));
+router.get('/:id/salary-preview',requirePermission('employees.manage'),wrap(async(req,res)=>{
+ await assertEmployeeScope({query},req.user,'employees.manage',req.params.id);
+ res.json(await loadSalaryProfile({query},req.params.id));
 }));
 router.get('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
   const employee = await findEmployee({ query }, req.params.id);
@@ -97,7 +116,7 @@ router.get('/:id/profile',validate(idParams,'params'),validate(pageSchema,'query
    to_char(recorded_at AT TIME ZONE $4,'YYYY-MM-DD') AS "recordedOn",is_baseline AS baseline
    FROM employee_position_history WHERE employee_id=$1 ORDER BY recorded_at DESC,id DESC LIMIT $2 OFFSET $3`,[req.params.id,req.query.pageSize,pageOffset(req.query),config.company.timezone]);
   const {rows:[count]}=await db.query('SELECT count(*)::int AS total FROM employee_position_history WHERE employee_id=$1',[req.params.id]);
-  return {...toEmployee(r),experienceSummary:r.experience_summary,today:r.today,
+  return {...toEmployee(r),canManage:coversEmployee(req.user,'employees.manage',r.id,r.department_id),experienceSummary:r.experience_summary,today:r.today,
    positionHistory:pageResult(rows.map(row=>({...row,id:Number(row.id)})),req.query,count.total)};
  });res.json(profile);
 }));

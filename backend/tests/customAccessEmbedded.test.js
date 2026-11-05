@@ -53,7 +53,7 @@ test('department grants are effective in existing sessions and scope lists, coun
  assert.equal((await leader.patch(`/api/attendance-records/${recordA}`).send({status:'absent',reason:'Follow up'})).status,403);
 });
 test('scoped activities reject company-wide additions and missing selections; definitions use optimistic versions',async()=>{
- assert.equal((await admin.put(`/api/custom-access/roles/${role.id}`).send({name:role.name,version:role.version,activities:['employees.manage']})).status,400);
+ assert.equal((await admin.put(`/api/custom-access/roles/${role.id}`).send({name:role.name,version:role.version,activities:['payroll.read']})).status,400);
  const payroll=await newRole('Payroll Viewer',['payroll.read']);
  assert.equal((await admin.post(`/api/custom-access/employees/${reviewerId}/custom-grants`).send({roleId:payroll.id,scopeType:'departments',departmentIds:[depA]})).status,400);
  assert.equal((await admin.post(`/api/custom-access/employees/${reviewerId}/custom-grants`).send({roleId:role.id,scopeType:'employees',employeeIds:[]})).status,400);
@@ -93,4 +93,51 @@ test('selected employee scope and role edits take effect without creating identi
  const updated=await admin.put(`/api/custom-access/roles/${role.id}`).send({name:'Attendance Follow-up',version:role.version,activities:['employees.read','attendance.read']});assert.equal(updated.status,200);
  assert.equal((await outsider.patch(`/api/attendance-records/${recordB}`).send({reason:'No longer allowed',status:'absent'})).status,403);
  const logs=await admin.get('/api/audit-history?area=access');assert.equal(logs.status,200,JSON.stringify(logs.body));assert.ok(logs.body.items.some(e=>e.type==='custom_access_role'));
+});
+
+test('department employee management scopes writes, transfers, lookups, audit and independent approvals',async()=>{
+ const managerRole=await newRole('People Manager',['employees.manage','changes.hr.approve']);
+ await assign(leaderId,managerRole.id,'departments',[depA]);
+ await assign(reviewerId,managerRole.id,'departments',[depA]);
+ await assign(outsideManagerId,managerRole.id,'departments',[depB]);
+ // A broad viewing grant must not broaden editing, uploads or approval rights.
+ const readRole=await newRole('Directory Viewer',['employees.read']);await assign(leaderId,readRole.id,'all');
+ const list=await leader.get('/api/employees');assert.equal(list.status,200);
+ assert.equal(list.body.items.find(e=>e.id===inside.id).canManage,true);
+ assert.equal(list.body.items.find(e=>e.id===outside.id).canManage,false);
+ const lookups=await leader.get('/api/employees/lookups');assert.deepEqual(lookups.body.writeDepartments.map(d=>d.id),[depA]);assert.equal(lookups.body.canCreate,true);
+ assert.equal((await leader.get(`/api/employees/positions?departmentId=${depA}`)).status,200);
+ assert.equal((await leader.get(`/api/employees/positions?departmentId=${depB}`)).status,403);
+ assert.equal((await leader.patch(`/api/employees/${outside.id}`).send({phone:'123'})).status,404);
+ assert.equal((await leader.post(`/api/employees/${outside.id}/deactivate`).send({reason:'Outside'})).status,404);
+ assert.equal((await leader.patch(`/api/employees/${inside.id}`).send({departmentId:depB})).status,403);
+ assert.equal((await leader.patch(`/api/employees/${inside.id}`).send({departmentId:null})).status,403);
+ assert.equal((await leader.get(`/api/employees/${outside.id}/salary-preview`)).status,404);
+ const pdf=Buffer.from('%PDF-1.4\n%%EOF').toString('base64');
+ assert.equal((await leader.post(`/api/employees/${outside.id}/attachments`).send({direction:'incoming',fileName:'scope.pdf',fileBase64:pdf})).status,404);
+ assert.equal((await leader.put('/api/retirement/settings').send({retirementAge:60,version:1})).status,403);
+ assert.equal((await leader.get('/api/retirement')).body.canManageSettings,false);
+ const pending=await leader.patch(`/api/employees/${inside.id}`).send({phone:'111222333'});assert.equal(pending.status,202,JSON.stringify(pending.body));
+ assert.equal((await q('SELECT phone FROM employees WHERE id=$1',[inside.id])).rows[0].phone,null);
+ assert.equal((await leader.post(`/api/change-requests/${pending.body.requestId}/approve`).send({})).status,403);
+ const inbox=await reviewer.get('/api/change-requests');assert.equal(inbox.status,200,JSON.stringify(inbox.body));assert.ok(inbox.body.items.some(r=>r.id===pending.body.requestId&&r.canReview));
+ assert.equal((await outsider.get(`/api/change-requests/${pending.body.requestId}`)).status,404);
+ assert.equal((await outsider.post(`/api/change-requests/${pending.body.requestId}/approve`).send({})).status,404);
+ const approved=await reviewer.post(`/api/change-requests/${pending.body.requestId}/approve`).send({});assert.equal(approved.status,200,JSON.stringify(approved.body));
+ assert.equal((await q('SELECT phone FROM employees WHERE id=$1',[inside.id])).rows[0].phone,'111222333');
+ await admin.patch(`/api/employees/${outside.id}`).send({phone:'999888777'});
+ const activity=await leader.get('/api/audit-history?area=employees');assert.equal(activity.status,200,JSON.stringify(activity.body));assert.ok(activity.body.items.some(e=>e.recordId===String(inside.id)));assert.ok(!activity.body.items.some(e=>e.recordId===String(outside.id)));
+ assert.equal((await leader.get(`/api/audit-history/employee/${outside.id}`)).status,404);
+ const newEmployee={employeeCode:'scope.new',username:'scope.new',fullName:'Scoped new employee',password,departmentId:depA,shiftId:Number(shift),startDate:'2020-01-01',employmentType:'full_time',gender:'female',dateOfBirth:'1995-01-01',fieldOfStudy:'Accounting'};
+ assert.equal((await leader.post('/api/employees').send({...newEmployee,departmentId:depB})).status,403);
+ const create=await leader.post('/api/employees').send(newEmployee);assert.equal(create.status,202,JSON.stringify(create.body));
+ const reviewList=await reviewer.get('/api/change-requests');assert.ok(reviewList.body.items.some(r=>r.id===create.body.requestId&&r.canReview));
+ assert.equal((await outsider.get(`/api/change-requests/${create.body.requestId}`)).status,404);
+ const created=await reviewer.post(`/api/change-requests/${create.body.requestId}/approve`).send({});assert.equal(created.status,200,JSON.stringify(created.body));
+ // Existing pending changes must also respect a later transfer outside the department.
+ const stale=await leader.patch(`/api/employees/${inside.id}`).send({phone:'444555666'});assert.equal(stale.status,202);
+ await q('UPDATE employees SET department_id=$1 WHERE id=$2',[depB,inside.id]);
+ assert.equal((await reviewer.get(`/api/change-requests/${stale.body.requestId}`)).status,404);
+ assert.ok([404,409].includes((await admin.post(`/api/change-requests/${stale.body.requestId}/approve`).send({})).status));
+ await q('UPDATE employees SET department_id=$1 WHERE id=$2',[depA,inside.id]);
 });

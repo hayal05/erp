@@ -15,7 +15,7 @@ export default function Field({ label, error, hint, as = 'input', options = [], 
     control = (
       <select {...common}>
         {placeholder !== undefined && <option value="">{placeholder}</option>}
-        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {options.map((o) => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>)}
       </select>
     );
   } else if (as === 'textarea') control = <textarea {...common} placeholder={placeholder} />;

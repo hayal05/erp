@@ -30,3 +30,22 @@ export function coversEmployee(user,permission,id,departmentId){
  if(!hasPermission(user,permission))return false;
  const scope=permissionScope(user,permission);return scope===null||scope.employeeIds.includes(Number(id))||scope.departmentIds.includes(Number(departmentId));
 }
+
+// Department assignments allow new employees and transfers only into their selected departments.
+export function assertDepartmentScope(user,permission,departmentId){
+ if(!hasPermission(user,permission))throw new HttpError(403,'This activity is not allowed','forbidden');
+ const scope=permissionScope(user,permission);
+ if(scope!==null&&!scope.departmentIds.includes(Number(departmentId)))throw new HttpError(403,'Choose a department within your access scope','forbidden');
+}
+export async function assertEmployeeChangeScope(db,user,path,body={}){
+ const permission='employees.manage';
+ if(permissionScope(user,permission)===null)return;
+ if(path==='/api/employees'){assertDepartmentScope(user,permission,body.departmentId);return;}
+ const match=path.match(/^\/api\/employees\/(\d+)(?:\/(?:activate|deactivate|attachments))?$/);
+ if(!match)throw new HttpError(403,'This company-wide change requires All employees scope','forbidden');
+ const id=Number(match[1]);await assertEmployeeScope(db,user,permission,id);
+ if(Object.hasOwn(body,'departmentId')){
+  const {rows:[employee]}=await db.query('SELECT department_id FROM employees WHERE id=$1',[id]);
+  if(Number(body.departmentId)!==Number(employee.department_id))assertDepartmentScope(user,permission,body.departmentId);
+ }
+}
