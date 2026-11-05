@@ -10,13 +10,14 @@ import { useToast } from '../components/Toast.jsx';
 import { profileForm, profilePayload } from './salaryProfileForm.js';
 export default function SalaryProfileDialog({ employee, onClose }) {
   const pageRefresh = usePageRefresh();
-  const canManage=usePermission('salary_profiles.manage');
+  const permission=usePermission('salary_profiles.manage'),[inScope,setInScope]=useState(false);
+  const canManage=permission&&inScope;
   const toast = useToast();
   const [form, setForm] = useState(null), [error, setError] = useState(''), [fields, setFields] = useState({}), [busy, setBusy] = useState(false), [retry, setRetry] = useState(0);
   useEffect(() => {
     const ctrl = new AbortController();
     setError('');
-    get(`/salary-profiles/${employee.id}`, {}, { signal: ctrl.signal }).then((p) => setForm(profileForm(p))).catch((e) => { if (e.name !== 'AbortError') setError(e.message); });
+    get(`/salary-profiles/${employee.id}`, {}, { signal: ctrl.signal }).then((p) => {setInScope(p.canManage!==false);setForm(profileForm(p));}).catch((e) => { if (e.name !== 'AbortError') setError(e.message); });
     return () => ctrl.abort();
   }, [employee.id, retry, pageRefresh]);
   async function submit(e) {

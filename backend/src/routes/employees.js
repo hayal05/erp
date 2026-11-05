@@ -1,4 +1,5 @@
 import {scopeSql,employeeParamScope,permissionScope,coversEmployee,assertDepartmentScope,assertEmployeeScope} from '../services/accessScope.js';
+import {hasPermission} from '../services/permissions.js';
 import {config} from '../config.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import {protectPrivilegedAccount,accountConflict} from '../services/accountSafeguards.js';
@@ -54,6 +55,7 @@ router.get('/', validate(employeeListQuery, 'query'), wrap(async (req, res) => {
   const q = req.query;
   const params = [];
   const where = [scopeSql(req.user,'employees.read','e',params)];
+  if(q.scope){if(!hasPermission(req.user,q.scope))throw new HttpError(403,'This activity is not allowed','forbidden');where.push(scopeSql(req.user,q.scope,'e',params));}
   if (q.search) {
     params.push(likePattern(q.search));
     const n = `$${params.length}`;
@@ -71,7 +73,7 @@ router.get('/', validate(employeeListQuery, 'query'), wrap(async (req, res) => {
     [...params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n FROM employees e JOIN users u ON u.id = e.user_id ${whereSql}`, params),
   ]);
-  res.json(pageResult(rows.map(r=>({...toEmployee(r),canManage:coversEmployee(req.user,'employees.manage',r.id,r.department_id)})), q, total));
+  res.json(pageResult(rows.map(r=>({...toEmployee(r),canManage:coversEmployee(req.user,'employees.manage',r.id,r.department_id),canReadSalary:coversEmployee(req.user,'payroll.read',r.id,r.department_id)})), q, total));
 }));
 
 router.get('/lookups',wrap(async(req,res)=>{

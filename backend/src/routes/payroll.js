@@ -1,3 +1,5 @@
+import {scopeSql,permissionScope,coversEmployee} from '../services/accessScope.js';
+import {assertRecordEmployeeScope} from '../services/employeeActivityScope.js';
 import {approvalTransaction} from '../services/approvalExecution.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
@@ -19,6 +21,11 @@ import { loadSettings, loadBrackets, loadOtherTaxes } from './payrollSettings.js
 import { regenerateDraft, generateDraft, parsePeriodMonth, toPeriod, toEntry } from '../services/payrollDraft.js';
 const router = Router();
 router.use(noStore, requirePermission('payroll.read'));
+router.param('id',(req,res,next,id)=>{
+ if(!['GET','HEAD'].includes(req.method)||permissionScope(req.user,'payroll.read')===null)return next();
+ const args=[id],scope=scopeSql(req.user,'payroll.read','se',args);
+ query(`SELECT 1 FROM payroll_entries pe JOIN employees se ON se.id=pe.employee_id WHERE pe.period_id=$1 AND ${scope} LIMIT 1`,args).then(r=>r.rows.length?next():next(new HttpError(404,'Payroll period not found','not_found')),next);
+});
 // Creation and generation are one operation: no empty or partly generated period survives a failure.
 router.post('/periods', requirePermission('payroll.prepare'), wrap(async (req, res) => {
   const month = parsePeriodMonth(req.body?.month);
@@ -50,19 +57,28 @@ router.post('/periods/:id/regenerate', requirePermission('payroll.prepare'), val
 router.get('/periods', validate({ ...pageSchema, month: v.string({ pattern: /^[1-9]\d{3}-(0[1-9]|1[0-2])$/, patternMessage: 'Use YYYY-MM' }) }, 'query'), wrap(async (req, res) => {
   const { page, pageSize } = req.query, offset = pageOffset(req.query);
   const month = req.query.month ? `${req.query.month}-01` : null;
-  const { rows } = await query(`SELECT id, to_char(period_month, 'YYYY-MM') AS month, status FROM payroll_periods WHERE ($3::date IS NULL OR period_month=$3::date) ORDER BY period_month DESC LIMIT $1 OFFSET $2`, [pageSize, offset, month]);
-  const { rows: [count] } = await query('SELECT count(*)::int AS total FROM payroll_periods WHERE ($1::date IS NULL OR period_month=$1::date)', [month]);
+  const args=[month],scope=scopeSql(req.user,'payroll.read','se',args);
+  const visible=permissionScope(req.user,'payroll.read')===null?'TRUE':`EXISTS(SELECT 1 FROM payroll_entries pe JOIN employees se ON se.id=pe.employee_id WHERE pe.period_id=p.id AND ${scope})`;
+  const from=`FROM payroll_periods p WHERE ($1::date IS NULL OR period_month=$1::date) AND ${visible}`;
+  const { rows } = await query(`SELECT p.id, to_char(period_month, 'YYYY-MM') AS month, status ${from} ORDER BY period_month DESC LIMIT $${args.length+1} OFFSET $${args.length+2}`, [...args,pageSize,offset]);
+  const { rows: [count] } = await query(`SELECT count(*)::int AS total ${from}`, args);
   res.json({ items: rows.map(toPeriod), total: count.total, page, pageSize });
 }));
 router.get('/periods/:id', validate(idParams, 'params'), wrap(async (req, res) => {
   const { rows: [period] } = await query(`SELECT id, to_char(period_month, 'YYYY-MM') AS month, status, approved_at, approved_by_user_id, config_snapshot, to_char(paid_on, 'YYYY-MM-DD') AS paid_on, paid_by_user_id FROM payroll_periods WHERE id = $1`, [req.params.id]);
   if (!period) throw new HttpError(404, 'Payroll period not found', 'not_found');
+  if(period.config_snapshot&&permissionScope(req.user,'payroll.read')!==null){
+   const args=[req.params.id],scope=scopeSql(req.user,'payroll.read','se',args);
+   const {rows}=await query(`SELECT pe.employee_id FROM payroll_entries pe JOIN employees se ON se.id=pe.employee_id WHERE pe.period_id=$1 AND ${scope}`,args);
+   const ids=new Set(rows.map(r=>Number(r.employee_id)));
+   period.config_snapshot={...period.config_snapshot,entries:(period.config_snapshot.entries??[]).filter(e=>ids.has(Number(e.employeeId)))};
+  }
   res.json({ ...toPeriod(period), approvedAt: period.approved_at, approvedByUserId: period.approved_by_user_id == null ? null : Number(period.approved_by_user_id), configSnapshot: period.config_snapshot, paidOn: period.paid_on, paidByUserId: period.paid_by_user_id == null ? null : Number(period.paid_by_user_id) });
 }));
 router.get('/periods/:id/export.csv', validate(idParams, 'params'), wrap(async (req, res) => {
   const result = await withTransaction(async (db) => {
     await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    return loadPayrollCsv(db, req.params.id);
+    return loadPayrollCsv(db, req.params.id,req.user);
   });
   res.set('Content-Type', 'text/csv; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="${result.filename}"`);
@@ -70,14 +86,17 @@ router.get('/periods/:id/export.csv', validate(idParams, 'params'), wrap(async (
 }));
 router.get('/periods/:id/entries', validate(idParams, 'params'), validate(pageSchema, 'query'), wrap(async (req, res) => {
   const id = req.params.id, { page, pageSize } = req.query, offset = pageOffset(req.query);
-  if (!(await query('SELECT 1 FROM payroll_periods WHERE id=$1', [id])).rowCount) throw new HttpError(404, 'Payroll period not found', 'not_found');
-  const { rows } = await query('SELECT * FROM payroll_entries WHERE period_id=$1 ORDER BY employee_id LIMIT $2 OFFSET $3', [id, pageSize, offset]);
-  const { rows: [count] } = await query('SELECT count(*)::int AS total FROM payroll_entries WHERE period_id=$1', [id]);
-  res.json({ items: rows.map(toEntry), total: count.total, page, pageSize });
+  const {rows:[period]}=await query('SELECT status FROM payroll_periods WHERE id=$1',[id]);
+  if (!period) throw new HttpError(404, 'Payroll period not found', 'not_found');
+  const args=[id],scope=scopeSql(req.user,'payroll.read','se',args),from=`FROM payroll_entries pe JOIN employees se ON se.id=pe.employee_id WHERE pe.period_id=$1 AND ${scope}`;
+  const { rows } = await query(`SELECT pe.*,se.department_id ${from} ORDER BY pe.employee_id LIMIT $${args.length+1} OFFSET $${args.length+2}`, [...args,pageSize,offset]);
+  const { rows: [count] } = await query(`SELECT count(*)::int AS total ${from}`,args);
+  res.json({ items: rows.map(toEntry),editableEntryIds:rows.filter(r=>period.status==='draft'&&coversEmployee(req.user,'payroll.prepare',r.employee_id,r.department_id)).map(r=>Number(r.id)), total: count.total, page, pageSize });
 }));
 router.get('/periods/:id/entries/:entryId', validate({ ...idParams, entryId: v.int({ required: true, min: 1 }) }, 'params'), wrap(async (req, res) => {
   const detail = await withTransaction(async (db) => {
     await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    await assertRecordEmployeeScope(db,req.user,'payroll.read','payroll_entries',req.params.entryId,{column:'period_id',id:req.params.id});
     return loadPayrollDetail(db, { periodId: req.params.id, entryId: req.params.entryId });
   });
   res.json(detail);

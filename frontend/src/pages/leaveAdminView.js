@@ -15,7 +15,7 @@ export const NO_FILTERS = { status: 'pending', employeeId: '', departmentId: '',
 export function queueRow(r) {
   const { label, tone } = statusInfo(r.status);
   return { id: r.id, employee: r.employeeName, code: r.employeeCode, type: r.leaveTypeName, dates: formatRange(r.startDate, r.endDate),
-    days: r.days, reason: r.reason ?? '', status: label, tone, remarks: r.decisionRemarks ?? '', canDecide: r.status === 'pending' };
+    days: r.days, reason: r.reason ?? '', status: label, tone, remarks: r.decisionRemarks ?? '', canDecide: r.status === 'pending' && r.canManage!==false };
 }
 
 // ---- Approve / reject dialog

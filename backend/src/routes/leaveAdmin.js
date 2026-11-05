@@ -1,3 +1,5 @@
+import {scopeSql,assertEmployeeScope,coversEmployee} from '../services/accessScope.js';
+import {assertRecordEmployeeScope} from '../services/employeeActivityScope.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
@@ -17,7 +19,7 @@ router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePer
 
 // GET /requests?page&pageSize&status&year&employeeId&departmentId -> pending first, then newest
 router.get('/requests', validate(leaveHrListQuery, 'query'), wrap(async (req, res) => {
-  const q = req.query, where = ['true'], params = [];
+  const q = req.query, params = [],where = [scopeSql(req.user,'leave.read','e',params)];
   const add = (sql, val) => { params.push(val); where.push(sql.replaceAll('?', `$${params.length}`)); };
   if (q.status) add('r.status = ?', q.status);
   if (q.employeeId) add('r.employee_id = ?', q.employeeId);
@@ -26,15 +28,15 @@ router.get('/requests', validate(leaveHrListQuery, 'query'), wrap(async (req, re
   const WHERE = where.join(' AND '), n0 = params.length;
   const FROM = 'FROM leave_requests r JOIN leave_types t ON t.id = r.leave_type_id JOIN employees e ON e.id = r.employee_id JOIN users u ON u.id = e.user_id';
   const [{ rows }, { rows: [{ n }] }] = await Promise.all([
-    query(`SELECT ${REQUEST_COLUMNS}, r.employee_id, e.employee_code, u.full_name ${FROM} WHERE ${WHERE}
+    query(`SELECT ${REQUEST_COLUMNS}, r.employee_id, e.department_id, e.employee_code, u.full_name ${FROM} WHERE ${WHERE}
             ORDER BY (r.status = 'pending') DESC, r.start_date DESC, r.id DESC LIMIT $${n0 + 1} OFFSET $${n0 + 2}`, [...params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n ${FROM} WHERE ${WHERE}`, params),
   ]);
-  res.json(pageResult(rows.map((r) => ({ ...requestView(r), employeeId: Number(r.employee_id), employeeCode: r.employee_code, employeeName: r.full_name })), q, n));
+  res.json(pageResult(rows.map((r) => ({ ...requestView(r),canManage:coversEmployee(req.user,'leave.manage',r.employee_id,r.department_id), employeeId: Number(r.employee_id), employeeCode: r.employee_code, employeeName: r.full_name })), q, n));
 }));
 
 const decide = (decision, schema) => [validate(idParams, 'params'), validate(schema), wrap(async (req, res) => {
-  res.json(await withTransaction((tx) => decideLeaveRequest(tx, { id: req.params.id, userId: req.user.id, decision, remarks: req.body.remarks ?? null })));
+  res.json(await withTransaction(async tx => {await tx.query('SELECT id FROM employees WHERE id=(SELECT employee_id FROM leave_requests WHERE id=$1) FOR SHARE',[req.params.id]);await assertRecordEmployeeScope(tx,req.user,'leave.manage','leave_requests',req.params.id);return decideLeaveRequest(tx, { id: req.params.id, userId: req.user.id, decision, remarks: req.body.remarks ?? null });}));
 })];
 router.post('/requests/:id/approve', ...decide('approved', leaveApproveBody)); // remarks optional
 router.post('/requests/:id/reject', ...decide('rejected', leaveRejectBody));   // remarks required
@@ -42,7 +44,9 @@ router.post('/requests/:id/reject', ...decide('rejected', leaveRejectBody));   /
 // GET /balances?employeeId&year -> { year, items: one per leave type }
 router.get('/balances', validate(leaveHrBalanceQuery, 'query'), wrap(async (req, res) => {
   const year = req.query.year ?? Number(companyDate().slice(0, 4));
-  res.json({ year, items: await balanceRows({ query }, req.query.employeeId, year) });
+  await assertEmployeeScope({query},req.user,'leave.read',req.query.employeeId);
+  const {rows:[employee]}=await query('SELECT department_id FROM employees WHERE id=$1',[req.query.employeeId]);
+  res.json({ year,canManage:coversEmployee(req.user,'leave.manage',req.query.employeeId,employee.department_id), items: await balanceRows({ query }, req.query.employeeId, year) });
 }));
 
 // POST /balances { employeeId, leaveTypeId, year, entitledDays?, adjustDays?, reason } -> the updated balance. Reason is mandatory and audited.

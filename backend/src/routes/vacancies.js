@@ -1,3 +1,5 @@
+import {scopeSql,departmentScopeSql} from '../services/accessScope.js';
+import {assertRecordEmployeeScope} from '../services/employeeActivityScope.js';
 import {Router} from 'express';
 import {withTransaction} from '../db/pool.js';
 import {requirePermission,requireEmployee} from '../middleware/auth.js';
@@ -69,15 +71,19 @@ router.get('/:id/applications',requirePermission('vacancies.review'),validate(id
   await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
   const {rows:[vacancy]}=await db.query(`SELECT ${vacancyColumns} ${vacancyFrom} WHERE v.id=$2`,[config.company.timezone,req.params.id]);
   if(!vacancy)throw new HttpError(404,'Vacancy not found','not_found');
+  const args=[req.params.id],scope=scopeSql(req.user,'vacancies.review','se',args);
   const {rows}=await db.query(`SELECT a.id,a.employee_id AS "employeeId",a.profile_snapshot->>'fullName' AS "fullName",
    a.profile_snapshot->>'employeeCode' AS "employeeCode",a.status,a.version,a.applied_at AS "appliedAt",a.reviewed_at AS "reviewedAt",u.username AS "reviewedBy"
-   FROM vacancy_applications a LEFT JOIN users u ON u.id=a.reviewed_by_user_id WHERE a.vacancy_id=$1 ORDER BY a.applied_at DESC,a.id DESC LIMIT $2 OFFSET $3`,[req.params.id,req.query.pageSize,pageOffset(req.query)]);
-  const {rows:[count]}=await db.query('SELECT count(*)::int total FROM vacancy_applications WHERE vacancy_id=$1',[req.params.id]);
+   FROM vacancy_applications a JOIN employees se ON se.id=a.employee_id LEFT JOIN users u ON u.id=a.reviewed_by_user_id WHERE a.vacancy_id=$1 AND ${scope} ORDER BY a.applied_at DESC,a.id DESC LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,req.query.pageSize,pageOffset(req.query)]);
+  const {rows:[count]}=await db.query(`SELECT count(*)::int total FROM vacancy_applications a JOIN employees se ON se.id=a.employee_id WHERE vacancy_id=$1 AND ${scope}`,args);
+  const departmentArgs=[vacancy.departmentId],departmentScope=departmentScopeSql(req.user,'vacancies.review','d.id',departmentArgs);
+  if(!count.total&&!(await db.query(`SELECT 1 FROM departments d WHERE d.id=$1 AND ${departmentScope}`,departmentArgs)).rows.length)throw new HttpError(404,'Vacancy not found','not_found');
   return {...pageResult(rows.map(r=>({...r,id:Number(r.id),employeeId:Number(r.employeeId)})),req.query,count.total),vacancy:vacancyOutput(vacancy)};
  });res.json(result);
 }));
 router.get('/:id/applications/:applicationId',requirePermission('vacancies.review'),validate({...idParams,applicationId:v.int({required:true,min:1})},'params'),wrap(async(req,res)=>{
  const row=await withTransaction(async db=>{
+  await assertRecordEmployeeScope(db,req.user,'vacancies.review','vacancy_applications',req.params.applicationId,{column:'vacancy_id',id:req.params.id});
   const {rows:[r]}=await db.query(`SELECT id,profile_snapshot AS profile,status,version,applied_at AS "appliedAt" FROM vacancy_applications WHERE id=$1 AND vacancy_id=$2`,[req.params.applicationId,req.params.id]);
   if(!r)throw new HttpError(404,'Application not found','not_found');return {...r,id:Number(r.id)};
  });res.json(row);

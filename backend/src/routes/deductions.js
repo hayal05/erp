@@ -1,3 +1,4 @@
+import {assertEmployeeScope,coversEmployee} from '../services/accessScope.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
@@ -36,9 +37,11 @@ const COLUMNS = { kind: 'kind', name: 'name', amountMinor: 'amount_minor', recur
 // unknown employee is 404 so the UI can tell "no items" from "wrong person".
 router.get('/', validate(deductionListQuery, 'query'), wrap(async (req, res) => {
   const { employeeId } = req.query;
+  await assertEmployeeScope({query},req.user,'deductions.read',employeeId);
   if (!(await query('SELECT 1 FROM employees WHERE id = $1', [employeeId])).rowCount) throw new HttpError(404, 'Employee not found', 'not_found');
   const { rows } = await query('SELECT * FROM deduction_items WHERE employee_id = $1 ORDER BY id', [employeeId]);
-  res.json({ items: rows.map(toDeduction) });
+  const {rows:[employee]}=await query('SELECT department_id FROM employees WHERE id=$1',[employeeId]);
+  res.json({canManage:coversEmployee(req.user,'deductions.manage',employeeId,employee.department_id),items: rows.map(toDeduction) });
 }));
 
 // POST / { employeeId, kind, name, amountMinor, recurring?, enabled? } -> 201 the new item. Unknown employee: 400 on employeeId.

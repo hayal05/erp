@@ -1,3 +1,4 @@
+import {hasAllEmployeeScope} from '../api/accessScope.js';
 import {usePageRefresh} from '../api/pageRefresh.jsx';
 import {useAuth} from '../api/auth.jsx';
 import {allowed} from '../api/workspaces.js';
@@ -42,7 +43,7 @@ export default function Payroll() {
         get(`/payroll/periods/${id}`, {}, { signal: ctrl.signal }),
         get(`/payroll/periods/${id}/entries`, { page, pageSize: PAGE_SIZE }, { signal: ctrl.signal }),
       ]);
-      return { period, entries: result.items, total: result.total };
+      return { period, entries: result.items.map(e=>({...e,canEdit:result.editableEntryIds?.includes(e.id)??true})), total: result.total };
     }
     load().then((data) => { if (!ctrl.signal.aborted) setState({ ...data, loading: false, error: '' }); })
       .catch((e) => { if (!ctrl.signal.aborted) setState({ loading: false, error: e.message, period: null, entries: [], total: 0 }); });
@@ -50,7 +51,7 @@ export default function Payroll() {
   }, [selected, requestedMonth, page, reload, pageRefresh]);
   const editable = canEditSalary(state.period) && !state.loading && allowed(user,'payroll.prepare');
   const columns = SALARY_COLUMNS.map((col, index) => ({ ...col, align: index > 1 ? 'num' : undefined, className: index < 2 ? 'nowrap' : undefined,
-    render: index === 1 ? (entry) => <button type="button" className="salary-name" onClick={() => setDetails({ periodId: state.period.id, entry })} aria-label={`View salary details for ${entry.employeeName}`}>{entry.employeeName}</button> : index === 0 ? undefined : (entry) => col.editable && editable ?
+    render: index === 1 ? (entry) => <button type="button" className="salary-name" onClick={() => setDetails({ periodId: state.period.id, entry })} aria-label={`View salary details for ${entry.employeeName}`}>{entry.employeeName}</button> : index === 0 ? undefined : (entry) => col.editable && editable && entry.canEdit!==false ?
       <button type="button" className="salary-cell" onClick={() => setEditing({ entry, field: col.key, period: state.period })} aria-label={`Edit ${col.header.toLowerCase()} for ${entry.employeeName}`}>
         {formatMoney(entry[col.key])}<Pencil size={12} aria-hidden="true" />
       </button> : <span className={col.key === 'netMinor' && entry.netMinor < 0 ? 'salary-negative' : undefined}>{formatMoney(entry[col.key])}</span>,
@@ -58,7 +59,7 @@ export default function Payroll() {
   const refresh = () => setReload((n) => n + 1);
   const shownMonth = validMonth(requestedMonth) ? requestedMonth : state.period?.month ?? localDate().slice(0,7);
   const proposedAction = state.error ? null : workflowAction(state.period, state.loading, state.total);
-  const action = allowed(user,({generate:'payroll.prepare',approve:'payroll.approve',pay:'payroll.pay'})[proposedAction]) ? proposedAction : null;
+  const action = (proposedAction!=='generate'||hasAllEmployeeScope(user,'payroll.prepare'))&&allowed(user,({generate:'payroll.prepare',approve:'payroll.approve',pay:'payroll.pay'})[proposedAction]) ? proposedAction : null;
   const chooseMonth = (e) => { if (validMonth(e.target.value)) { setPage(1); setParams({ month: e.target.value }); } };
   const actionLabel = { generate: 'Generate draft', approve: 'Approve payroll', pay: 'Mark paid' };
   const openWorkflow = () => setWorkflow({ action, month: shownMonth, period: state.period, total: state.total });
@@ -71,7 +72,7 @@ export default function Payroll() {
         {state.period?.status === 'paid' && <span className="muted payroll-paid" role="status">Paid on {state.period.paidOn}</span>}
       </div>
       <div className="payroll-actions">{state.period && !state.loading && !state.error && <PayrollExportButton key={state.period.id} period={state.period} disabled={!!workflow} />}
-        {editable && <Button onClick={() => setWorkflow({ action: 'regenerate', month: state.period.month, period: state.period, total: state.total })} disabled={!!workflow}>Regenerate</Button>}
+        {editable && hasAllEmployeeScope(user,'payroll.prepare') && <Button onClick={() => setWorkflow({ action: 'regenerate', month: state.period.month, period: state.period, total: state.total })} disabled={!!workflow}>Regenerate</Button>}
         {action && <Button variant="primary" onClick={openWorkflow} disabled={!!workflow}>{actionLabel[action]}</Button>}
       </div>
     </div>

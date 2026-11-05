@@ -1,3 +1,4 @@
+import {scopeSql,assertDepartmentReadScope} from '../services/accessScope.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
@@ -47,7 +48,9 @@ departmentPositions.get('/', validate(idParams, 'params'), validate(positionList
     query(`${SELECT} ${where} ORDER BY lower(p.name), p.id LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [...params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n FROM positions p ${where}`, params),
   ]);
-  res.json(pageResult(rows.map(toPosition), q, total));
+  const args=[id],scope=scopeSql(req.user,'organization.read','e',args);
+  const {rows:counts}=await query(`SELECT position_id,count(*)::int n FROM employees e WHERE department_id=$1 AND ${scope} GROUP BY position_id`,args);
+  res.json(pageResult(rows.map(r=>toPosition({...r,employee_count:counts.find(c=>Number(c.position_id)===Number(r.id))?.n??0})), q, total));
 }));
 
 departmentPositions.post('/', validate(idParams, 'params'), positionBody, wrap(async (req, res) => {

@@ -21,6 +21,6 @@ test('export reads every stored entry without LIMIT or live settings and rejects
  const db={query:async(sql,params)=>{calls.push({sql,params});return {rows:sql.includes('FROM payroll_periods')?[{month:'2026-10'}]:rows};}};
  const result=await loadPayrollCsv(db,1);
  assert.equal(result.filename,'payroll-2026-10.csv');assert.equal(result.csv.split('\r\n').length,54);
- assert.ok(!calls[1].sql.includes('LIMIT'));assert.ok(calls[1].sql.includes('ORDER BY employee_id'));
+ assert.ok(!calls[1].sql.includes('LIMIT'));assert.match(calls[1].sql,/ORDER BY (?:pe\.)?employee_id/);
  await assert.rejects(loadPayrollCsv({query:async()=>({rows:[]})},999),{status:404});
 });

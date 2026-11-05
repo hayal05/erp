@@ -40,7 +40,7 @@ function CostDetails({ period, kind, onClose }) {
   const [state, setState] = useState({ items: [], total: 0, loading: true, error: '' });
   useEffect(() => {
     const ctrl = new AbortController(); setState(s => ({ ...s, loading: true, error: '' }));
-    get(`/payroll/periods/${period.id}/entries`, { page, pageSize: DETAIL_SIZE }, { signal: ctrl.signal })
+    get(`/payroll-costs/${period.id}/entries`, { page, pageSize: DETAIL_SIZE }, { signal: ctrl.signal })
       .then(r => { if (!ctrl.signal.aborted) setState({ ...r, loading: false, error: '' }); })
       .catch(e => { if (!ctrl.signal.aborted) setState({ items: [], total: 0, loading: false, error: e.message }); });
     return () => ctrl.abort();

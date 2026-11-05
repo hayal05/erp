@@ -34,6 +34,7 @@ export const employeeCreate = { ...employeeFields(true), password: v.string({ re
 // employee, false or omitted keeps the current salary. Never accepted on create (a position always applies there).
 export const employeeUpdate = { ...employeeFields(false), applyPositionSalary: v.boolean() };
 export const employeeListQuery = {
+  scope:v.enum({values:['leave.read','deductions.read','payroll.read']}),
   ...pageSchema,
   search: v.string({ max: 100 }),
   status: v.enum({ values: ['active', 'inactive'] }),

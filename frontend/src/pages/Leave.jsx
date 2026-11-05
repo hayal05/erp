@@ -22,7 +22,7 @@ export default function Leave() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    Promise.all([get('/departments', { pageSize: 100 }, { signal: ctrl.signal }), get('/employees', { pageSize: 100 }, { signal: ctrl.signal })])
+    Promise.all([get('/departments', { pageSize: 100 }, { signal: ctrl.signal }), get('/employees', { pageSize: 100,scope:'leave.read' }, { signal: ctrl.signal })])
       .then(([d, e]) => setLookups({ departments: d.items, employees: e.items }))
       .catch((e) => { if (e.name !== 'AbortError') toast.error(`Could not load the filter lists: ${e.message}`); });
     return () => ctrl.abort();
@@ -79,7 +79,7 @@ function Requests({ lookups }) {
         {r.remarks && <details className="leave-text"><summary>Decision note</summary><p>{r.remarks}</p></details>}
       </div>
     ) },
-    { key: 'act', header: <span className="sr-only">Decide</span>, className: 'nowrap', render: (r) => canManage && r.canDecide && (
+    { key: 'act', header: <span className="sr-only">Decide</span>, className: 'nowrap', render: (r) => canManage && r.canManage!==false && r.canDecide && (
       <span className="row">
         <Button size="sm" variant="primary" onClick={() => setDeciding({ request: r, decision: 'approve' })} aria-label={`Approve leave of ${r.employee}, ${r.dates}`}>Approve</Button>
         <Button size="sm" onClick={() => setDeciding({ request: r, decision: 'reject' })} aria-label={`Reject leave of ${r.employee}, ${r.dates}`}>Reject</Button>
@@ -139,7 +139,7 @@ function Entitlements({ employees }) {
     { key: 'used', header: 'Used', align: 'num' },
     { key: 'pending', header: 'Pending', align: 'num' },
     { key: 'remaining', header: 'Left', align: 'num', render: (b) => (b.hasBalance ? b.remaining : 'No limit') },
-    { key: 'act', header: <span className="sr-only">Change</span>, render: (b) => canManage && b.hasBalance && (
+    { key: 'act', header: <span className="sr-only">Change</span>, render: (b) => canManage && data.canManage!==false && b.hasBalance && (
       <Button size="sm" onClick={() => setEditing(b)} aria-label={`Change ${b.name.toLowerCase()} balance of ${employee?.fullName}`}>Change</Button>
     ) },
   ];

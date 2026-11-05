@@ -1,3 +1,4 @@
+import {scopeSql,assertEmployeeScope} from '../services/accessScope.js';
 import { Router } from 'express';
 import { withTransaction } from '../db/pool.js';
 import { requirePermission } from '../middleware/auth.js';
@@ -17,19 +18,20 @@ router.get('/employees',validate({...pageSchema,search:v.string({max:120})},'que
  const result=await withTransaction(async db=>{
   await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
   const search=likePattern(req.query.search||'');
+  const args=[search],scope=scopeSql(req.user,'access.read','e',args);
   const from=`FROM employees e JOIN users u ON u.id=e.user_id LEFT JOIN departments d ON d.id=e.department_id
-   LEFT JOIN positions p ON p.id=e.position_id WHERE u.role='employee' AND (u.full_name ILIKE $1 OR u.username ILIKE $1 OR u.email ILIKE $1 OR e.employee_code ILIKE $1)`;
+   LEFT JOIN positions p ON p.id=e.position_id WHERE ${scope} AND u.role='employee' AND (u.full_name ILIKE $1 OR u.username ILIKE $1 OR u.email ILIKE $1 OR e.employee_code ILIKE $1)`;
   const {rows}=await db.query(`SELECT e.id,e.employee_code,u.full_name,u.username,u.email,e.status,u.is_active,d.name AS department,COALESCE(p.name,e.job_title) AS position,
    ARRAY(SELECT access_role FROM access_grants g WHERE g.user_id=u.id AND g.revoked_at IS NULL ORDER BY access_role) AS roles, ARRAY(SELECT r.name FROM custom_access_grants cg JOIN custom_access_roles r ON r.id=cg.role_id WHERE cg.user_id=u.id AND cg.revoked_at IS NULL ORDER BY r.name) AS custom_roles
-   ${from} ORDER BY lower(u.full_name),e.id LIMIT $2 OFFSET $3`,[search,req.query.pageSize,pageOffset(req.query)]);
-  const {rows:[count]}=await db.query(`SELECT count(*)::int AS total ${from}`,[search]);
+   ${from} ORDER BY lower(u.full_name),e.id LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,req.query.pageSize,pageOffset(req.query)]);
+  const {rows:[count]}=await db.query(`SELECT count(*)::int AS total ${from}`,args);
   return pageResult(rows.map(r=>({id:Number(r.id),employeeCode:r.employee_code,fullName:r.full_name,username:r.username,email:r.email,status:r.status,
    active:r.status==='active'&&r.is_active,department:r.department,position:r.position,accessRoles:r.roles,customRoles:r.custom_roles})),req.query,count.total);
  });res.json(result);
 }));
 router.get('/employees/:id/history',validate(idParams,'params'),validate(pageSchema,'query'),wrap(async(req,res)=>{
  const result=await withTransaction(async db=>{
-  await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');const e=await employee(db,req.params.id);
+  await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');await assertEmployeeScope(db,req.user,'access.read',req.params.id);const e=await employee(db,req.params.id);
   const {rows}=await db.query(`SELECT g.id,g.access_role,g.granted_at,g.revoked_at,g.revoke_reason,
    a.full_name AS granted_by,r.full_name AS revoked_by FROM access_grants g
    LEFT JOIN users a ON a.id=g.granted_by_user_id LEFT JOIN users r ON r.id=g.revoked_by_user_id

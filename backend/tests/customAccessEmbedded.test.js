@@ -53,8 +53,8 @@ test('department grants are effective in existing sessions and scope lists, coun
  assert.equal((await leader.patch(`/api/attendance-records/${recordA}`).send({status:'absent',reason:'Follow up'})).status,403);
 });
 test('scoped activities reject company-wide additions and missing selections; definitions use optimistic versions',async()=>{
- assert.equal((await admin.put(`/api/custom-access/roles/${role.id}`).send({name:role.name,version:role.version,activities:['payroll.read']})).status,400);
- const payroll=await newRole('Payroll Viewer',['payroll.read']);
+ assert.equal((await admin.put(`/api/custom-access/roles/${role.id}`).send({name:role.name,version:role.version,activities:['payroll.pay']})).status,400);
+ const payroll=await newRole('Company Payroll Payment',['payroll.pay']);
  assert.equal((await admin.post(`/api/custom-access/employees/${reviewerId}/custom-grants`).send({roleId:payroll.id,scopeType:'departments',departmentIds:[depA]})).status,400);
  assert.equal((await admin.post(`/api/custom-access/employees/${reviewerId}/custom-grants`).send({roleId:role.id,scopeType:'employees',employeeIds:[]})).status,400);
  const r=await admin.put(`/api/custom-access/roles/${role.id}`).send({name:role.name,version:role.version,activities:[...role.activities,'attendance.manage','changes.hr.approve']});assert.equal(r.status,200,JSON.stringify(r.body));role=r.body;
@@ -149,4 +149,122 @@ test('access scope options include every department, including empty departments
  for(const d of inserted.rows)assert.ok(result.body.departments.some(option=>option.id===Number(d.id)));
  assert.equal((await leader.get('/api/custom-access/roles')).status,403);
  await q('DELETE FROM departments WHERE id=ANY($1::bigint[])',[inserted.rows.map(d=>d.id)]);
+});
+
+let flexibleRole,leaveA,leaveB,annual,flexPeriod,entryA,entryB,deductionA,deductionB,applicationA,applicationB,vacancyId;
+const scopeStatus=(res,status=200)=>assert.equal(res.status,status,JSON.stringify(res.body));
+async function scopedApprove(response){scopeStatus(response,202);const id=response.body.requestId;
+ const inbox=await reviewer.get('/api/change-requests');scopeStatus(inbox);assert.ok(inbox.body.items.some(r=>r.id===id&&r.canReview),JSON.stringify(inbox.body));
+ scopeStatus(await outsider.get(`/api/change-requests/${id}`),404);
+ const result=await reviewer.post(`/api/change-requests/${id}/approve`).send({});scopeStatus(result);return result.body.applied?.body;
+}
+test('employee activities support department assignment with dependencies in existing sessions',async()=>{
+ flexibleRole=await newRole('Flexible Department Manager',['salary_profiles.manage','leave.manage','deductions.manage','payroll.prepare','company_costs.read','dashboard.read','access.read','vacancies.review','changes.hr.approve','changes.finance.approve']);
+ await assign(leaderId,flexibleRole.id,'departments',[depA]);await assign(reviewerId,flexibleRole.id,'departments',[depA]);await assign(outsideManagerId,flexibleRole.id,'departments',[depB]);
+ const user=(await leader.get('/api/auth/me')).body.user;for(const p of ['payroll.read','employees.read','payroll_settings.read','organization.read','audit.finance'])assert.ok(user.permissions.includes(p));
+ const deps=await leader.get('/api/departments');scopeStatus(deps);assert.deepEqual(deps.body.items.map(d=>d.id),[depA]);
+ scopeStatus(await leader.get(`/api/departments/${depB}`),404);scopeStatus(await leader.get(`/api/departments/${depB}/positions`),404);
+ const directory=await leader.get('/api/access-management/employees');scopeStatus(directory);assert.ok(directory.body.items.every(e=>e.department==='A'));
+ scopeStatus(await leader.get(`/api/access-management/employees/${outside.id}/history`),404);
+ scopeStatus(await leader.get('/api/payroll-settings/calculation'));scopeStatus(await leader.patch('/api/payroll-settings/calculation').send({companyPensionRate:12}),403);
+});
+test('leave requests, balances and immediate decisions respect scope; entitlement changes keep independent approval',async()=>{
+ annual=Number((await q("SELECT id FROM leave_types WHERE code='annual'")).rows[0].id);
+ for(const [emp,which]of[[inside,'a'],[outside,'b']]){const id=Number((await q("INSERT INTO leave_requests(employee_id,leave_type_id,start_date,end_date,days,reason) VALUES($1,$2,'2026-11-10','2026-11-10',1,'Scope test') RETURNING id",[emp.id,annual])).rows[0].id);if(which==='a')leaveA=id;else leaveB=id;}
+ const list=await leader.get('/api/leave-admin/requests');scopeStatus(list);assert.ok(list.body.items.some(r=>r.id===leaveA));assert.ok(!list.body.items.some(r=>r.id===leaveB));
+ scopeStatus(await leader.get(`/api/leave-admin/balances?employeeId=${outside.id}`),404);
+ scopeStatus(await leader.post(`/api/leave-admin/requests/${leaveB}/approve`).send({}),404);
+ scopeStatus(await leader.post(`/api/leave-admin/requests/${leaveA}/approve`).send({}),200);
+ scopeStatus(await leader.post('/api/leave-admin/balances').send({employeeId:outside.id,leaveTypeId:annual,year:2026,entitledDays:25,reason:'Outside request'}),404);
+ await scopedApprove(await leader.post('/api/leave-admin/balances').send({employeeId:inside.id,leaveTypeId:annual,year:2026,entitledDays:25,reason:'Department entitlement'}));
+ assert.equal((await leader.get(`/api/leave-admin/balances?employeeId=${inside.id}&year=2026`)).body.items.find(b=>b.leaveTypeId===annual).entitled,25);
+ const history=await leader.get('/api/audit-history?area=leave');scopeStatus(history);assert.ok(history.body.items.some(r=>r.type==='leave_request'&&Number(r.recordId)===leaveA));
+ scopeStatus(await leader.get(`/api/audit-history/leave_request/${leaveB}`),404);
+});
+test('salary profiles and deductions enforce department scope on reads, mutations and approval queues',async()=>{
+ await q('INSERT INTO salary_profiles(employee_id,basic_minor,allowance_minor) SELECT id,100000,10000 FROM employees ON CONFLICT(employee_id) DO NOTHING');
+ const values={basicMinor:200000,allowanceMinor:10000,allowanceTaxable:true,allowancePensionable:false,pensionApplies:true};
+ scopeStatus(await leader.get(`/api/salary-profiles/${outside.id}`),404);scopeStatus(await leader.put(`/api/salary-profiles/${outside.id}`).send(values),404);
+ await scopedApprove(await leader.put(`/api/salary-profiles/${inside.id}`).send(values));
+ assert.equal((await leader.get(`/api/salary-profiles/${inside.id}`)).body.basicMinor,200000);
+ const item={employeeId:inside.id,kind:'loan',name:'Scoped deduction',amountMinor:1000,recurring:true,enabled:true};
+ scopeStatus(await leader.post('/api/deductions').send({...item,employeeId:outside.id}),404);
+ deductionA=(await scopedApprove(await leader.post('/api/deductions').send(item))).id;
+ const outsideItem=await admin.post('/api/deductions').send({...item,employeeId:outside.id,name:'Outside deduction'});scopeStatus(outsideItem,201);deductionB=outsideItem.body.id;
+ scopeStatus(await leader.get(`/api/deductions?employeeId=${outside.id}`),404);
+ scopeStatus(await leader.patch(`/api/deductions/${deductionB}`).send({amountMinor:999}),404);scopeStatus(await leader.delete(`/api/deductions/${deductionB}`),404);
+ await scopedApprove(await leader.patch(`/api/deductions/${deductionA}`).send({amountMinor:2000}));
+ const audit=await leader.get('/api/audit-history?area=payroll');scopeStatus(audit);assert.ok(audit.body.items.some(r=>r.type==='deduction_item'&&Number(r.recordId)===deductionA));assert.ok(!audit.body.items.some(r=>r.type==='deduction_item'&&Number(r.recordId)===deductionB));
+});
+test('payroll entries, snapshots and exports are scoped; department managers edit entries but cannot regenerate company payroll',async()=>{
+ await q('DELETE FROM income_tax_brackets');await q('INSERT INTO income_tax_brackets(from_minor,rate,fixed_deduction_minor) VALUES(0,10,0)');
+ await q('UPDATE payroll_settings SET absence_deduction_enabled=false,unpaid_leave_deduction_enabled=false');
+ const month=companyDate().slice(0,7);
+ scopeStatus(await leader.post('/api/payroll/periods').send({month}),403);
+ const draft=await admin.post('/api/payroll/periods').send({month});scopeStatus(draft,201);flexPeriod=draft.body.id;
+ const all=await admin.get(`/api/payroll/periods/${flexPeriod}/entries`);scopeStatus(all);entryA=all.body.items.find(e=>e.employeeId===inside.id).id;entryB=all.body.items.find(e=>e.employeeId===outside.id).id;
+ const list=await leader.get(`/api/payroll/periods/${flexPeriod}/entries?pageSize=1`);scopeStatus(list);assert.equal(list.body.total,(await q('SELECT count(*)::int n FROM employees WHERE department_id=$1',[depA])).rows[0].n);
+ scopeStatus(await leader.get(`/api/payroll/periods/${flexPeriod}/entries/${entryB}`),404);
+ scopeStatus(await leader.patch(`/api/payroll/periods/${flexPeriod}/entries/${entryB}`).send({basicMinor:222222}),404);
+ scopeStatus(await leader.post(`/api/payroll/periods/${flexPeriod}/regenerate`).send({}),403);
+ await scopedApprove(await leader.patch(`/api/payroll/periods/${flexPeriod}/entries/${entryA}`).send({basicMinor:222222}));
+ scopeStatus(await admin.post(`/api/payroll/periods/${flexPeriod}/approve`).send({}));
+ const period=await leader.get(`/api/payroll/periods/${flexPeriod}`);scopeStatus(period);assert.ok(period.body.configSnapshot.entries.some(e=>e.employeeId===inside.id));assert.ok(!period.body.configSnapshot.entries.some(e=>e.employeeId===outside.id));
+ const csv=await leader.get(`/api/payroll/periods/${flexPeriod}/export.csv`);scopeStatus(csv);assert.ok(csv.text.includes('inside.employee'));assert.ok(!csv.text.includes('outside.employee'));
+ scopeStatus(await admin.post(`/api/payroll/periods/${flexPeriod}/pay`).send({paidOn:companyDate()}));
+ const costs=await leader.get('/api/payroll-costs');scopeStatus(costs);const visible=(await leader.get(`/api/payroll/periods/${flexPeriod}/entries`)).body.items;
+ const cost=costs.body.items.find(c=>c.id===flexPeriod);assert.equal(cost.employeeCount,visible.length);assert.equal(cost.salaryPaidMinor,visible.reduce((sum,e)=>sum+e.netMinor,0));
+ const detail=await leader.get(`/api/payroll-costs/${flexPeriod}/entries`);scopeStatus(detail);assert.ok(!detail.body.items.some(e=>e.employeeId===outside.id));
+ const audit=await leader.get('/api/audit-history?area=payroll');scopeStatus(audit);assert.ok(!audit.body.items.some(r=>r.type==='payroll_period'||r.type==='payroll_entry'&&Number(r.recordId)===entryB));
+ scopeStatus(await leader.get(`/api/audit-history/payroll_period/${flexPeriod}`),403);
+});
+test('dashboard aggregates and recent rows use dashboard scope rather than broader employee viewing rights',async()=>{
+ const dashboard=await leader.get('/api/dashboard');scopeStatus(dashboard);
+ assert.equal(dashboard.body.stats.totalEmployees,(await q('SELECT count(*)::int n FROM employees WHERE department_id=$1',[depA])).rows[0].n);
+ assert.ok(!JSON.stringify(dashboard.body).includes('outside.employee'));assert.ok(!JSON.stringify(dashboard.body).includes('other.manager'));
+ const payroll=(await leader.get(`/api/payroll/periods/${flexPeriod}/entries`)).body.items;
+ assert.equal(dashboard.body.payroll.totalMinor,payroll.reduce((sum,e)=>sum+e.netMinor,0));
+ const periods=await outsider.get('/api/payroll/periods');scopeStatus(periods);assert.ok(periods.body.items.some(p=>p.id===flexPeriod));
+});
+test('vacancy application profiles, counts, reviews and audit stay inside applicant employee scope',async()=>{
+ const position=Number((await q("INSERT INTO positions(department_id,name,basic_minor,allowance_minor) VALUES($1,'Scoped position',100000,0) RETURNING id",[depA])).rows[0].id);
+ const job=await admin.post('/api/vacancies').send({title:'Scope vacancy',description:'',departmentId:depA,positionId:position,closingOn:'2099-12-31',status:'open'});scopeStatus(job,201);vacancyId=job.body.id;
+ const a=await inside.client.post(`/api/vacancies/${vacancyId}/apply`).send({}),b=await outside.client.post(`/api/vacancies/${vacancyId}/apply`).send({});scopeStatus(a,201);scopeStatus(b,201);applicationA=a.body.id;applicationB=b.body.id;
+ const jobs=await leader.get('/api/vacancies?view=manage');scopeStatus(jobs);assert.equal(jobs.body.items.find(v=>v.id===vacancyId).applicationCount,1);
+ const list=await leader.get(`/api/vacancies/${vacancyId}/applications`);scopeStatus(list);assert.equal(list.body.total,1);assert.equal(list.body.items[0].id,applicationA);
+ scopeStatus(await leader.get(`/api/vacancies/${vacancyId}/applications/${applicationB}`),404);
+ scopeStatus(await leader.patch(`/api/vacancies/${vacancyId}/applications/${applicationB}`).send({status:'shortlisted',version:1}),404);
+ await scopedApprove(await leader.patch(`/api/vacancies/${vacancyId}/applications/${applicationA}`).send({status:'shortlisted',version:1}));
+ scopeStatus(await leader.get(`/api/audit-history/vacancy_application/${applicationB}`),404);
+ const audit=await leader.get('/api/audit-history?area=vacancies');scopeStatus(audit);assert.ok(!audit.body.items.some(r=>Number(r.recordId)===applicationB));
+});
+test('broader reads do not widen writes and employee transfers immediately remove scoped access',async()=>{
+ const readRole=await newRole('Broader Employee Reads',['leave.read','payroll.read','deductions.read']);await assign(leaderId,readRole.id,'all');
+ const leave=await leader.get('/api/leave-admin/requests');scopeStatus(leave);assert.equal(leave.body.items.find(r=>r.id===leaveB).canManage,false);
+ scopeStatus(await leader.post(`/api/leave-admin/requests/${leaveB}/reject`).send({remarks:'Not authorized'}),404);
+ const salary=await leader.get(`/api/salary-profiles/${outside.id}`);scopeStatus(salary);assert.equal(salary.body.canManage,false);
+ const deductions=await leader.get(`/api/deductions?employeeId=${outside.id}`);scopeStatus(deductions);assert.equal(deductions.body.canManage,false);
+ scopeStatus(await leader.delete(`/api/deductions/${deductionB}`),404);
+ // A still-pending scope-bound change cannot be applied after its employee transfers out.
+ const proposal=await leader.patch(`/api/deductions/${deductionA}`).send({amountMinor:3000});scopeStatus(proposal,202);
+ await q('UPDATE employees SET department_id=$1 WHERE id=$2',[depB,inside.id]);
+ scopeStatus(await reviewer.get(`/api/change-requests/${proposal.body.requestId}`),404);
+ const approved=await admin.post(`/api/change-requests/${proposal.body.requestId}/approve`).send({});assert.ok([404,409].includes(approved.status),JSON.stringify(approved.body));
+ await q('UPDATE employees SET department_id=$1 WHERE id=$2',[depA,inside.id]);
+});
+
+test('individual employee scope works for the expanded activities without becoming department-wide',async()=>{
+ const one=await person('single.employee.manager',depB);await assign(one.id,flexibleRole.id,'employees',[inside.id]);
+ const client=one.client;
+ const people=await client.get('/api/employees');scopeStatus(people);assert.deepEqual(people.body.items.map(e=>e.id),[inside.id]);
+ const dashboard=await client.get('/api/dashboard');scopeStatus(dashboard);assert.equal(dashboard.body.stats.totalEmployees,1);
+ scopeStatus(await client.get(`/api/salary-profiles/${outside.id}`),404);scopeStatus(await client.get(`/api/salary-profiles/${inside.id}`));
+ scopeStatus(await client.get(`/api/leave-admin/balances?employeeId=${leaderId}`),404);
+ const entries=await client.get(`/api/payroll/periods/${flexPeriod}/entries`);scopeStatus(entries);assert.deepEqual(entries.body.items.map(e=>e.employeeId),[inside.id]);
+ const costs=await client.get('/api/payroll-costs');scopeStatus(costs);assert.equal(costs.body.items.find(p=>p.id===flexPeriod).employeeCount,1);
+ const departments=await client.get('/api/departments');scopeStatus(departments);assert.deepEqual(departments.body.items.map(d=>d.id),[depA]);assert.equal(departments.body.items[0].employeeCount,1);
+ const shifts=await client.get('/api/shifts');scopeStatus(shifts);assert.equal(shifts.body.items.find(s=>s.id===Number(shift)).employeeCount,1);
+ const grants=await admin.get(`/api/custom-access/employees/${one.id}/custom-grants`);scopeStatus(grants);
+ scopeStatus(await admin.post(`/api/custom-access/employees/${one.id}/custom-grants/${grants.body.items[0].id}/revoke`).send({reason:'End assignment'}),204);
+ scopeStatus(await client.get(`/api/salary-profiles/${inside.id}`),403);
 });

@@ -10,7 +10,7 @@ import {pageSchema,pageOffset,pageResult} from '../services/sql.js';
 import {idParams} from '../services/hrSchemas.js';
 import {ACTIVITY_GROUPS,ACTIVITY_IDS,SCOPED_ACTIVITIES,expandActivities} from '../../../shared/accessActivities.mjs';
 const router=Router();router.use(noStore,requirePermission('access.manage'));
-const roleDto=r=>({...r,id:Number(r.id)});
+const roleDto=r=>({...r,permissions:expandActivities(r.activities),id:Number(r.id)});
 function roleBody(body){
  const name=typeof body?.name==='string'?body.name.trim():'';
  if(!name||name.length>80||['admin','general admin','master admin','hr','finance'].includes(name.toLowerCase()))throw validationError({name:'Choose a unique custom role name (1–80 characters)'});
@@ -45,7 +45,7 @@ router.post('/employees/:id/custom-grants',validate(idParams,'params'),validate(
  if(b.scopeType==='all'&&(departmentIds.length||employeeIds.length)||b.scopeType==='departments'&&(!departmentIds.length||employeeIds.length)||b.scopeType==='employees'&&(!employeeIds.length||departmentIds.length))throw validationError({scopeType:'Select records for the chosen scope only'});
  const saved=await withTransaction(async db=>{
   const {rows:[role]}=await db.query('SELECT * FROM custom_access_roles WHERE id=$1 FOR UPDATE',[b.roleId]);if(!role)throw new HttpError(404,'Role not found','not_found');
-  if(b.scopeType!=='all'&&!limitedCompatible(role.permissions))throw validationError({scopeType:'This role includes company-wide activities. Choose All employees.'});
+  if(b.scopeType!=='all'&&!limitedCompatible(expandActivities(role.activities)))throw validationError({scopeType:'This role includes company-wide activities. Choose All employees.'});
   const {rows:[e]}=await db.query("SELECT e.user_id,e.status,u.is_active,u.role FROM employees e JOIN users u ON u.id=e.user_id WHERE e.id=$1 FOR UPDATE OF e,u",[req.params.id]);
   if(!e||e.role!=='employee')throw new HttpError(404,'Registered employee not found','not_found');if(e.status!=='active'||!e.is_active)throw new HttpError(409,'Activate the employee before granting access','inactive_employee');
   for(const [table,ids] of [['departments',departmentIds],['employees',employeeIds]])if(ids.length&&(await db.query(`SELECT id FROM ${table} WHERE id=ANY($1::bigint[])`,[ids])).rows.length!==ids.length)throw validationError({scopeType:'One or more selected records no longer exist'});

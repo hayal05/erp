@@ -22,14 +22,15 @@ function useDebounced(value, ms = 300) {
 // Other Deductions tab (spec 16): advances, loans, penalties and other amounts taken from one employee's pay.
 // Items belong to an employee, so the tab starts with a picker (kept in ?employee= so a refresh stays on the same person).
 // One-time items apply to the next payroll only; once a payroll has used one it is history and the server refuses edits (409).
-export default function DeductionsTab({ readOnly = false }) {
+export default function DeductionsTab({ readOnly: permissionReadOnly = false }) {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const employeeId = employeeFromParam(params.get('employee'));
   const [find, setFind] = useState('');
   const search = useDebounced(find.trim());
-  const people = useResource('/employees', { search, pageSize: 100 });
+  const people = useResource('/employees', { search, pageSize: 100,scope:'deductions.read' });
   const list = useResource(employeeId ? '/deductions' : null, { employeeId });
+  const readOnly=permissionReadOnly||list.data?.canManage===false;
   const [dialog, setDialog] = useState(null);     // null | { item: null | {…} }
   const [removing, setRemoving] = useState(null); // null | { item, busy }
   const [toggling, setToggling] = useState(null); // id being paused/resumed
