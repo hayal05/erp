@@ -18,7 +18,7 @@ function roleBody(body){
  return {name,activities:[...new Set(a)].sort(),permissions:expandActivities(a)};
 }
 const limitedCompatible=permissions=>permissions.every(p=>SCOPED_ACTIVITIES.includes(p));
-router.get('/roles',wrap(async(req,res)=>{const {rows}=await query('SELECT id,name,activities,permissions,version FROM custom_access_roles ORDER BY lower(name),id');res.json({items:rows.map(roleDto),groups:ACTIVITY_GROUPS,scopedActivities:SCOPED_ACTIVITIES});}));
+router.get('/roles',wrap(async(req,res)=>{const {rows}=await query('SELECT id,name,activities,permissions,version FROM custom_access_roles ORDER BY lower(name),id');const {rows:departments}=await query('SELECT id,name FROM departments ORDER BY lower(name),id');res.json({items:rows.map(roleDto),departments:departments.map(d=>({...d,id:Number(d.id)})),groups:ACTIVITY_GROUPS,scopedActivities:SCOPED_ACTIVITIES});}));
 router.post('/roles',wrap(async(req,res)=>{
  const b=roleBody(req.body);
  const saved=await withTransaction(async db=>{const {rows:[r]}=await db.query('INSERT INTO custom_access_roles(name,activities,permissions,created_by,updated_by) VALUES($1,$2,$3,$4,$4) RETURNING id,name,activities,permissions,version',[b.name,b.activities,b.permissions,req.user.id]);await audit(db,{actorId:req.user.id,action:'access_role.create',entityType:'custom_access_role',entityId:r.id,details:b});return roleDto(r);}).catch(e=>{if(e.code==='23505')throw validationError({name:'This role name already exists'});throw e;});res.status(201).json(saved);
