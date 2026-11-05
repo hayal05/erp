@@ -141,3 +141,12 @@ test('department employee management scopes writes, transfers, lookups, audit an
  assert.ok([404,409].includes((await admin.post(`/api/change-requests/${stale.body.requestId}/approve`).send({})).status));
  await q('UPDATE employees SET department_id=$1 WHERE id=$2',[depA,inside.id]);
 });
+
+test('access scope options include every department, including empty departments beyond page one',async()=>{
+ const inserted=await q("INSERT INTO departments(name) SELECT 'Scope option '||n FROM generate_series(1,105) n RETURNING id");
+ const result=await admin.get('/api/custom-access/roles');assert.equal(result.status,200);
+ assert.ok(result.body.departments.some(d=>d.id===depA));assert.ok(result.body.departments.some(d=>d.id===depB));
+ for(const d of inserted.rows)assert.ok(result.body.departments.some(option=>option.id===Number(d.id)));
+ assert.equal((await leader.get('/api/custom-access/roles')).status,403);
+ await q('DELETE FROM departments WHERE id=ANY($1::bigint[])',[inserted.rows.map(d=>d.id)]);
+});

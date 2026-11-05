@@ -46,7 +46,8 @@ function ScopePicker({type,selected,onChange}){
 export function CustomAssignments({employee,onChanged}){
  const [grantPage,setGrantPage]=useState(1);
  const roles=useResource('/custom-access/roles'),grants=useResource(`/custom-access/employees/${employee.id}/custom-grants`,{page:grantPage,pageSize:10});
- const [roleId,setRoleId]=useState(''),[scopeType,setScopeType]=useState('all'),[selected,setSelected]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[revoking,setRevoking]=useState(null),[reason,setReason]=useState('');
+ const [roleId,setRoleId]=useState(''),[scopeValue,setScopeValue]=useState('all'),[selected,setSelected]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[revoking,setRevoking]=useState(null),[reason,setReason]=useState('');
+ const scopeType=scopeValue.startsWith('department:')?'departments':scopeValue;
  const toast=useToast(),role=roles.data?.items.find(r=>String(r.id)===roleId),limited=role&&expandActivities(role.activities).every(p=>SCOPED_ACTIVITIES.includes(p));
  const refresh=()=>{grants.reload();onChanged?.();};
  async function grant(e){e.preventDefault();if(busy)return;setBusy(true);setError('');try{await post(`/custom-access/employees/${employee.id}/custom-grants`,{roleId:Number(roleId),scopeType,departmentIds:scopeType==='departments'?selected.map(i=>i.id):[],employeeIds:scopeType==='employees'?selected.map(i=>i.id):[]});setGrantPage(1);refresh();toast.success('Custom access granted');}catch(e){setError(e.message);}finally{setBusy(false);}}
@@ -54,9 +55,9 @@ export function CustomAssignments({employee,onChanged}){
  return <section className="stack custom-assignments"><h2>Custom access</h2><small className="muted">Access combines with existing grants.</small>
   {roles.error||grants.error?<ResourceState error={roles.error||grants.error} onRetry={()=>{roles.reload();grants.reload();}}/>:null}
   {employee.active&&<form className="stack" onSubmit={grant}>
-   <div className="row"><Field as="select" label="Access role" placeholder="Choose role" options={(roles.data?.items??[]).map(r=>({value:r.id,label:r.name}))} value={roleId} disabled={busy} onChange={e=>{setRoleId(e.target.value);setScopeType('all');setSelected([]);}}/>
-   <Field as="select" label="Access scope" value={scopeType} disabled={busy||!role} hint={role&&!limited?'This role includes company-wide activities. Use a separate role for department access.':undefined} options={[{value:'all',label:'All employees'},{value:'departments',label:'Selected departments',disabled:!limited},{value:'employees',label:'Selected employees',disabled:!limited}]} onChange={e=>{setScopeType(e.target.value);setSelected([]);}}/></div>
-   {scopeType!=='all'&&<ScopePicker key={scopeType} type={scopeType} selected={selected} onChange={setSelected}/>}
+   <div className="row"><Field as="select" label="Access role" placeholder="Choose role" options={(roles.data?.items??[]).map(r=>({value:r.id,label:r.name}))} value={roleId} disabled={busy} onChange={e=>{setRoleId(e.target.value);setScopeValue('all');setSelected([]);}}/>
+   <Field as="select" label="Access scope" value={scopeValue} disabled={busy||!role} hint={role&&!limited?'This role includes company-wide activities. Use a separate role for department access.':undefined} options={[{value:'all',label:'All employees'},...(roles.data?.departments??[]).map(d=>({value:`department:${d.id}`,label:d.name,disabled:!limited})),{value:'departments',label:'Multiple departments',disabled:!limited},{value:'employees',label:'Selected employees',disabled:!limited}]} onChange={e=>{const value=e.target.value;setScopeValue(value);const department=(roles.data?.departments??[]).find(d=>value===`department:${d.id}`);setSelected(department?[department]:[]);}}/></div>
+   {(scopeValue==='departments'||scopeValue==='employees')&&<ScopePicker key={scopeType} type={scopeType} selected={selected} onChange={setSelected}/>}
    <div><Button size="sm" variant="primary" type="submit" busy={busy} disabled={!roleId||(scopeType!=='all'&&!selected.length)||(grants.data?.items??[]).some(g=>!g.revokedAt&&String(g.roleId)===roleId)}>Grant custom access</Button></div>
   </form>}
   {error&&<p className="form-error" role="alert">{error}</p>}
