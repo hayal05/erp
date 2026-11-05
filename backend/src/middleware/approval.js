@@ -1,3 +1,4 @@
+import {assertEmployeeChangeScope} from '../services/accessScope.js';
 import {wrap, HttpError} from './error.js';
 import {query,withTransaction} from '../db/pool.js';
 import {hasPermission} from '../services/permissions.js';
@@ -9,6 +10,7 @@ import {audit} from '../services/audit.js';
 // Applied only to administrative routers, after their existing permission/validation middleware.
 export const approvalWrap=fn=>wrap(async(req,res,next)=>{
  const method=req.method,path=req.originalUrl.split('?')[0].replace(/\/+$/,'');
+ if(!['GET','HEAD','OPTIONS'].includes(method)&&approvalPolicy(method,path)?.permission==='employees.manage')await assertEmployeeChangeScope({query},req.user,path,req.body);
  if(['GET','HEAD','OPTIONS'].includes(method)||req[APPROVED_EXECUTION]||hasPermission(req.user,'access.manage')||leaveDecision(method,path))return fn(req,res,next);
  const policy=approvalPolicy(method,path);
  if(!policy||!hasPermission(req.user,policy.permission))throw new HttpError(403,'This operation cannot be submitted for approval','forbidden');
@@ -16,6 +18,7 @@ export const approvalWrap=fn=>wrap(async(req,res,next)=>{
  const result=await withTransaction(async db=>{
   await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
   const user=await currentUser(db,req.user.id);
+  if(policy.permission==='employees.manage')await assertEmployeeChangeScope(db,user,path,body);
   if(!hasPermission(user,policy.permission))throw new HttpError(403,'Access has changed','forbidden');
   const {rows:[existing]}=await db.query("SELECT id FROM change_requests WHERE requester_id=$1 AND dedupe_key=$2 AND status='pending'",[user.id,hash]);
   if(existing)return existing;

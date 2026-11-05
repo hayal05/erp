@@ -1,3 +1,4 @@
+import {permissionScope} from '../services/accessScope.js';
 import {Router} from 'express';
 import {withTransaction} from '../db/pool.js';
 import {requirePermission} from '../middleware/auth.js';
@@ -9,7 +10,7 @@ import {audit,diffFields} from '../services/audit.js';
 import {loadRetirement,retirementSettings,retirementSettingBody,retirementListQuery} from '../services/retirement.js';
 const router=Router();router.use(noStore,requirePermission('employees.read'));
 router.get('/',validate(retirementListQuery,'query'),wrap(async(req,res)=>{
- res.json(await withTransaction(async db=>{await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');return loadRetirement(db,req.query,{user:req.user});}));
+ res.json(await withTransaction(async db=>{await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');return {...await loadRetirement(db,req.query,{user:req.user}),canManageSettings:permissionScope(req.user,'employees.manage')===null};}));
 }));
 router.put('/settings',requirePermission('employees.manage'),validate(retirementSettingBody),wrap(async(req,res)=>{
  const saved=await withTransaction(async db=>{

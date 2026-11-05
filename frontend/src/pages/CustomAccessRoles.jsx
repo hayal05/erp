@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {get,post,put} from '../api/client.js';
 import {useResource,ResourceState} from './payrollResource.jsx';
 import {ACTIVITY_GROUPS,SCOPED_ACTIVITIES,expandActivities} from '../../../shared/accessActivities.mjs';
@@ -27,7 +27,7 @@ export function RoleEditor({role,onClose,onSaved}){
    <small className="muted">{limited?'Supports department and employee scopes.':'Company-wide activities require All employees scope.'} Required viewing and inbox access is included automatically. Approval also requires the corresponding activity.</small>
    <div className="access-activity-grid">{ACTIVITY_GROUPS.map(([title,items])=><fieldset key={title}><legend>{title}</legend>{items.map(([id,label])=>{
     const checked=activities.includes(id),required=!checked&&effective.includes(id);
-    return <label className="access-activity" key={id}><input type="checkbox" checked={checked||required} disabled={busy||required} onChange={e=>setActivities(a=>e.target.checked?[...a,id]:a.filter(p=>p!==id))}/><span>{label}{required&&<small className="muted"> · Required</small>}</span></label>;
+    return <label className="access-activity" key={id}><input type="checkbox" checked={checked||required} disabled={busy||required} onChange={e=>setActivities(a=>e.target.checked?[...a,id]:a.filter(p=>p!==id))}/><span>{label}{!expandActivities([id]).every(p=>SCOPED_ACTIVITIES.includes(p))&&<small className="muted"> · All employees</small>}{required&&<small className="muted"> · Required</small>}</span></label>;
    })}</fieldset>)}</div>
    {error&&<p className="form-error" role="alert">{error}</p>}
   </form>
@@ -35,6 +35,7 @@ export function RoleEditor({role,onClose,onSaved}){
 }
 function ScopePicker({type,selected,onChange}){
  const [search,setSearch]=useState(''),[matches,setMatches]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ useEffect(()=>{const ctrl=new AbortController();setBusy(true);get(type==='departments'?'/departments':'/employees',{pageSize:100},{signal:ctrl.signal}).then(r=>setMatches(r.items)).catch(e=>{if(e.name!=='AbortError')setError(e.message);}).finally(()=>{if(!ctrl.signal.aborted)setBusy(false);});return()=>ctrl.abort();},[type]);
  async function find(e){e.preventDefault();setBusy(true);setError('');try{const r=await get(type==='departments'?'/departments':'/employees',{search,pageSize:100});setMatches(r.items);}catch(e){setError(e.message);}finally{setBusy(false);}}
  return <div className="stack"><div className="row"><Field type="search" label={`Find ${type}`} placeholder={`Find ${type} by name or ID`} value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')find(e);}}/><Button size="sm" busy={busy} onClick={find}>Find</Button></div>
   <div className="access-selected">{selected.map(item=><Button size="sm" key={item.id} onClick={()=>onChange(selected.filter(i=>i.id!==item.id))} aria-label={`Remove ${item.name}`}>{item.name} ×</Button>)}</div>
@@ -54,7 +55,7 @@ export function CustomAssignments({employee,onChanged}){
   {roles.error||grants.error?<ResourceState error={roles.error||grants.error} onRetry={()=>{roles.reload();grants.reload();}}/>:null}
   {employee.active&&<form className="stack" onSubmit={grant}>
    <div className="row"><Field as="select" label="Access role" placeholder="Choose role" options={(roles.data?.items??[]).map(r=>({value:r.id,label:r.name}))} value={roleId} disabled={busy} onChange={e=>{setRoleId(e.target.value);setScopeType('all');setSelected([]);}}/>
-   <Field as="select" label="Access scope" value={scopeType} disabled={busy||!limited} options={[{value:'all',label:'All employees'},...(limited?[{value:'departments',label:'Selected departments'},{value:'employees',label:'Selected employees'}]:[])]} onChange={e=>{setScopeType(e.target.value);setSelected([]);}}/></div>
+   <Field as="select" label="Access scope" value={scopeType} disabled={busy||!role} hint={role&&!limited?'This role includes company-wide activities. Use a separate role for department access.':undefined} options={[{value:'all',label:'All employees'},{value:'departments',label:'Selected departments',disabled:!limited},{value:'employees',label:'Selected employees',disabled:!limited}]} onChange={e=>{setScopeType(e.target.value);setSelected([]);}}/></div>
    {scopeType!=='all'&&<ScopePicker key={scopeType} type={scopeType} selected={selected} onChange={setSelected}/>}
    <div><Button size="sm" variant="primary" type="submit" busy={busy} disabled={!roleId||(scopeType!=='all'&&!selected.length)||(grants.data?.items??[]).some(g=>!g.revokedAt&&String(g.roleId)===roleId)}>Grant custom access</Button></div>
   </form>}

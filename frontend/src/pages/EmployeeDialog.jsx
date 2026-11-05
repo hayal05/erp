@@ -33,7 +33,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
     if (!form.departmentId) { setPositions({ status: 'idle', items: [], total: 0, error: '' }); return undefined; }
     const ctrl = new AbortController();
     setPositions((p) => ({ ...p, status: 'loading', error: '' }));
-    get(`/departments/${form.departmentId}/positions`, { pageSize: POSITION_LIMIT }, { signal: ctrl.signal })
+    get('/employees/positions', { departmentId:form.departmentId, pageSize: POSITION_LIMIT }, { signal: ctrl.signal })
       .then((res) => setPositions({ status: 'ready', items: res.items, total: res.total, error: '' }))
       .catch((e) => { if (e.name !== 'AbortError') setPositions({ status: 'error', items: [], total: 0, error: e.message }); });
     return () => ctrl.abort();
@@ -45,7 +45,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
     if (!wantProfile) return undefined;
     const ctrl = new AbortController();
     setProfile({ status: 'loading', value: null, error: '' });
-    get(`/salary-profiles/${employee.id}`, {}, { signal: ctrl.signal })
+    get(`/employees/${employee.id}/salary-preview`, {}, { signal: ctrl.signal })
       .then((value) => setProfile({ status: 'ready', value, error: '' }))
       .catch((e) => { if (e.name !== 'AbortError') setProfile({ status: 'error', value: null, error: e.message }); });
     return () => ctrl.abort();

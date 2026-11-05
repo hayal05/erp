@@ -1,6 +1,6 @@
 // Fixed activity identifiers. Role names never imply powers; access.manage is never delegable.
 export const ACTIVITY_GROUPS=[
- ['People',[['employees.read','View employee profiles and retirement'],['employees.manage','Manage employees, retirement age and attachments'],['salary_profiles.manage','Manage salary profiles']]],
+ ['People',[['employees.read','View employee profiles and retirement'],['employees.manage','Manage employees and attachments (retirement age with All employees scope)'],['salary_profiles.manage','Manage salary profiles']]],
  ['Attendance',[['attendance.read','View attendance and selfies'],['attendance.manage','Correct attendance'],['attendance.qr.read','View QR attendance'],['attendance.qr','Generate QR codes'],['attendance.qr.lock','Lock and unlock own QR screen']]],
  ['Organization',[['organization.read','View departments and schedules'],['organization.manage','Manage departments, positions, holidays and schedules']]],
  ['Leave',[['leave.read','View leave'],['leave.manage','Review leave and adjust balances']]],
@@ -9,7 +9,7 @@ export const ACTIVITY_GROUPS=[
  ['Review and reports',[['dashboard.read','View company dashboard'],['approvals.read','View permitted approval requests'],['changes.hr.approve','Approve another person’s permitted HR changes'],['changes.finance.approve','Approve another person’s permitted Finance changes'],['audit.hr','View permitted HR audit records'],['audit.finance','View permitted Finance audit records'],['access.read','View access assignments']]]
 ];
 export const ACTIVITY_IDS=ACTIVITY_GROUPS.flatMap(([,items])=>items.map(([id])=>id));
-export const SCOPED_ACTIVITIES=['employees.read','attendance.read','attendance.manage','attendance.qr.read','attendance.qr','attendance.qr.lock','approvals.read','changes.hr.approve','audit.hr'];
+export const SCOPED_ACTIVITIES=['employees.manage','employees.read','attendance.read','attendance.manage','attendance.qr.read','attendance.qr','attendance.qr.lock','approvals.read','changes.hr.approve','audit.hr'];
 export const ACTIVITY_DEPENDENCIES={
  'employees.manage':['employees.read','audit.hr','approvals.read'],
  'salary_profiles.manage':['employees.read','payroll_settings.read','audit.hr','approvals.read'],

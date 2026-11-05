@@ -32,11 +32,13 @@ export async function loadAuditActivity(db,user,query){
  const roles=hasPermission(user,'access.manage')?['hr','finance']:(user.accessRoles??[]).filter(r=>['hr','finance'].includes(r));
  const args=[selected.map(s=>s.entity),user.id,roles,user.permissions??[]];
  const attendanceScope=scopeSql(user,'attendance.manage','se',args),auditScope=scopeSql(user,'audit.hr','se',args);
+ const employeeScope=scopeSql(user,'employees.manage','se',args);
  const cte=`WITH events AS (SELECT a.id,a.action,a.entity_type,a.entity_id,a.occurred_at AS at,u.full_name AS actor,u.username,a.actor_user_id,a.reason,a.details,
  EXISTS(SELECT 1 FROM access_grants g WHERE g.user_id=a.actor_user_id AND g.access_role='admin'
    AND g.granted_at<=a.occurred_at AND (g.revoked_at IS NULL OR g.revoked_at>a.occurred_at)) AS was_admin
  FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_user_id
  WHERE a.entity_type=ANY($1::text[]) AND a.action<>'attendance.photo_view'
+ AND (a.entity_type NOT IN ('employee','employee_attachment') OR EXISTS(SELECT 1 FROM employees se WHERE ${employeeScope} AND ${auditScope} AND (a.entity_type='employee' AND se.id::text=a.entity_id OR a.entity_type='employee_attachment' AND EXISTS(SELECT 1 FROM employee_attachments ea WHERE ea.id::text=a.entity_id AND ea.employee_id=se.id))))
  AND (a.entity_type<>'attendance_record' OR EXISTS(SELECT 1 FROM attendance_records sr JOIN employees se ON se.id=sr.employee_id WHERE sr.id::text=a.entity_id AND ${attendanceScope} AND ${auditScope}))
  AND (a.entity_type<>'change_request' OR EXISTS(SELECT 1 FROM change_requests c WHERE c.id::text=a.entity_id
    AND (c.requester_id=$2 OR (c.department=ANY($3::text[]) AND c.permission=ANY($4::text[]))))))`;

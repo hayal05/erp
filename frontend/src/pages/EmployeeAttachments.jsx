@@ -16,7 +16,7 @@ function base64(file,signal){return new Promise((resolve,reject)=>{
  reader.onload=finish(()=>resolve(String(reader.result).split(',')[1]));reader.onerror=finish(()=>reject(new Error('Could not read the file')));reader.onabort=finish(()=>reject(new DOMException('Cancelled','AbortError')));
  signal.addEventListener('abort',abort,{once:true});reader.readAsDataURL(file);
 });}
-export default function EmployeeAttachments({employeeId,direction}){
+export default function EmployeeAttachments({employeeId,direction,allowManage=true}){
  const canManage=usePermission('employees.manage'),[page,setPage]=useState(1),[file,setFile]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[inputKey,setInputKey]=useState(0);
  const request=useRef(null),toast=useToast();
  useEffect(()=>()=>request.current?.abort(),[]);
@@ -31,7 +31,7 @@ export default function EmployeeAttachments({employeeId,direction}){
   finally{request.current=null;if(!ctrl.signal.aborted)setBusy(false);}
  }
  return <section className="card stack employee-profile-section employee-attachments"><h2>{titles[direction]}</h2>
-  {canManage&&<form className="attachment-upload" onSubmit={upload}>
+  {canManage&&allowManage&&<form className="attachment-upload" onSubmit={upload}>
    <Field key={inputKey} type="file" label={`${titles[direction]} file`} hideLabel accept={ATTACHMENT_ACCEPT} disabled={busy} onChange={e=>{setFile(e.target.files?.[0]??null);setError('');setNotice('');}}/>
    <Button size="sm" type="submit" busy={busy} disabled={!file}>Upload</Button>
    <small className="muted attachment-limit">PDF, Word, Excel or picture · Max 5 MB</small>

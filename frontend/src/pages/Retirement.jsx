@@ -45,7 +45,7 @@ export default function Retirement(){
  const r=useResource('/retirement',{search:debounced,status,employmentStatus,page,pageSize:25});
  const d=r.data;
  return <section className="stack retirement-page">
-  <div className="row between retirement-heading"><h1>Retirement</h1>{d&& (canManage?<RetirementAgeForm key={d.settings.version} settings={d.settings} onSaved={r.reload} disabled={r.loading||!!r.error}/>:<span className="muted">Retirement age: {d.settings.retirementAge===null?'Not set':`${d.settings.retirementAge} years`}</span>)}</div>
+  <div className="row between retirement-heading"><h1>Retirement</h1>{d&& (canManage&&d.canManageSettings!==false?<RetirementAgeForm key={d.settings.version} settings={d.settings} onSaved={r.reload} disabled={r.loading||!!r.error}/>:<span className="muted">Retirement age: {d.settings.retirementAge===null?'Not set':`${d.settings.retirementAge} years`}</span>)}</div>
   <div className="row between"><div className="row retirement-filters">
    <Field type="search" label="Employee search" placeholder="Name, ID, department or position" maxLength={100} value={search} onChange={e=>setSearch(e.target.value)}/>
    <Field as="select" hideLabel label="Employment status" options={[{value:'active',label:'Active employees'},{value:'inactive',label:'Inactive employees'},{value:'all',label:'All employees'}]} value={employmentStatus} onChange={e=>{setEmploymentStatus(e.target.value);setPage(1);}}/>
