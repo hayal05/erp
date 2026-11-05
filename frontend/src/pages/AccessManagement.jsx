@@ -45,6 +45,7 @@ function AccessDialog({employee,onClose,onChanged}){
   const pageRefresh = usePageRefresh();
  const canManage=usePermission('access.manage');
  const [page,setPage]=useState(1),[reload,setReload]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),[revoke,setRevoke]=useState(null),[reason,setReason]=useState(''),[role,setRole]=useState('hr');
+ const [grantType,setGrantType]=useState('custom');
  const [history,setHistory]=useState({items:[],total:0,loading:true,error:''}),[active,setActive]=useState(employee.accessRoles);const toast=useToast();
  const refresh=()=>setReload(n=>n+1);
  useEffect(()=>{
@@ -64,20 +65,22 @@ function AccessDialog({employee,onClose,onChanged}){
  }
  return <Modal open wide title={`Access · ${employee.fullName}`} dismissible={!busy} onClose={()=>!busy&&onClose()} footer={<Button disabled={busy} onClick={onClose}>Close</Button>}><div className="stack access-details">
   <div className="row between access-identity"><span>{employee.employeeCode} · {employee.username}</span><Badge tone={employee.active?'ok':'neutral'}>{employee.active?'Active':'Inactive'}</Badge></div>
-  <div className="access-role-list" role="group" aria-label="Additional access">{active.length?active.map(role=><Badge key={role} tone="info">{roleName(role)}</Badge>):<span className="muted">Employee only</span>}</div>
+  {active.length>0&&<div className="access-role-list" role="group" aria-label="Standard access">{active.map(role=><Badge key={role} tone="info">{roleName(role)}</Badge>)}</div>}
+  {canManage&&<div className="row access-type" role="group" aria-label="Access type"><Button size="sm" disabled={busy} variant={grantType==='custom'?'primary':'default'} aria-pressed={grantType==='custom'} onClick={()=>setGrantType('custom')}>Custom role</Button><Button size="sm" disabled={busy} variant={grantType==='standard'?'primary':'default'} aria-pressed={grantType==='standard'} onClick={()=>setGrantType('standard')}>HR / Finance</Button></div>}
+  {canManage&&grantType==='custom'?<CustomAssignments employee={employee} onChanged={onChanged}/>:<>
   {error&&<p role="alert" className="form-error">{error}</p>}
   {canManage&&!revoke&&(!employee.active?<p className="muted">Activate the employee to grant access.</p>:<form className="access-grant" onSubmit={grant}>
-   <Field as="select" label="Grant access" options={[{value:'hr',label:'HR'},{value:'finance',label:'Finance'}]} value={role} onChange={e=>setRole(e.target.value)} disabled={busy}/>
+   <Field as="select" label="Role" options={[{value:'hr',label:'HR'},{value:'finance',label:'Finance'}]} value={role} onChange={e=>setRole(e.target.value)} disabled={busy}/>
    <Button size="sm" type="submit" variant="primary" busy={busy} disabled={active.includes(role)}>Grant {roleName(role)}</Button>
   </form>)}
   {canManage&&revoke&&<form className="stack access-revoke" onSubmit={remove}><h3>Revoke {roleName(revoke.role)} access?</h3><Field as="textarea" rows={2} autoFocus label="Reason" required minLength={3} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} disabled={busy}/><div className="row end"><Button size="sm" disabled={busy} onClick={()=>setRevoke(null)}>Cancel</Button><Button size="sm" type="submit" variant="danger" busy={busy}>Revoke access</Button></div></form>}
-  {canManage&&<CustomAssignments employee={employee} onChanged={onChanged}/>}
-  <h2>Standard access history</h2>
+  <details className="access-history" open={!!revoke||!canManage}><summary>Access records</summary>
   <Table caption="Grant and revocation history" columns={[
    {key:'role',header:'Access',render:r=><Badge tone="info">{roleName(r.role)}</Badge>},{key:'grantedBy',header:'Granted by'},{key:'grantedAt',header:'Granted on',render:r=>stamp(r.grantedAt)},
    {key:'revokedBy',header:'Revoked by',render:r=>r.revokedBy||'—'},{key:'revokedAt',header:'Revoked on',render:r=>stamp(r.revokedAt)},{key:'revokeReason',header:'Reason',render:r=>r.revokeReason?<details className="access-reason"><summary>View reason</summary><p>{r.revokeReason}</p></details>:'—'},
    {key:'actions',header:'Status',render:r=>r.revokedAt?<Badge>Revoked</Badge>:r.role==='admin'?<Badge tone="ok">Active (protected)</Badge>:!canManage?<Badge tone="ok">Active</Badge>:<Button size="sm" disabled={busy} onClick={()=>{setRevoke(r);setReason('');setError('');}}>Revoke {roleName(r.role)}</Button>},
   ]} rows={history.items} loading={history.loading} error={history.error} onRetry={refresh} empty="No access grants recorded"/>
-  <Pager page={page} pageSize={HISTORY_SIZE} total={history.total} onPage={setPage} disabled={history.loading||busy}/>
+  {(history.total>HISTORY_SIZE||page>1)&&<Pager page={page} pageSize={HISTORY_SIZE} total={history.total} onPage={setPage} disabled={history.loading||busy}/>}
+  </details></>}
  </div></Modal>;
 }

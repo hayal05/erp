@@ -52,16 +52,17 @@ export function CustomAssignments({employee,onChanged}){
  const refresh=()=>{grants.reload();onChanged?.();};
  async function grant(e){e.preventDefault();if(busy)return;setBusy(true);setError('');try{await post(`/custom-access/employees/${employee.id}/custom-grants`,{roleId:Number(roleId),scopeType,departmentIds:scopeType==='departments'?selected.map(i=>i.id):[],employeeIds:scopeType==='employees'?selected.map(i=>i.id):[]});setGrantPage(1);refresh();toast.success('Custom access granted');}catch(e){setError(e.message);}finally{setBusy(false);}}
  async function revoke(e){e.preventDefault();setBusy(true);setError('');try{await post(`/custom-access/employees/${employee.id}/custom-grants/${revoking.id}/revoke`,{reason});setRevoking(null);setReason('');refresh();toast.success('Custom access revoked');}catch(e){setError(e.message);}finally{setBusy(false);}}
- return <section className="stack custom-assignments"><h2>Custom access</h2><small className="muted">Access combines with existing grants.</small>
+ return <section className="stack custom-assignments">
   {roles.error||grants.error?<ResourceState error={roles.error||grants.error} onRetry={()=>{roles.reload();grants.reload();}}/>:null}
-  {employee.active&&<form className="stack" onSubmit={grant}>
-   <div className="row"><Field as="select" label="Access role" placeholder="Choose role" options={(roles.data?.items??[]).map(r=>({value:r.id,label:r.name}))} value={roleId} disabled={busy} onChange={e=>{setRoleId(e.target.value);setScopeValue('all');setSelected([]);}}/>
+  {employee.active&&<form className="stack access-custom-form" onSubmit={grant}>
+   <div className="row"><Field as="select" label="Role" placeholder="Choose role" options={(roles.data?.items??[]).map(r=>({value:r.id,label:r.name}))} value={roleId} disabled={busy} onChange={e=>{setRoleId(e.target.value);setScopeValue('all');setSelected([]);}}/>
    <ScopeSelection role={role} departments={roles.data?.departments??[]} value={scopeValue} busy={busy} onChange={e=>{const value=e.target.value;setScopeValue(value);const department=(roles.data?.departments??[]).find(d=>value===`department:${d.id}`);setSelected(department?[department]:[]);}}/></div>
    {(scopeValue==='departments'||scopeValue==='employees')&&<ScopePicker key={scopeType} type={scopeType} selected={selected} onChange={setSelected}/>}
-   <div><Button size="sm" variant="primary" type="submit" busy={busy} disabled={!roleId||!plan.permissions.length||(scopeType!=='all'&&!selected.length)||(grants.data?.items??[]).some(g=>!g.revokedAt&&String(g.roleId)===roleId)}>Grant custom access</Button></div>
+   <div className="access-submit"><Button size="sm" variant="primary" type="submit" busy={busy} disabled={!roleId||!plan.permissions.length||(scopeType!=='all'&&!selected.length)||(grants.data?.items??[]).some(g=>!g.revokedAt&&String(g.roleId)===roleId)}>Grant access</Button></div>
   </form>}
   {error&&<p className="form-error" role="alert">{error}</p>}
   {revoking&&<form className="stack" onSubmit={revoke}><Field label={`Reason to revoke ${revoking.name}`} required minLength={3} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)}/><div className="row"><Button size="sm" disabled={busy} onClick={()=>setRevoking(null)}>Cancel</Button><Button size="sm" type="submit" variant="danger" busy={busy}>Revoke</Button></div></form>}
+  <h3 className="access-assigned-title">Assigned roles</h3>
   <Table caption="Custom access assignments" rows={grants.data?.items??[]} loading={grants.loading} columns={[
    {key:'name',header:'Role'},{key:'scopeType',header:'Scope',render:g=>g.scopeType==='all'?'All employees':g.scopeType==='departments'?(g.departmentNames?.join(', ')||'Selected departments'):(g.employeeNames?.join(', ')||'Selected employees')},
    {key:'status',header:'Status',render:g=>g.revokedAt?<Badge>Revoked</Badge>:<Button size="sm" disabled={busy} onClick={()=>{setRevoking(g);setReason('');}}>Revoke</Button>}
@@ -74,7 +75,7 @@ export function ScopeSelection({role,departments=[],value,busy=false,onChange}){
  const scopeType=value.startsWith('department:')?'departments':value;
  const plan=activityScopePlan(role?.activities??[],scopeType),labels=Object.fromEntries(ACTIVITY_GROUPS.flatMap(([,items])=>items));
  return <div className="stack">
-  <Field as="select" label="Access scope" value={value} disabled={busy||!role} onChange={onChange}
+  <Field as="select" label="Scope" value={value} disabled={busy||!role} onChange={onChange}
    hint={scopeType!=='all'&&role&&!plan.permissions.length?'This role has no employee-scoped activities. Edit the role to add them.':undefined}
    options={[{value:'all',label:'All employees'},...departments.map(d=>({value:`department:${d.id}`,label:d.name})),{value:'departments',label:'Multiple departments'},{value:'employees',label:'Selected employees'}]}/>
   {plan.excluded.length>0&&<small className="field-hint" role="status">Not granted for this scope: {plan.excluded.map(id=>labels[id]??id).join('; ')}.</small>}

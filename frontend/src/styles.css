@@ -880,3 +880,22 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 .access-selected { display: flex; flex-wrap: wrap; gap: 4px; }
 .custom-assignments { border-top: 1px solid var(--border); padding-top: var(--space-sm); }
 @media (max-width: 700px) { .access-activity-grid { grid-template-columns: minmax(0,1fr); } }
+
+/* Employee access overlay: one grant flow at a time, with compact records. */
+.access-details { gap: 12px; }
+.access-details .access-type { gap: 6px; }
+.access-details .custom-assignments { border-top: 0; padding-top: 0; gap: 10px; }
+.access-details .access-custom-form > .row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; gap: 10px; }
+.access-details .access-custom-form > .row > .stack { gap: 6px; }
+.access-details .access-submit { display: flex; justify-content: end; }
+.access-details .access-assigned-title { margin: 2px 0 0; font-size: .875rem; }
+.access-details .custom-assignments .table { min-width: 420px; }
+.access-details .access-history { border-top: 1px solid var(--border); padding-top: 10px; }
+.access-details .access-history > summary { cursor: pointer; font-weight: 600; font-size: .875rem; margin-bottom: 8px; }
+.access-details .access-history .table { min-width: 820px; }
+@media(max-width: 560px) {
+ .access-details .access-custom-form > .row { grid-template-columns: minmax(0,1fr); }
+ .access-details .access-submit .btn { width: 100%; }
+}
+
+.modal.wide:has(> .access-details) { width: min(100%, 680px); }
