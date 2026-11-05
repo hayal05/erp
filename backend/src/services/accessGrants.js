@@ -1,4 +1,4 @@
-import {expandActivities} from '../../../shared/accessActivities.mjs';
+import {activityScopePlan} from '../../../shared/accessActivities.mjs';
 import { ACCESS_ROLES, permissionsFor } from './permissions.js';
 // Called on login/password responses. Normal requests load grants in the existing session query.
 export async function loadAccessRoles(db,userId) {
@@ -12,6 +12,6 @@ export function withAccess(user,roles=[]) {
 
 export async function loadCustomGrants(db,userId){
  const {rows}=await db.query(`SELECT g.id,r.id AS "roleId",r.name,r.activities,r.permissions,g.scope_type AS "scopeType",g.department_ids AS "departmentIds",g.employee_ids AS "employeeIds" FROM custom_access_grants g JOIN custom_access_roles r ON r.id=g.role_id WHERE g.user_id=$1 AND g.revoked_at IS NULL ORDER BY g.id`,[userId]);
- return rows.map(g=>({...g,permissions:g.activities?expandActivities(g.activities):g.permissions,id:Number(g.id),roleId:Number(g.roleId),departmentIds:g.departmentIds.map(Number),employeeIds:g.employeeIds.map(Number)}));
+ return rows.map(g=>({...g,permissions:activityScopePlan(g.activities??g.permissions,g.scopeType).permissions,id:Number(g.id),roleId:Number(g.roleId),departmentIds:g.departmentIds.map(Number),employeeIds:g.employeeIds.map(Number)}));
 }
 export async function userAccess(db,user,roles){return withAccess({...user,customGrants:await loadCustomGrants(db,user.id)},roles??await loadAccessRoles(db,user.id));}

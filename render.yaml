@@ -20,6 +20,7 @@ services:
         - backend/**
         - frontend/**
         - database/**
+        - shared/**
         - render.yaml
         - .node-version
     envVars:

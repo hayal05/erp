@@ -117,6 +117,13 @@ try{
  const previousUser=globalThis.__compactReview.user;globalThis.__compactReview.user={role:'employee',permissions:permissionsFor({role:'employee',accessRoles:['finance']})};
  const financeProfile=await render('pages/EmployeeProfile.jsx','EmployeeProfileDetails',{profile:adminProfile});
  assert.ok(!financeProfile.includes('type="file"')&&financeProfile.includes('Incoming attachments'),'Finance can upload or cannot view attachments');globalThis.__compactReview.user=previousUser;
+ const scopeRole={activities:['employees.manage','payroll_settings.manage']};
+ const scopePicker=await render('pages/CustomAccessRoles.jsx','ScopeSelection',{role:scopeRole,departments:[{id:1,name:'Operations'},{id:2,name:'Finance'}],value:'department:1',onChange(){}});
+ assert.ok(scopePicker.includes('value="department:1"')&&scopePicker.includes('value="department:2"'));
+ assert.ok(!/<(?:select|option)[^>]*disabled/.test(scopePicker),'Mixed role must not disable department selection');
+ assert.ok(scopePicker.includes('Not granted for this scope: Change payroll settings'),'Excluded activity must be shown before granting access');
+ const allScope=await render('pages/CustomAccessRoles.jsx','ScopeSelection',{role:scopeRole,value:'all',onChange(){}});
+ assert.ok(!allScope.includes('Not granted for this scope'));
  const roleEditor=await render('pages/CustomAccessRoles.jsx','RoleEditor',{role:{name:'Team Leader',activities:['attendance.read','attendance.qr','attendance.qr.lock']},onClose(){},onSaved(){}});
  for(const text of ['Team Leader','Correct attendance','Generate QR codes','Lock and unlock own QR screen','Approve another person','Supports department and employee scopes'])assert.ok(roleEditor.includes(text),`Custom role editor lost ${text}`);
  assert.ok(!roleEditor.includes('access.manage'),'Protected General Admin power appears as a custom checkbox');

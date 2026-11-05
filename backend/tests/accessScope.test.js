@@ -14,3 +14,13 @@ test('required activities expand transitively while protected Admin rights canno
  const permissions=expandActivities(['attendance.manage']);for(const p of ['attendance.read','audit.hr','approvals.read'])assert.ok(permissions.includes(p));assert.ok(permissions.every(p=>SCOPED_ACTIVITIES.includes(p)));
  const u={role:'employee',customGrants:[{permissions:['access.manage','audit.access','attendance.read','*']}]};assert.ok(permissionsFor(u).includes('attendance.read'));assert.ok(!permissionsFor(u).includes('access.manage'));assert.ok(!permissionsFor(u).includes('audit.access'));assert.ok(!permissionsFor(u).includes('*'));
 });
+
+test('mixed roles preserve scoped activities without carrying company-wide rights or implicit dependencies',async()=>{
+ const {activityScopePlan}=await import('../../shared/accessActivities.mjs');
+ const selected=['employees.manage','payroll_settings.manage','payroll.pay'];
+ const scoped=activityScopePlan(selected,'departments');assert.deepEqual(scoped.permissions,expandActivities(['employees.manage']));assert.deepEqual(scoped.excluded,['payroll_settings.manage','payroll.pay']);
+ assert.deepEqual(activityScopePlan(selected,'all').permissions,expandActivities(selected));
+ assert.deepEqual(activityScopePlan(['payroll.pay'],'employees').permissions,[]);
+ assert.ok(activityScopePlan(['payroll.pay','payroll.read'],'departments').permissions.includes('payroll.read'));
+ assert.ok(!activityScopePlan(['payroll.pay','payroll.read'],'departments').permissions.includes('payroll.pay'));
+});
