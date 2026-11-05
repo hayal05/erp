@@ -1,3 +1,4 @@
+import {scopeSql,departmentScopeSql} from './accessScope.js';
 import {HttpError} from '../middleware/error.js';
 import {config} from '../config.js';
 import {companyDate} from './attendance.js';
@@ -11,10 +12,12 @@ export const vacancyFrom='FROM internal_vacancies v JOIN departments d ON d.id=v
 export const vacancyOutput=r=>({...r,id:Number(r.id),departmentId:Number(r.departmentId),positionId:Number(r.positionId),...(r.applicationId?{applicationId:Number(r.applicationId)}:{})});
 export async function loadVacancies(db,user,query){
  const manage=query.view==='manage';
- const where=manage?(query.status?'v.status=$3':'true'):query.view==='mine'?'a.id IS NOT NULL':"v.status='open' AND v.closing_on>=(now() AT TIME ZONE $1)::date";
+ let where=manage?(query.status?'v.status=$3':'true'):query.view==='mine'?'a.id IS NOT NULL':"v.status='open' AND v.closing_on>=(now() AT TIME ZONE $1)::date";
  const args=[zone,user.id,...(manage&&query.status?[query.status]:[])];
+ const scope=manage?scopeSql(user,'vacancies.admin_read','se',args):'TRUE';
+ if(manage){const departmentScope=departmentScopeSql(user,'vacancies.admin_read','v.department_id',args);where=`(${where}) AND (${departmentScope} OR EXISTS(SELECT 1 FROM vacancy_applications va JOIN employees se ON se.id=va.employee_id WHERE va.vacancy_id=v.id AND ${scope}))`;}
  const from=`${vacancyFrom} LEFT JOIN employees e ON e.user_id=$2 LEFT JOIN vacancy_applications a ON a.vacancy_id=v.id AND a.employee_id=e.id`;
- const extra=manage?',(SELECT count(*)::int FROM vacancy_applications va WHERE va.vacancy_id=v.id) AS "applicationCount"':`,(a.id IS NULL AND NOT EXISTS(SELECT 1 FROM vacancy_views seen WHERE seen.vacancy_id=v.id AND seen.employee_id=e.id)) AS unopened`;
+ const extra=manage?`,(SELECT count(*)::int FROM vacancy_applications va JOIN employees se ON se.id=va.employee_id WHERE va.vacancy_id=v.id AND ${scope}) AS "applicationCount"`:`,(a.id IS NULL AND NOT EXISTS(SELECT 1 FROM vacancy_views seen WHERE seen.vacancy_id=v.id AND seen.employee_id=e.id)) AS unopened`;
  const {rows}=await db.query(`SELECT ${vacancyColumns},a.id AS "applicationId",a.status AS "applicationStatus",a.applied_at AS "appliedAt" ${extra} ${from}
  WHERE ${where} ORDER BY v.created_at DESC,v.id DESC LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,query.pageSize,pageOffset(query)]);
  const {rows:[count]}=await db.query(`SELECT count(*)::int total ${from} WHERE ${where} AND $1::text IS NOT NULL`,args);

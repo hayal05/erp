@@ -1,3 +1,4 @@
+import {scopeSql} from '../services/accessScope.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
@@ -33,7 +34,9 @@ router.get('/', validate(shiftListQuery, 'query'), wrap(async (req, res) => {
     query(`${SELECT} ORDER BY s.start_time, lower(s.name), s.id LIMIT $1 OFFSET $2`, [q.pageSize, pageOffset(q)]),
     query('SELECT count(*)::int AS n FROM shifts'),
   ]);
-  res.json(pageResult(rows.map(toShift), q, total));
+  const args=[],scope=scopeSql(req.user,'organization.read','e',args);
+  const {rows:counts}=await query(`SELECT shift_id,count(*)::int n FROM employees e WHERE ${scope} GROUP BY shift_id`,args);
+  res.json(pageResult(rows.map(r=>toShift({...r,employee_count:counts.find(c=>Number(c.shift_id)===Number(r.id))?.n??0})), q, total));
 }));
 
 router.post('/', validate(shiftCreate), wrap(async (req, res) => {

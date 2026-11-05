@@ -1,8 +1,10 @@
+import {EMPLOYEE_OPERATIONS,assertEmployeeActivityScope} from './employeeActivityScope.js';
 import {hasPermission,PERMISSIONS} from './permissions.js';
 import {permissionScope,scopeSql,assertAttendanceScope,assertEmployeeChangeScope} from './accessScope.js';
 import {HttpError} from '../middleware/error.js';
 export async function assertReviewScope(db,user,row){
  if(permissionScope(user,row.permission)===null)return;
+ if(EMPLOYEE_OPERATIONS.some(o=>o.permission===row.permission))return assertEmployeeActivityScope(db,user,row.permission,row.path,row.payload_preview);
  if(row.permission==='employees.manage')return assertEmployeeChangeScope(db,user,row.path,row.payload_preview);
  if(row.permission==='attendance.manage'&&/^\/api\/attendance-records\/\d+$/.test(row.path))return assertAttendanceScope(db,user,row.permission,Number(row.path.split('/').at(-1)));
  throw new HttpError(403,'This change is outside your review scope','forbidden');
@@ -29,6 +31,12 @@ export function requestVisibilitySql(user,params,alias='c'){
     ${alias}.path=ANY(ARRAY['/api/employees/'||se.id::text,'/api/employees/'||se.id::text||'/activate','/api/employees/'||se.id::text||'/deactivate','/api/employees/'||se.id::text||'/attachments']) AND
     (NOT (${alias}.payload_preview ? 'departmentId') OR ${alias}.payload_preview->>'departmentId' IS NOT DISTINCT FROM se.department_id::text OR ${destination}))
   ))`);
+ }
+ for(const op of EMPLOYEE_OPERATIONS){
+  if(!areas.includes(op.area)||!hasPermission(user,op.permission)||permissionScope(user,op.permission)===null)continue;
+  const condition=scopeSql(user,op.permission,'se',params);
+  const from=op.table?`${op.table} sr JOIN employees se ON se.id=sr.employee_id`:'employees se';
+  scoped.push(`(${alias}.department='${op.area}' AND ${alias}.permission='${op.permission}' AND EXISTS(SELECT 1 FROM ${from} WHERE ${condition} AND ${alias}.path=${op.pathSql}${op.body?` AND ${alias}.payload_preview->>'employeeId'=se.id::text`:''}))`);
  }
  return `(${[own,all,...scoped].join(' OR ')})`;
 }

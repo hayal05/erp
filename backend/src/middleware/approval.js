@@ -1,3 +1,4 @@
+import {EMPLOYEE_OPERATIONS,assertEmployeeActivityScope,assertRecordEmployeeScope} from '../services/employeeActivityScope.js';
 import {assertEmployeeChangeScope} from '../services/accessScope.js';
 import {wrap, HttpError} from './error.js';
 import {query,withTransaction} from '../db/pool.js';
@@ -10,6 +11,9 @@ import {audit} from '../services/audit.js';
 // Applied only to administrative routers, after their existing permission/validation middleware.
 export const approvalWrap=fn=>wrap(async(req,res,next)=>{
  const method=req.method,path=req.originalUrl.split('?')[0].replace(/\/+$/,'');
+ const scopedPermission=approvalPolicy(method,path)?.permission;
+ if(!['GET','HEAD','OPTIONS'].includes(method)&&EMPLOYEE_OPERATIONS.some(o=>o.permission===scopedPermission))await assertEmployeeActivityScope({query},req.user,scopedPermission,path,req.body);
+ if(leaveDecision(method,path))await assertRecordEmployeeScope({query},req.user,'leave.manage','leave_requests',Number(path.split('/').at(-2)));
  if(!['GET','HEAD','OPTIONS'].includes(method)&&approvalPolicy(method,path)?.permission==='employees.manage')await assertEmployeeChangeScope({query},req.user,path,req.body);
  if(['GET','HEAD','OPTIONS'].includes(method)||req[APPROVED_EXECUTION]||hasPermission(req.user,'access.manage')||leaveDecision(method,path))return fn(req,res,next);
  const policy=approvalPolicy(method,path);
@@ -18,6 +22,7 @@ export const approvalWrap=fn=>wrap(async(req,res,next)=>{
  const result=await withTransaction(async db=>{
   await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
   const user=await currentUser(db,req.user.id);
+  if(EMPLOYEE_OPERATIONS.some(o=>o.permission===policy.permission))await assertEmployeeActivityScope(db,user,policy.permission,path,body);
   if(policy.permission==='employees.manage')await assertEmployeeChangeScope(db,user,path,body);
   if(!hasPermission(user,policy.permission))throw new HttpError(403,'Access has changed','forbidden');
   const {rows:[existing]}=await db.query("SELECT id FROM change_requests WHERE requester_id=$1 AND dedupe_key=$2 AND status='pending'",[user.id,hash]);

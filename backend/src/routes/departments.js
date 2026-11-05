@@ -1,3 +1,4 @@
+import {scopeSql,departmentScopeSql,assertDepartmentReadScope} from '../services/accessScope.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
@@ -14,6 +15,7 @@ import { departmentPositions } from './positions.js';
 const router = Router();
 router.use(noStore, requirePermission('organization.read'));
 router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
+router.param('id',(req,res,next,id)=>{if(!['GET','HEAD'].includes(req.method))return next();assertDepartmentReadScope({query},req.user,'organization.read',id).then(()=>next(),next);});
 router.use('/:id/positions', departmentPositions); // list + create positions of one department (task 6.3)
 
 const toDepartment = (r) => ({ id: Number(r.id), name: r.name, employeeCount: r.employee_count, positionCount: r.position_count });
@@ -29,20 +31,25 @@ const notFound = () => new HttpError(404, 'Department not found', 'not_found');
 router.get('/', validate(departmentListQuery, 'query'), wrap(async (req, res) => {
   const q = req.query;
   const params = q.search ? [likePattern(q.search)] : [];
-  const where = q.search ? `WHERE d.name ILIKE $1 ESCAPE '\\'` : '';
+  const scope=departmentScopeSql(req.user,'organization.read','d.id',params);
+  const where = `WHERE ${scope}`+(q.search ? ` AND d.name ILIKE $1 ESCAPE '\\'` : '');
   const [{ rows }, { rows: [{ n: total }] }] = await Promise.all([
     query(`${SELECT} ${where} ORDER BY lower(d.name), d.id
             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [...params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n FROM departments d ${where}`, params),
   ]);
-  res.json(pageResult(rows.map(toDepartment), q, total));
+  const countArgs=[],employeeScope=scopeSql(req.user,'organization.read','e',countArgs);
+  const {rows:counts}=await query(`SELECT department_id,count(*)::int AS n FROM employees e WHERE ${employeeScope} GROUP BY department_id`,countArgs);
+  res.json(pageResult(rows.map(r=>toDepartment({...r,employee_count:counts.find(c=>Number(c.department_id)===Number(r.id))?.n??0})), q, total));
 }));
 
 // Detail: the department page (task 6.9) needs the name and counts of one department.
 router.get('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
   const found = await findDepartment({ query }, req.params.id);
   if (!found) throw notFound();
-  res.json(found);
+  const args=[req.params.id],scope=scopeSql(req.user,'organization.read','e',args);
+  const {rows:[count]}=await query(`SELECT count(*)::int n FROM employees e WHERE department_id=$1 AND ${scope}`,args);
+  res.json({...found,employeeCount:count.n});
 }));
 
 router.post('/', validate(departmentBody), wrap(async (req, res) => {

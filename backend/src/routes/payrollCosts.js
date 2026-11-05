@@ -1,3 +1,6 @@
+import {scopeSql,permissionScope} from '../services/accessScope.js';
+import {toEntry} from '../services/payrollDraft.js';
+import {idParams} from '../services/hrSchemas.js';
 import { Router } from 'express';
 import { withTransaction } from '../db/pool.js';
 import { requirePermission } from '../middleware/auth.js';
@@ -16,18 +19,31 @@ const amount = value => {
 router.get('/', validate(pageSchema, 'query'), wrap(async (req, res) => {
   const result = await withTransaction(async db => {
     await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    const args=[],scope=scopeSql(req.user,'company_costs.read','se',args);
+    const from=`FROM payroll_periods p LEFT JOIN payroll_entries e ON e.period_id=p.id LEFT JOIN employees se ON se.id=e.employee_id WHERE p.status='paid' AND ${scope}`;
     const { rows } = await db.query(`SELECT p.id, to_char(p.period_month,'YYYY-MM') AS month,
       to_char(p.paid_on,'YYYY-MM-DD') AS paid_on, p.config_snapshot->'settings'->>'currencyCode' AS currency,
       count(e.id)::int AS employee_count, COALESCE(sum(e.net_minor),0) AS salary_paid,
       COALESCE(sum(e.gross_minor),0) AS gross_salary, COALESCE(sum(e.employer_pension_minor),0) AS company_pension,
       COALESCE(sum(e.employer_cost_minor),0) AS employer_cost
-      FROM payroll_periods p LEFT JOIN payroll_entries e ON e.period_id=p.id WHERE p.status='paid'
-      GROUP BY p.id ORDER BY p.period_month DESC LIMIT $1 OFFSET $2`, [req.query.pageSize, pageOffset(req.query)]);
-    const { rows: [count] } = await db.query("SELECT count(*)::int AS total FROM payroll_periods WHERE status='paid'");
+      ${from}
+      GROUP BY p.id ORDER BY p.period_month DESC LIMIT $${args.length+1} OFFSET $${args.length+2}`, [...args,req.query.pageSize, pageOffset(req.query)]);
+    const { rows: [count] } = await db.query(`SELECT count(DISTINCT p.id)::int AS total ${from}`,args);
     return pageResult(rows.map(r => ({ id: Number(r.id), month: r.month, paidOn: r.paid_on, currency: r.currency,
       employeeCount: r.employee_count, salaryPaidMinor: amount(r.salary_paid), grossMinor: amount(r.gross_salary),
       companyPensionMinor: amount(r.company_pension), employerCostMinor: amount(r.employer_cost) })), req.query, count.total);
   });
   res.json(result);
+}));
+router.get('/:id/entries',validate(idParams,'params'),validate(pageSchema,'query'),wrap(async(req,res)=>{
+ const result=await withTransaction(async db=>{
+  await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  const args=[req.params.id],scope=scopeSql(req.user,'company_costs.read','se',args);
+  const from=`FROM payroll_entries pe JOIN payroll_periods p ON p.id=pe.period_id JOIN employees se ON se.id=pe.employee_id WHERE p.id=$1 AND p.status='paid' AND ${scope}`;
+  const {rows:[count]}=await db.query(`SELECT count(*)::int total ${from}`,args);
+  if(!count.total&&permissionScope(req.user,'company_costs.read')!==null)throw new HttpError(404,'Payroll period not found','not_found');
+  const {rows}=await db.query(`SELECT pe.* ${from} ORDER BY pe.employee_id LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,req.query.pageSize,pageOffset(req.query)]);
+  return pageResult(rows.map(toEntry),req.query,count.total);
+ });res.json(result);
 }));
 export default router;

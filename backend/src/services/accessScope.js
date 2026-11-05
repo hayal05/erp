@@ -49,3 +49,14 @@ export async function assertEmployeeChangeScope(db,user,path,body={}){
   if(Number(body.departmentId)!==Number(employee.department_id))assertDepartmentScope(user,permission,body.departmentId);
  }
 }
+
+export function departmentScopeSql(user,permission,expression,args){
+ const scope=permissionScope(user,permission);if(scope===null)return 'TRUE';
+ args.push(scope.departmentIds,scope.employeeIds);
+ return `(${expression}=ANY($${args.length-1}::bigint[]) OR EXISTS(SELECT 1 FROM employees scope_employee WHERE scope_employee.department_id=${expression} AND scope_employee.id=ANY($${args.length}::bigint[])))`;
+}
+export async function assertDepartmentReadScope(db,user,permission,id){
+ if(!Number.isSafeInteger(Number(id))||Number(id)<1)throw new HttpError(400,'Invalid department ID','validation');
+ const args=[id],condition=departmentScopeSql(user,permission,'d.id',args);
+ if(!(await db.query(`SELECT d.id FROM departments d WHERE d.id=$1 AND ${condition}`,args)).rows.length)throw new HttpError(404,'Department not found','not_found');
+}

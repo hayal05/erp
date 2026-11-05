@@ -7,6 +7,6 @@ import {loadDashboard} from '../services/dashboard.js';
 const router=Router();
 router.use(noStore,requirePermission('dashboard.read'));
 router.get('/',wrap(async(req,res)=>{
- res.json(await withTransaction(async db=>{await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');return loadDashboard(db);}));
+ res.json(await withTransaction(async db=>{await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');return loadDashboard(db,{user:req.user});}));
 }));
 export default router;

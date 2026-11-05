@@ -40,7 +40,7 @@ export default function PayrollSettings() {
       </div>
       <div role="tabpanel" id={`panel-${active}`} aria-labelledby={`tab-${active}`} className="payroll-settings-panel">
         <fieldset disabled={readOnly && active!=='other-deductions'} style={{border:0,padding:0,margin:0,minWidth:0}}>
-        {active === 'income-tax' ? <IncomeTaxTab /> : active === 'pension' ? <PensionTab /> : active === 'other-taxes' ? <OtherTaxesTab /> : <div className="stack"><fieldset disabled={readOnly} style={{border:0,padding:0,margin:0}}><AttendanceDeductionSettings /></fieldset><DeductionsTab readOnly={readOnly} /></div>}
+        {active === 'income-tax' ? <IncomeTaxTab /> : active === 'pension' ? <PensionTab /> : active === 'other-taxes' ? <OtherTaxesTab /> : <div className="stack"><fieldset disabled={readOnly} style={{border:0,padding:0,margin:0}}><AttendanceDeductionSettings /></fieldset><DeductionsTab readOnly={!allowed(user,'deductions.manage')} /></div>}
         </fieldset>
       </div>
       <small className="muted">Regenerate drafts to apply changes; approved payroll stays unchanged.</small>

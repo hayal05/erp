@@ -81,7 +81,7 @@ export default function Employees() {
       <span className="row">
         <EmployeeProfileLink employee={r}/>
         {canManage&&r.canManage!==false&&<Button size="sm" onClick={() => setDialog({ employee: r })} aria-label={`Edit ${r.fullName}`}>Edit</Button>}
-        {canReadSalary&&<Button size="sm" onClick={() => setSalaryEmployee(r)} aria-label={`Salary for ${r.fullName}`}>Salary</Button>}
+        {canReadSalary&&r.canReadSalary!==false&&<Button size="sm" onClick={() => setSalaryEmployee(r)} aria-label={`Salary for ${r.fullName}`}>Salary</Button>}
         {canManage && r.canManage!==false && (r.status === 'active'
           ? <Button size="sm" variant="danger" onClick={() => setConfirm({ employee: r, reason: '', busy: false })} aria-label={`Deactivate ${r.fullName}`}>Deactivate</Button>
           : <Button size="sm" onClick={() => changeStatus(r, 'activate')} aria-label={`Activate ${r.fullName}`}>Activate</Button>)}
