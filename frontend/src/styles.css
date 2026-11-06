@@ -219,6 +219,8 @@ a { color: var(--accent); }
 .row.between { justify-content: space-between; }
 .toolbar { display: grid; grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr)); gap: var(--space-sm); align-items: end; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
+.position-name-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-sm); align-items: start; }
+.position-name-row > .btn { margin-top: 1.4rem; min-height: var(--tap); }
 .form-grid .full { grid-column: 1 / -1; }
 @media (max-width: 700px) { .toolbar, .form-grid { grid-template-columns: minmax(0, 1fr); } }
 
