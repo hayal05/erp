@@ -6,7 +6,7 @@ function timeValue(time) {
   return (hours * 60 + minutes) / 1440;
 }
 
-export async function attendanceWorkbook({ title, company, date, month, period, asOf, group, columns, rows }) {
+export async function attendanceWorkbook({ title, company, date, month, year, period, asOf, group, columns, rows }) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(group ?? 'Attendance', { views: [{ state: 'frozen', ySplit: 4 }] });
   const widths = [18, 32, 26, 14, 14, 16];
@@ -17,7 +17,8 @@ export async function attendanceWorkbook({ title, company, date, month, period, 
   sheet.mergeCells(2, 1, 2, columns.length);
   const periodRow = sheet.addRow(date
     ? ['Date', new Date(date + 'T00:00:00Z'), 'Records', rows.length]
-    : month ? ['Month', month, 'Groups', rows.length] : [period ? 'Range' : 'As of', period ?? new Date(asOf + 'T00:00:00Z'), 'Records', rows.length]);
+    : month ? ['Month', month, 'Groups', rows.length]
+    : year ? ['Year', year, 'Records', rows.length] : [period ? 'Range' : 'As of', period ?? new Date(asOf + 'T00:00:00Z'), 'Records', rows.length]);
   if (date || asOf) periodRow.getCell(2).numFmt = 'yyyy-mm-dd';
   if (period) {
     periodRow.getCell(2).alignment = { wrapText: true };

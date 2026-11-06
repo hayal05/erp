@@ -6,6 +6,7 @@ import { validate, v } from '../middleware/validate.js';
 import { hasPermission } from '../services/permissions.js';
 import { config } from '../config.js';
 import { attendanceListQuery, ATTENDANCE_STATUSES } from '../services/hrSchemas.js';
+import { leaveReports } from '../services/leaveReportDefinitions.js';
 import { employeeReports } from '../services/employeeReportDefinitions.js';
 import { employeeReportLookups } from '../services/employeeReportData.js';
 import { exceptionKinds, readAttendanceExceptions, readAttendanceCorrections } from '../services/attendanceReportDetails.js';
@@ -152,6 +153,7 @@ const reports = new Map([
     preview: readAttendanceCorrections,
   }],
   ...employeeReports,
+  ...leaveReports,
 ]);
 
 function reportColumns(report, filters) {
@@ -178,6 +180,10 @@ router.get('/', (req, res) => {
 
 router.get('/employee-lookups', requirePermission('employees.read'), wrap(async (req, res) => {
   res.json(await employeeReportLookups(req.user));
+}));
+
+router.get('/leave-lookups', requirePermission('leave.read'), wrap(async (req, res) => {
+  res.json(await employeeReportLookups(req.user, 'leave.read'));
 }));
 
 const MAX_EXPORT_ROWS = 5000;
@@ -208,14 +214,14 @@ for (const [id, report] of reports) {
         if (result.total > MAX_EXPORT_ROWS || result.items.length > MAX_EXPORT_ROWS) {
           throw new HttpError(422, 'This report exceeds 5,000 rows. Narrow the filters and try again.', 'export_limit');
         }
-        const { date, month, from, to } = req.query;
+        const { date, month, year, from, to } = req.query;
         const period = from ? `${from} to ${to}` : undefined;
-        const asOf = date || month || period ? undefined : result.today ?? companyDate();
+        const asOf = date || month || year || period ? undefined : result.today ?? companyDate();
         const buffer = await render({
-          title: report.title, company: config.company.name, date, month, period, asOf, group: report.group,
+          title: report.title, company: config.company.name, date, month, year, period, asOf, group: report.group,
           columns: reportColumns(report, req.query), rows: result.items,
         });
-        res.attachment(`${id}-${date ?? month ?? (from ? `${from}-to-${to}` : asOf)}.${format}`);
+        res.attachment(`${id}-${date ?? month ?? year ?? (from ? `${from}-to-${to}` : asOf)}.${format}`);
         res.type(contentTypes[format]).send(Buffer.from(buffer));
       }));
   }

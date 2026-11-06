@@ -305,7 +305,26 @@ test('leave requests, balances and immediate decisions respect scope; entitlemen
  scopeStatus(await leader.post(`/api/leave-admin/requests/${leaveA}/approve`).send({}),200);
  scopeStatus(await leader.post('/api/leave-admin/balances').send({employeeId:outside.id,leaveTypeId:annual,year:2026,entitledDays:25,reason:'Outside request'}),404);
  await scopedApprove(await leader.post('/api/leave-admin/balances').send({employeeId:inside.id,leaveTypeId:annual,year:2026,entitledDays:25,reason:'Department entitlement'}));
- assert.equal((await leader.get(`/api/leave-admin/balances?employeeId=${inside.id}&year=2026`)).body.items.find(b=>b.leaveTypeId===annual).entitled,25);
+ const baseBalance=(await leader.get(`/api/leave-admin/balances?employeeId=${inside.id}&year=2026`)).body.items.find(b=>b.leaveTypeId===annual);
+ assert.equal(baseBalance.entitled,25);
+ const queryString=`?year=2026&employeeId=${inside.id}`;
+ const balances=await leader.get('/api/reports/leave-balances/preview'+queryString);
+ assert.equal(balances.status,200,JSON.stringify(balances.body));
+ const reportBalance=balances.body.items.find(row=>row.leaveTypeName===baseBalance.name);
+ for(const field of ['entitled','adjusted','used','pending','remaining']) assert.equal(reportBalance[field],baseBalance[field]);
+ const usage=await leader.get('/api/reports/leave-usage/preview'+queryString+'&groupBy=department');
+ assert.equal(usage.status,200,JSON.stringify(usage.body));
+ assert.equal(usage.body.items.find(row=>row.leaveTypeName===baseBalance.name).used,baseBalance.used);
+ const requests=await leader.get('/api/reports/leave-requests/preview'+queryString);
+ assert.equal(requests.status,200,JSON.stringify(requests.body));
+ assert.equal(requests.body.items.find(row=>row.id===leaveA).decidedBy,'team.leader');
+ assert.equal((await leader.get(`/api/reports/leave-balances/preview?year=2026&employeeId=${outside.id}`)).body.total,0);
+ for(const format of ['xlsx','pdf','docx']){
+  const path='/api/reports/leave-usage/export.'+format+queryString;
+  assert.equal((await leader.get(path)).status,200);
+  assert.equal((await plain.get(path)).status,403);
+ }
+
  const history=await leader.get('/api/audit-history?area=leave');scopeStatus(history);assert.ok(history.body.items.some(r=>r.type==='leave_request'&&Number(r.recordId)===leaveA));
  scopeStatus(await leader.get(`/api/audit-history/leave_request/${leaveB}`),404);
 });
