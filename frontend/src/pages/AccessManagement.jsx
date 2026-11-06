@@ -15,7 +15,16 @@ export default function AccessManagement(){
  const {user}=useAuth();
  const [tab,setTab]=useState('employees');
  if(!user?.permissions?.includes('access.read'))return <section><h1>Access Management</h1><p role="alert">You do not have access to this page.</p></section>;
- return <div className="stack">{user.permissions.includes('access.manage')&&<nav className="tabs" aria-label="Access management sections"><button className={tab==='employees'?'active':''} onClick={()=>setTab('employees')}>Employees</button><button className={tab==='roles'?'active':''} onClick={()=>setTab('roles')}>Custom roles</button></nav>}{tab==='roles'?<CustomAccessRoles/>:<AccessList/>}</div>;
+ return <section className="stack access-management">
+  <div className="row between access-heading">
+   <h1>Access Management</h1>
+   {user.permissions.includes('access.manage')&&<nav className="tabs" aria-label="Access management sections">
+    <button type="button" className={tab==='employees'?'active':''} aria-pressed={tab==='employees'} onClick={()=>setTab('employees')}>Employees</button>
+    <button type="button" className={tab==='roles'?'active':''} aria-pressed={tab==='roles'} onClick={()=>setTab('roles')}>Custom roles</button>
+   </nav>}
+  </div>
+  {tab==='roles'?<CustomAccessRoles/>:<AccessList/>}
+ </section>;
 }
 function AccessList(){
   const pageRefresh = usePageRefresh();
@@ -29,7 +38,7 @@ function AccessList(){
    .then(r=>{if(!ctrl.signal.aborted)setData({...r,loading:false,error:''});})
    .catch(e=>{if(!ctrl.signal.aborted)setData({items:[],total:0,loading:false,error:e.message});});return()=>ctrl.abort();
  },[page,query,reload, pageRefresh]);
- return <section className="stack access-management-page"><div className="row between access-heading"><h1>Access Management</h1>
+ return <section className="stack access-management-page"><div className="access-toolbar">
   <Field label="Search employees" type="search" placeholder="Name, username, email or ID" value={search} maxLength={120} onChange={e=>setSearch(e.target.value)} /></div>
   <Table caption="Employee access" columns={[
    {key:'employeeCode',header:'Employee ID'},{key:'fullName',header:'Name'},{key:'username',header:'Username'},{key:'department',header:'Department'},{key:'position',header:'Position'},
