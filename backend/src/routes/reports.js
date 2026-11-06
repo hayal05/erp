@@ -6,6 +6,8 @@ import { validate, v } from '../middleware/validate.js';
 import { hasPermission } from '../services/permissions.js';
 import { config } from '../config.js';
 import { attendanceListQuery, ATTENDANCE_STATUSES } from '../services/hrSchemas.js';
+import { employeeReports } from '../services/employeeReportDefinitions.js';
+import { employeeReportLookups } from '../services/employeeReportData.js';
 import { exceptionKinds, readAttendanceExceptions, readAttendanceCorrections } from '../services/attendanceReportDetails.js';
 import { readMonthlyAttendance } from '../services/monthlyAttendance.js';
 import { attendanceWord } from '../services/attendanceWord.js';
@@ -149,6 +151,7 @@ const reports = new Map([
     ],
     preview: readAttendanceCorrections,
   }],
+  ...employeeReports,
 ]);
 
 function reportColumns(report, filters) {
@@ -158,8 +161,8 @@ function reportColumns(report, filters) {
   return report.columns;
 }
 
-function metadata(id, { title, group, description, exports, filters, columns }) {
-  return { id, title, group, description, formats: Object.keys(exports), filters, columns };
+function metadata(id, { title, group, description, lookupPath, exports, filters, columns }) {
+  return { id, title, group, description, lookupPath, formats: Object.keys(exports), filters, columns };
 }
 
 const router = Router();
@@ -172,6 +175,10 @@ router.get('/', (req, res) => {
     .map(([id, report]) => metadata(id, report));
   res.json({ items, today: companyDate() });
 });
+
+router.get('/employee-lookups', requirePermission('employees.read'), wrap(async (req, res) => {
+  res.json(await employeeReportLookups(req.user));
+}));
 
 const MAX_EXPORT_ROWS = 5000;
 const contentTypes = {
@@ -203,11 +210,12 @@ for (const [id, report] of reports) {
         }
         const { date, month, from, to } = req.query;
         const period = from ? `${from} to ${to}` : undefined;
+        const asOf = date || month || period ? undefined : result.today ?? companyDate();
         const buffer = await render({
-          title: report.title, company: config.company.name, date, month, period,
+          title: report.title, company: config.company.name, date, month, period, asOf, group: report.group,
           columns: reportColumns(report, req.query), rows: result.items,
         });
-        res.attachment(`${id}-${date ?? month ?? `${from}-to-${to}`}.${format}`);
+        res.attachment(`${id}-${date ?? month ?? (from ? `${from}-to-${to}` : asOf)}.${format}`);
         res.type(contentTypes[format]).send(Buffer.from(buffer));
       }));
   }

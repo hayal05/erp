@@ -40,7 +40,7 @@ function Preview({ report, today }) {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
   const needsLookups = report.filters.some(filter => filter.lookup);
-  const lookups = useResource(needsLookups ? '/attendance-records/lookups' : null);
+  const lookups = useResource(needsLookups ? report.lookupPath ?? '/attendance-records/lookups' : null);
   const lookupOptions = {
     departments: (lookups.data?.departments ?? []).map(department => ({ value: department.id, label: department.name })),
     employees: (lookups.data?.employees ?? [])
@@ -66,7 +66,7 @@ function Preview({ report, today }) {
       const url = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${report.id}-${submitted.date ?? submitted.month ?? `${submitted.from}-to-${submitted.to}`}.${format}`;
+      link.download = `${report.id}-${submitted.date ?? submitted.month ?? (submitted.from ? `${submitted.from}-to-${submitted.to}` : preview.data?.today ?? today)}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();

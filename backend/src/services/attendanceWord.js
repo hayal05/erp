@@ -3,7 +3,7 @@ import {
   Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType,
 } from 'docx';
 
-export function attendanceWord({ title, company, month, period, count, note, columns, rows }) {
+export function attendanceWord({ title, company, month, period, asOf, count, note, columns, rows }) {
   const weights = columns.map(column => column.width ?? 14);
   const weightTotal = weights.reduce((total, width) => total + width, 0);
   const widths = weights.map(weight => Math.floor(14000 * weight / weightTotal));
@@ -23,7 +23,7 @@ export function attendanceWord({ title, company, month, period, count, note, col
   const contents = [
     new Paragraph({ text: company }),
     new Paragraph({ text: title, heading: HeadingLevel.TITLE }),
-    new Paragraph({ text: month ? `Month: ${month}    Groups: ${rows.length}` : `Range: ${period}    Records: ${count}`, spacing: { after: 180 } }),
+    new Paragraph({ text: month ? `Month: ${month}    Groups: ${rows.length}` : `${period ? `Range: ${period}` : `As of: ${asOf}`}    Records: ${count ?? rows.length}`, spacing: { after: 180 } }),
   ];
   if (note) contents.push(new Paragraph({ text: note, spacing: { after: 180 } }));
   if (rows.length) {
