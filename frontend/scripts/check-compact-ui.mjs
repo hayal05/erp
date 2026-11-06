@@ -96,6 +96,15 @@ try{
  assert.match(reportPreview, /<button[^>]*disabled=""[^>]*>Export<\/button>/);
  assert.ok(!reportPreview.includes('Export Excel'));
  assert.ok(!reportPreview.includes('Date period'));
+ fixtures['/reports/appraisal-lookups']={cycles:[{id:1,name:'Q4 review'}],ratings:[{id:'Standard',name:'Standard'}]};
+ const appraisalReport={...report,title:'Appraisal results',lookupPath:'/reports/appraisal-lookups',filters:[
+  {key:'cycleId',label:'Cycle',type:'select',lookup:'cycles',placeholder:'All cycles'},
+  {key:'rating',label:'Rating',type:'select',lookup:'ratings',placeholder:'All ratings'},
+ ]};
+ const appraisalReportPreview=await render('pages/Reports.jsx','Preview',{report:appraisalReport,today:fixtures['/reports'].today});
+ assert.match(appraisalReportPreview, /Q4 review/);
+ assert.match(appraisalReportPreview, /Standard/);
+
  const rangedReport={...report,filters:[
   {key:'from',label:'From date',type:'date',required:true},
   {key:'to',label:'To date',type:'date',required:true},

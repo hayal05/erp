@@ -493,6 +493,10 @@ test('an independent scoped approver can return and finalize, and only the emplo
  const reviewerPath = '/api/appraisals/reviews/' + key;
  const own = '/api/my-appraisals/' + assignment.cycleId;
  const pendingReview = (await ok(hr2.get(path))).review;
+ const pendingReport = await ok(hr2.get('/api/reports/appraisal-results/preview?status=submitted'));
+ assert.equal(pendingReport.items[0].score, null);
+ assert.equal(pendingReport.items[0].rating, null);
+
  assert.equal((await ok(hr2.get('/api/appraisals/approvals'))).total, 1);
  assert.equal((await ok(hr.get('/api/appraisals/approvals'))).total, 0);
  assert.equal((await ok(plain.get('/api/my-appraisals'))).total, 0);
@@ -537,4 +541,44 @@ test('an independent scoped approver can return and finalize, and only the emplo
  await ok(hr.put(reviewerPath).send({ version: approved.version, inputs: {} }), 409);
  assert.deepEqual((await ok(hr2.get(path + '/history?pageSize=3'))).items.map(row => row.action),
   ['appraisal.review.approve', 'appraisal.review.submit', 'appraisal.review.return']);
+});
+
+test('appraisal reports filter finalized scores, summarize statuses and keep exports in scope', async () => {
+ const ok = async (res, status = 200) => { const r = await res; assert.equal(r.status, status, JSON.stringify(r.body)); return r.body; };
+ const results = '/api/reports/appraisal-results', summary = '/api/reports/appraisal-summary';
+ const [assignment] = (await ok(hr.get('/api/appraisals/assignments'))).items;
+ const employee = await ok(admin.get('/api/employees/' + person.id));
+ const filters = new URLSearchParams({ cycleId: assignment.cycleId, departmentId: employee.departmentId,
+  positionId: employee.positionId, gradeId: employee.jobGradeId, status: 'approved', rating: 'Standard' });
+ const lookups = await ok(hr.get('/api/reports/appraisal-lookups'));
+ assert.ok(lookups.cycles.some(row => row.id === assignment.cycleId));
+ assert.ok(lookups.positions.some(row => row.id === employee.positionId));
+ assert.ok(lookups.grades.some(row => row.id === employee.jobGradeId));
+ assert.deepEqual(lookups.ratings, [{ id: 'Standard', name: 'Standard' }]);
+ const result = await ok(hr.get(results + '/preview?' + filters));
+ assert.equal(result.total, 1);
+ assert.equal(result.items[0].score, 82.5);
+ assert.equal(result.items[0].rating, 'Standard');
+ assert.ok(!Object.hasOwn(result.items[0], 'comment'));
+ assert.equal((await ok(hr.get(results + '/preview?rating=Other'))).total, 0);
+ const [group] = (await ok(hr.get(summary + '/preview?' + filters))).items;
+ assert.equal(group.total, 1);
+ assert.equal(group.approved, 1);
+ assert.equal(group.averageScore, 82.5);
+ await ok(plain.get(results + '/preview'), 403);
+ const role = await ok(admin.post('/api/custom-access/roles').send({ name: 'Appraisal report viewer', activities: ['appraisals.read'] }), 201);
+ const [other] = (await q("SELECT id FROM departments WHERE name='Outside appraisal scope'")).rows;
+ await ok(admin.post(`/api/custom-access/employees/${person.id}/custom-grants`).send({
+  roleId: role.id, scopeType: 'departments', departmentIds: [Number(other.id)], employeeIds: [],
+ }), 201);
+ assert.equal((await ok(plain.get(results + '/preview?' + filters))).total, 0);
+ assert.deepEqual((await ok(plain.get('/api/reports/appraisal-lookups'))).cycles, []);
+ for (const report of [results, summary]) {
+  await ok(hr.get(report + '/export.xlsx?' + filters));
+  await ok(hr.get(report + '/export.pdf?' + filters));
+  await ok(plain.get(report + '/export.xlsx?' + filters));
+ }
+ const logs = (await q("SELECT details FROM audit_logs WHERE action='report.export' AND entity_id='appraisal-results' ORDER BY id")).rows;
+ assert.ok(logs.some(row => row.details.rowCount === 0));
+ assert.ok(logs.some(row => row.details.filters.rating === 'Standard' && row.details.rowCount === 1));
 });
