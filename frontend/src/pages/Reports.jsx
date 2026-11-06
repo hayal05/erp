@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getFile } from '../api/client.js';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
 import Table, { Pager } from '../components/Table.jsx';
@@ -36,23 +37,69 @@ function Preview({ report, today }) {
     report.filters.map(filter => [filter.key, filter.type === 'date' ? today : ''])));
   const [submitted, setSubmitted] = useState(null);
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const needsLookups = report.filters.some(filter => filter.lookup);
+  const lookups = useResource(needsLookups ? '/attendance-records/lookups' : null);
+  const lookupOptions = {
+    departments: (lookups.data?.departments ?? []).map(department => ({ value: department.id, label: department.name })),
+    employees: (lookups.data?.employees ?? [])
+      .filter(employee => !filters.departmentId || String(employee.departmentId) === filters.departmentId)
+      .map(employee => ({ value: employee.id, label: `${employee.fullName} · ${employee.employeeCode}` })),
+  };
   const preview = useResource(submitted ? `/reports/${report.id}/preview` : null,
     { ...submitted, page, pageSize: PAGE_SIZE });
 
   function run(event) {
     event.preventDefault();
+    setExportError('');
     setPage(1);
     setSubmitted({ ...filters });
     preview.reload();
   }
 
+  async function download() {
+    setExporting(true);
+    setExportError('');
+    try {
+      const file = await getFile(`/reports/${report.id}/export.xlsx`, { query: submitted });
+      const url = URL.createObjectURL(file);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${report.id}-${submitted.date}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setExportError(error.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const filtersChanged = submitted && report.filters.some(filter => filters[filter.key] !== submitted[filter.key]);
+
   return <section className="stack">
+    {lookups.error && <ResourceState error={lookups.error} onRetry={lookups.reload} />}
     <form className="row" onSubmit={run}>
       {report.filters.map(filter => <Field key={filter.key} label={filter.label}
-        type={filter.type} required={filter.required} value={filters[filter.key]}
-        onChange={e => setFilters(current => ({ ...current, [filter.key]: e.target.value }))} />)}
-      <Button size="sm" type="submit" variant="primary" busy={preview.loading}>Preview</Button>
+        as={filter.type === 'select' ? 'select' : undefined}
+        type={filter.type === 'select' ? undefined : filter.type}
+        placeholder={filter.placeholder} options={filter.options ?? lookupOptions[filter.lookup]}
+        disabled={Boolean(filter.lookup && lookups.loading)}
+        required={filter.required} value={filters[filter.key]}
+        onChange={e => setFilters(current => ({
+          ...current,
+          ...(filter.key === 'departmentId' ? { employeeId: '' } : {}),
+          [filter.key]: e.target.value,
+        }))} />)}
+      <Button size="sm" type="submit" variant="primary" busy={preview.loading} disabled={exporting}>Preview</Button>
+      {report.formats.includes('xlsx') && <Button size="sm" busy={exporting}
+        disabled={!submitted || filtersChanged || preview.loading || !preview.data || Boolean(preview.error)}
+        onClick={download}>Export Excel</Button>}
     </form>
+    {exportError && <p role="alert" className="form-error">{exportError}</p>}
     {submitted && <>
       <Table caption={report.title} columns={report.columns}
         rows={preview.loading ? [] : preview.data?.items} loading={preview.loading}

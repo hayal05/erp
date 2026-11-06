@@ -1,3 +1,4 @@
+import ExcelJS from 'exceljs';
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -49,7 +50,31 @@ test('department grants are effective in existing sessions and scope lists, coun
  assert.deepEqual(catalog.body.items.map(report=>report.id),['daily-attendance']);
  assert.deepEqual((await plain.get('/api/reports')).body.items,[]);
  const previewPath='/api/reports/daily-attendance/preview';
- const preview=await leader.get(previewPath+'?date='+companyDate()+'&departmentId='+depB);
+ const filters='?date='+companyDate()+'&departmentId='+depA;
+ const preview=await leader.get(previewPath+filters);
+ const outsideFilters='?date='+companyDate()+'&departmentId='+depB;
+ assert.equal((await leader.get(previewPath+outsideFilters)).body.total,0);
+ assert.equal((await leader.get(previewPath+filters+'&employeeId='+outside.id)).body.total,0);
+ const exportPath='/api/reports/daily-attendance/export.xlsx';
+ const readExport=async query=>{
+  const response=await leader.get(exportPath+query).buffer(true).parse((stream,done)=>{
+   const chunks=[];
+   stream.on('data',chunk=>chunks.push(chunk));
+   stream.on('end',()=>done(null,Buffer.concat(chunks)));
+   stream.on('error',done);
+  });
+  assert.equal(response.status,200);
+  assert.match(response.headers['content-disposition'],/\.xlsx/);
+  const workbook=new ExcelJS.Workbook();
+  await workbook.xlsx.load(response.body);
+  return workbook.getWorksheet('Attendance');
+ };
+ const sheet=await readExport(filters+'&page=2&pageSize=1');
+ assert.equal(sheet.getCell('D3').value,preview.body.total);
+ assert.deepEqual(sheet.getRows(5,preview.body.total).map(row=>row.getCell(1).value),preview.body.items.map(row=>row.employeeCode));
+ assert.equal((await readExport(outsideFilters)).getCell('D3').value,0);
+ assert.equal((await plain.get(exportPath+filters)).status,403);
+ assert.equal((await leader.get(exportPath+filters+'&status=invalid')).status,400);
  assert.equal(preview.status,200,JSON.stringify(preview.body));
  assert.ok(preview.body.items.some(row=>row.id===recordA));
  assert.ok(preview.body.items.every(row=>row.departmentName==='A'));
