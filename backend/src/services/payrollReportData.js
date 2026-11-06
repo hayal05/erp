@@ -9,9 +9,9 @@ const currency = `COALESCE(p.config_snapshot->'settings'->>'currencyCode',
 const identity = `pe.employee_code AS "employeeCode", pe.employee_name AS "fullName",
   d.name AS "departmentName", ${currency} AS currency, p.status`;
 
-function payrollSelection(user, filters) {
+function payrollSelection(user, filters, permission = 'payroll.read') {
   const args = [`${filters.month}-01`, filters.departmentId ?? null, filters.employeeId ?? null];
-  const scope = scopeSql(user, 'payroll.read', 'e', args);
+  const scope = scopeSql(user, permission, 'e', args);
   return {
     args,
     from: `FROM payroll_entries pe JOIN payroll_periods p ON p.id=pe.period_id
@@ -92,4 +92,14 @@ export function readEmployeePayslipReport(user, filters) {
     const offset = pageOffset(filters);
     return pageResult(rows.slice(offset, offset + filters.pageSize), filters, rows.length);
   });
+}
+
+export function readEmployerCostDetails(user, filters) {
+  const { args, from, where } = payrollSelection(user, filters, 'company_costs.read');
+  return readPage(`
+    SELECT pe.id, ${identity}, pe.gross_minor / 100.0 AS gross,
+      pe.net_minor / 100.0 AS "salaryPaid", pe.employer_pension_minor / 100.0 AS "companyPension",
+      pe.employer_cost_minor / 100.0 AS "employerCost"
+    ${from} WHERE ${where} AND p.status='paid'
+  `, args, filters);
 }

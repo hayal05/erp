@@ -66,7 +66,7 @@ function Preview({ report, today }) {
       const url = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${report.id}-${submitted.date ?? submitted.month ?? submitted.year ?? (submitted.from ? `${submitted.from}-to-${submitted.to}` : preview.data?.today ?? today)}.${format}`;
+      link.download = `${report.id}-${submitted.date ?? submitted.month ?? submitted.year ?? (submitted.from && submitted.to ? `${submitted.from}-to-${submitted.to}` : submitted.from || submitted.to || preview.data?.today || today)}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();

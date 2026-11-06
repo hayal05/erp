@@ -19,11 +19,13 @@ before(async()=>{
  const dir=new URL('../../database/migrations/',import.meta.url);
  for(const name of(await fs.readdir(dir)).filter(n=>n.endsWith('.sql')).sort())await db.exec(await fs.readFile(new URL(name,dir),'utf8'));
  for(const role of ['hr','employee'])await q('INSERT INTO users(email,full_name,password_hash,role) VALUES($1,$2,$3,$4)',[`${role}@ann.test`,role,await hashPassword('password-123'),role]);
+ // These fixtures exercise direct administrative writes, which require General Admin.
+ await q("INSERT INTO access_grants(user_id,access_role) SELECT id,'admin' FROM users WHERE email='hr@ann.test'");
  hr=await signIn(app,{email:'hr@ann.test',password:'password-123'});
  employee=await signIn(app,{email:'employee@ann.test',password:'password-123'});
 });
 after(async()=>db.close());
-test('announcements require authentication, HR role for writes and CSRF protection',async()=>{
+test('announcements require authentication, administrative access for writes and CSRF protection',async()=>{
  assert.equal((await request(app).get(URL_PATH)).status,401);
  assert.equal((await employee.post(URL_PATH).send(notice())).status,403);
  assert.equal((await employee.put(`${URL_PATH}/1`).send({...notice(),version:1})).status,403);
@@ -33,7 +35,7 @@ test('announcements require authentication, HR role for writes and CSRF protecti
  assert.equal((await raw.post(URL_PATH).send(notice())).status,403);
  const r=await hr.get(URL_PATH);assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.headers['cache-control'],'no-store');
 });
-test('HR can create, publish, edit and archive; employee parameters cannot expose hidden notices',async()=>{
+test('General Admin can create, publish, edit and archive; employee parameters cannot expose hidden notices',async()=>{
  let r=await hr.post(URL_PATH).send(notice());assert.equal(r.status,201,JSON.stringify(r.body));const draft=r.body;
  assert.equal((await employee.get(URL_PATH+'?status=draft')).body.total,0);
  const live=(await hr.put(`${URL_PATH}/${draft.id}`).send({...notice('published'),version:draft.version}));assert.equal(live.status,200,JSON.stringify(live.body));assert.ok(live.body.publishedAt);
@@ -68,7 +70,25 @@ test('pagination and validation work for both roles',async()=>{
  assert.equal((await hr.post(URL_PATH).send({...notice(),expiresOn:'not-a-date'})).status,400);
  assert.equal((await hr.put(URL_PATH+'/999999').send({...notice(),version:1})).status,404);
 });
-test('locked HR cannot read or publish announcements',async()=>{
+test('announcement history exports administrative lifecycle records without exposing them to employees',async()=>{
+ const path='/api/reports/announcement-history';
+ const archived=await hr.get(path+'/preview?status=archived');
+ assert.equal(archived.status,200,JSON.stringify(archived.body));
+ assert.equal(archived.body.total,1);
+ assert.equal(archived.body.items[0].visibilityStatus,'Archived');
+ assert.ok(archived.body.items[0].publishedAt);
+ const published=await hr.get(path+'/preview?status=published');
+ assert.equal(published.status,200,JSON.stringify(published.body));
+ assert.ok(published.body.items.some(row=>row.visibilityStatus==='Expired'));
+ assert.ok(published.body.items.every(row=>!Object.hasOwn(row,'body')));
+ for(const format of ['xlsx','pdf']){
+  const url=path+'/export.'+format+'?status=archived';
+  assert.equal((await hr.get(url)).status,200);
+  assert.equal((await employee.get(url)).status,403);
+ }
+ assert.equal((await employee.get(path+'/preview')).status,403);
+});
+test('locked administrator cannot read or publish announcements',async()=>{
  assert.equal((await hr.post('/api/qr/lock').send({})).status,200);
  assert.equal((await hr.get(URL_PATH)).status,423);
  assert.equal((await hr.post(URL_PATH).send(notice())).status,423);
