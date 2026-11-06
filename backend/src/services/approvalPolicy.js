@@ -1,6 +1,7 @@
 // Only fixed administrative operations may enter the queue. Daily attendance, QR,
 // personal profiles/passwords and existing leave decisions do not use this wrapper.
 const rules=[
+ ['hr','appraisals.configure',/^\/api\/appraisals\/templates(?:\/\d+)?$/,['appraisal_templates','departments','positions','position_job_grades']],
  ['hr','employees.manage',/^\/api\/employees\/\d+\/attachments$/,['employees']],
  ['hr','employees.manage',/^\/api\/retirement\/settings$/,['retirement_settings']],
  ['hr','vacancies.review',/^\/api\/vacancies\/\d+\/applications\/\d+$/,['vacancy_applications']],

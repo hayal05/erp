@@ -189,6 +189,7 @@ router.delete('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
       await db.query('DELETE FROM positions WHERE id = $1', [id]);
     } catch (err) {
       if (isFkViolation(err) && err.constraint?.startsWith('internal_vacancies')) throw new HttpError(409, 'Position is used by an internal vacancy.', 'in_use');
+      if (isFkViolation(err) && err.constraint?.startsWith('appraisal_templates')) throw new HttpError(409, 'Position or one of its job grades is used by an appraisal template.', 'in_use');
       if (isFkViolation(err)) throw new HttpError(409, 'Position is still assigned to employees. Move them first.', 'in_use');
       throw err;
     }

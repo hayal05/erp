@@ -60,6 +60,7 @@ try{
   document.documentElement.dataset.theme=theme;
   await render('components/HrLayout.jsx');await render('components/Skeleton.jsx','default',{variant:'dashboard'});
  }
+ assert.match(await render('pages/AppraisalTemplates.jsx'), />New template</);
  const reportPicker=await render('pages/Reports.jsx');
  assert.match(reportPicker, /<optgroup label="Attendance">/);
  assert.match(reportPicker, /<optgroup label="Payroll">/);

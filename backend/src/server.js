@@ -71,6 +71,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use(incrementalReads());
 
   const operations=express.Router();
+  operations.use('/api/appraisals', appraisalRoutes);
   operations.use('/api/retirement', retirementRoutes);
   operations.use('/api/vacancies', vacancyRoutes);
   operations.use('/api/announcements', announcementRoutes);

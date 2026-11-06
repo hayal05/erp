@@ -7,25 +7,35 @@ import { validate, v } from '../middleware/validate.js';
 import { coversEmployee, scopeSql } from '../services/accessScope.js';
 import { likePattern, pageOffset, pageResult, pageSchema } from '../services/sql.js';
 
+import templateRoutes from './appraisalTemplates.js';
+import { appraisalMatchJoin, toAppraisalMatch } from '../services/appraisalTemplates.js';
+
 const router = Router();
 router.use(noStore, requirePermission('appraisals.read'));
+router.use('/templates', templateRoutes);
 
 router.get('/employees', validate({ ...pageSchema, search: v.string({ max: 120 }) }, 'query'), wrap(async (req, res) => {
   const filters = req.query;
   const args = [filters.search ? likePattern(filters.search) : null];
   const scope = scopeSql(req.user, 'appraisals.read', 'e', args);
   const from = `FROM employees e JOIN users u ON u.id=e.user_id
-    LEFT JOIN departments d ON d.id=e.department_id
-    WHERE e.status='active' AND u.is_active AND ${scope}
+    LEFT JOIN departments d ON d.id=e.department_id`;
+  const where = `WHERE e.status='active' AND u.is_active AND ${scope}
       AND ($1::text IS NULL OR u.full_name ILIKE $1 OR e.employee_code ILIKE $1)`;
   const result = await withTransaction(async db => {
     await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const { rows } = await db.query(`SELECT e.id, e.department_id, e.employee_code, u.full_name, d.name AS department
-      ${from} ORDER BY lower(u.full_name), e.id LIMIT $${args.length + 1} OFFSET $${args.length + 2}`,
-    [...args, filters.pageSize, pageOffset(filters)]);
-    const { rows: [count] } = await db.query(`SELECT count(*)::int AS total ${from}`, args);
+    const { rows } = await db.query(`
+      WITH selected AS (
+        SELECT e.id, e.department_id, e.position_id, e.job_grade_id, e.employee_code, u.full_name, d.name AS department
+        ${from} ${where} ORDER BY lower(u.full_name), e.id LIMIT $${args.length + 1} OFFSET $${args.length + 2}
+      )
+      SELECT e.*, match.candidate_count, match.candidate_name, match.candidate_id, match.priority
+      FROM selected e ${appraisalMatchJoin} ORDER BY lower(e.full_name), e.id
+    `, [...args, filters.pageSize, pageOffset(filters)]);
+    const { rows: [count] } = await db.query(`SELECT count(*)::int AS total ${from} ${where}`, args);
     const items = rows.map(row => ({
       id: Number(row.id), employeeCode: row.employee_code, fullName: row.full_name, department: row.department,
+      template: toAppraisalMatch(row),
       canReview: coversEmployee(req.user, 'appraisals.review', row.id, row.department_id),
       canApprove: coversEmployee(req.user, 'appraisals.approve', row.id, row.department_id),
     }));

@@ -263,3 +263,44 @@ test('graded positions save multiple grades together and require a grade for emp
  assert.equal(created.body.jobGradeName, 'Senior');
  assert.equal((await admin.patch(`/api/employees/${created.body.id}`).send({ jobGradeId: null })).status, 400);
 });
+
+test('appraisal templates respect scope precedence, flag ties and follow HR approval', async () => {
+ const path = '/api/appraisals/templates';
+ const roster = '/api/appraisals/employees?search=plain';
+ const ok = async (response, status = 200) => {
+  const r = await response; assert.equal(r.status, status, JSON.stringify(r.body)); return r.body;
+ };
+ const create = body => ok(admin.post(path).send(body), 201);
+ const match = async () => (await ok(admin.get(roster))).items.find(row => row.id === person.id).template;
+ assert.deepEqual(await match(), { status: 'missing' });
+ await ok(fin.get(path), 403);
+ await ok(plain.get(roster), 403);
+ await ok(admin.post(path).send({ name: 'Bad target', scope: 'department', targetId: 999999 }), 400);
+ const request = await pending(await hr.post(path).send({ name: 'Company', scope: 'company' }));
+ assert.deepEqual(await match(), { status: 'missing' });
+ await approve(hr2, request);
+ assert.equal((await match()).name, 'Company');
+ await create({ name: 'Department', scope: 'department', targetId: Number(department) });
+ assert.equal((await match()).name, 'Department');
+
+ const position = await ok(admin.post(`/api/departments/${department}/positions`).send({
+  name: 'Appraisal fixture', basicMinor: 100000, allowanceMinor: 0,
+ }), 201);
+ await ok(admin.patch(`/api/employees/${person.id}`).send({ positionId: position.id }));
+ await create({ name: 'Position', scope: 'position', targetId: position.id });
+ assert.equal((await match()).name, 'Position');
+ const grade = await ok(admin.post(`/api/positions/${position.id}/grades`).send({
+  name: 'Test grade', basicMinor: 110000, allowanceMinor: 1000,
+ }), 201);
+ await ok(admin.patch(`/api/employees/${person.id}`).send({ jobGradeId: grade.id }));
+ const template = await create({ name: 'Grade', scope: 'grade', targetId: grade.id });
+ assert.equal((await match()).name, 'Grade');
+ const duplicate = await create({ name: 'Other grade template', scope: 'grade', targetId: grade.id });
+ assert.deepEqual(await match(), { status: 'conflict', scope: 'grade', count: 2 });
+ await ok(admin.delete(`${path}/${duplicate.id}`), 204);
+ await ok(admin.patch(`${path}/${template.id}`).send({ ...template, name: 'Revised grade' }));
+ assert.equal((await match()).name, 'Revised grade');
+ await ok(admin.patch(`${path}/${template.id}`).send(template), 409);
+ const targets = await ok(admin.get(path + '/targets?scope=grade&search=Test%20grade'));
+ assert.equal(targets.items[0].id, grade.id);
+});
