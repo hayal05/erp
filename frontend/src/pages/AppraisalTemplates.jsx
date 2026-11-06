@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { del, patch, post } from '../api/client.js';
+import AppraisalPublications from './AppraisalPublications.jsx';
 import AppraisalWeights from './AppraisalWeights.jsx';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -17,6 +18,7 @@ export default function AppraisalTemplates() {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState(null);
   const [weightTemplate, setWeightTemplate] = useState(null);
+  const [publishing, setPublishing] = useState(null);
   const [removing, setRemoving] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -60,16 +62,20 @@ export default function AppraisalTemplates() {
         { key: 'name', header: 'Template' },
         { key: 'scope', header: 'Scope', render: row => templateScopeLabels[row.scope] },
         { key: 'targetName', header: 'Target', render: row => row.targetName ?? 'All employees' },
+        { key: 'publishedVersion', header: 'Published', render: row => row.publishedVersion ? `v${row.publishedVersion}` : '—' },
         { key: 'actions', header: 'Actions', render: row => <div className="row">
           <Button size="sm" onClick={() => setEditing(row)}>Edit</Button>
-          <Button size="sm" onClick={() => setWeightTemplate(row)}>Weights</Button>
-          <Button size="sm" onClick={() => { setRemoving(row); setError(''); }}>Delete</Button>
+          <Button size="sm" onClick={() => setWeightTemplate(row)}>Scorecard</Button>
+          <Button size="sm" onClick={() => setPublishing(row)}>Publish</Button>
+          {!row.publishedVersion && <Button size="sm" onClick={() => { setRemoving(row); setError(''); }}>Delete</Button>}
         </div> },
       ]} />
     <Pager page={page} pageSize={PAGE_SIZE} total={templates.data?.total ?? 0} onPage={setPage} disabled={templates.loading} />
     {editing && <TemplateEditor key={editing.id ?? 'new'} template={editing} onSaved={saved} onClose={() => setEditing(null)} />}
     {weightTemplate && <AppraisalWeights key={weightTemplate.id} template={weightTemplate}
       onClose={() => setWeightTemplate(null)} onSaved={() => { setWeightTemplate(null); templates.reload(); }} />}
+    {publishing && <AppraisalPublications key={publishing.id} template={publishing}
+      onClose={() => setPublishing(null)} onSaved={() => { setPublishing(null); templates.reload(); }} />}
     {removing && <Modal open title="Delete template?" onClose={() => !busy && setRemoving(null)} footer={<>
       <Button disabled={busy} onClick={() => setRemoving(null)}>Cancel</Button>
       <Button variant="danger" busy={busy} onClick={remove}>Delete</Button>

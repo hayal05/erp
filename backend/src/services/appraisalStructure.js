@@ -2,6 +2,7 @@ import { parse, v } from '../middleware/validate.js';
 import { validationError } from './dbErrors.js';
 import { appraisalWeightStatus, FULL_WEIGHT } from '../../../shared/appraisalWeights.mjs';
 
+import { appraisalBracketStatus, parseMandatoryRule, parseRatingBrackets } from '../../../shared/appraisalRatings.mjs';
 import { parseScoringRule } from '../../../shared/appraisalScoring.mjs';
 
 const fields = {
@@ -11,7 +12,7 @@ const fields = {
 };
 
 export function structureBody(req, _res, next) {
-  const { version, categories } = req.body ?? {};
+  const { version, categories, brackets } = req.body ?? {};
   if (!Number.isSafeInteger(version) || version < 1 || !Array.isArray(categories)) {
     return next(validationError({ categories: 'Provide the draft version and a list of categories' }));
   }
@@ -41,14 +42,29 @@ export function structureBody(req, _res, next) {
           return next(validationError({ categories: `${item.name || 'Criterion'}: ${error.message}` }));
         }
       }
+      if (Object.hasOwn(criterion, 'mandatory')) {
+        try {
+          item.mandatory = parseMandatoryRule(criterion.mandatory);
+        } catch (error) {
+          return next(validationError({ categories: `${item.name || 'Criterion'}: ${error.message}` }));
+        }
+      }
       group.criteria.push(item);
     }
     normalized.push(group);
   }
-  req.body = { version, categories: normalized };
+  let ratings;
+  if (brackets !== undefined) {
+    try {
+      ratings = parseRatingBrackets(brackets);
+    } catch (error) {
+      return next(validationError({ brackets: error.message }));
+    }
+  }
+  req.body = { version, categories: normalized, ...(ratings ? { brackets: ratings } : {}) };
   next();
 }
 
-export const structureResult = (version, categories) => ({
-  version, categories, weights: appraisalWeightStatus(categories),
+export const structureResult = (version, categories, brackets) => ({
+  version, categories, brackets, weights: appraisalWeightStatus(categories), ratings: appraisalBracketStatus(brackets),
 });
