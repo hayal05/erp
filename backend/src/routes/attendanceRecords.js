@@ -76,12 +76,16 @@ router.get('/', validate(attendanceListQuery, 'query'), wrap(async (req, res) =>
   Object.assign(q, attendanceRange(q, today));
   if (q.from && q.to && q.from > q.to) return res.json({ ...pageResult([], q, 0), today });
   await recordDeps.fillGaps({...q,scopeUser:req.user});
+  res.json({ ...await readAttendanceRecords(req.user, q), today });
+}));
+
+export async function readAttendanceRecords(user, q) {
   const filters = [[q.from, 'a.work_date >= $?'], [q.to, 'a.work_date <= $?'], [q.employeeId, 'a.employee_id = $?'],
     [q.departmentId, 'e.department_id = $?'], [q.status, 'a.status = $?']].filter(([value]) => value !== undefined);
   // Placeholders are numbered from `base` (the data query reserves $1 for the timezone). Column names are fixed text above.
   const build = base => {
     const params=filters.map(([value])=>value),args=base?[config.company.timezone,...params]:params;
-    const condition=scopeSql(req.user,'attendance.read','e',args);
+    const condition=scopeSql(user,'attendance.read','e',args);
     return {sql:`WHERE ${[...filters.map(([,c],i)=>c.replace('$?',`$${base+i+1}`)),condition].join(' AND ')}`,params:base?args.slice(1):args};
   };
   const data = build(1), count = build(0);
@@ -91,8 +95,8 @@ router.get('/', validate(attendanceListQuery, 'query'), wrap(async (req, res) =>
     [config.company.timezone, ...data.params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n ${FROM} ${count.sql}`, count.params),
   ]);
-  res.json({ ...pageResult(rows.map(r=>({...toRecord(r),canCorrect:coversEmployee(req.user,'attendance.manage',r.employee_id,r.department_id)})), q, total), today });
-}));
+  return pageResult(rows.map(r=>({...toRecord(r),canCorrect:coversEmployee(user,'attendance.manage',r.employee_id,r.department_id)})), q, total);
+}
 
 // PATCH /:id: HR correction (spec 8). A reason is REQUIRED. Body (all optional except reason; omitted = unchanged):
 //   status, checkInTime / checkOutTime ('HH:MM' in the company timezone on the record's work date; null clears), lateMinutes.

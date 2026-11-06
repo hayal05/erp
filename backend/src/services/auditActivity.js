@@ -28,22 +28,31 @@ export const AUDIT_AREAS={
 };
 // Permission predicates use the same record capabilities as individual history.
 // The area is only a filter: choosing another area can never widen access.
-export async function loadAuditActivity(db,user,query){
+export async function loadAuditActivity(db,user,query,{includeSummary=true}={}){
  const selected=(AUDIT_AREAS[query.area]??[]).map(key=>sources[key]).filter(s=>s.allowed(user));
  if(!selected.length)throw new HttpError(403,'You do not have access to this section audit history','forbidden');
  const roles=hasPermission(user,'access.manage')?['hr','finance']:(user.accessRoles??[]).filter(r=>['hr','finance'].includes(r));
  const args=[selected.map(s=>s.entity),user.id,roles,user.permissions??[]];
  const attendanceScope=scopeSql(user,'attendance.manage','se',args),auditScope=scopeSql(user,'audit.hr','se',args);
  const employeeAudit=employeeAuditSql(user,args),requests=(user.accessRoles??[]).some(r=>['admin','hr','finance'].includes(r))?'(c.requester_id=$2 OR (c.department=ANY($3::text[]) AND c.permission=ANY($4::text[])))':requestVisibilitySql(user,args);
+ const dateConditions=[];
+ if(query.from){args.push(query.from);dateConditions.push(`AND a.occurred_at >= ($${args.length}::date::timestamp AT TIME ZONE 'UTC')`);}
+ if(query.to){args.push(query.to);dateConditions.push(`AND a.occurred_at < (($${args.length}::date+1)::timestamp AT TIME ZONE 'UTC')`);}
  const cte=`WITH events AS (SELECT a.id,a.action,a.entity_type,a.entity_id,a.occurred_at AS at,u.full_name AS actor,u.username,a.actor_user_id,a.reason,a.details,
  EXISTS(SELECT 1 FROM access_grants g WHERE g.user_id=a.actor_user_id AND g.access_role='admin'
    AND g.granted_at<=a.occurred_at AND (g.revoked_at IS NULL OR g.revoked_at>a.occurred_at)) AS was_admin
  FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_user_id
- WHERE $2::bigint IS NOT NULL AND $3::text[] IS NOT NULL AND $4::text[] IS NOT NULL AND ${employeeAudit} AND a.entity_type=ANY($1::text[]) AND a.action<>'attendance.photo_view'
+ WHERE $2::bigint IS NOT NULL AND $3::text[] IS NOT NULL AND $4::text[] IS NOT NULL AND ${employeeAudit} AND a.entity_type=ANY($1::text[]) AND a.action<>'attendance.photo_view' ${dateConditions.join(' ')}
  AND (a.entity_type<>'attendance_record' OR EXISTS(SELECT 1 FROM attendance_records sr JOIN employees se ON se.id=sr.employee_id WHERE sr.id::text=a.entity_id AND ${attendanceScope} AND ${auditScope}))
  AND (a.entity_type<>'change_request' OR EXISTS(SELECT 1 FROM change_requests c WHERE c.id::text=a.entity_id
    AND (${requests}))))`;
  const {rows}=await db.query(`${cte} SELECT * FROM events ORDER BY at DESC,id DESC LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,query.pageSize,pageOffset(query)]);
+ const items=rows.map(r=>({id:Number(r.id),type:r.entity_type,recordId:r.entity_id,action:r.action,actor:r.actor||'System / not recorded',at:r.at,reason:r.reason,
+ changes:auditChanges(r.details,selected.find(s=>s.entity===r.entity_type).fields)}));
+ if(!includeSummary){
+  const {rows:[count]}=await db.query(`${cte} SELECT count(*)::int AS total FROM events`,args);
+  return pageResult(items,query,count.total);
+ }
  const summaryFilter=query.area==='approvals'?'true':"entity_type<>'change_request' AND action<>'vacancy.apply'";
  const {rows:[metadata]}=await db.query(`${cte}, latest_modified AS (
  SELECT * FROM events WHERE ${summaryFilter} AND action !~ '(^|\\.)(approve|pay)$' ORDER BY at DESC,id DESC LIMIT 1
@@ -55,6 +64,5 @@ export async function loadAuditActivity(db,user,query){
    ORDER BY e.at DESC,e.id DESC LIMIT 1)x),
  (SELECT row_to_json(x) FROM (SELECT COALESCE(username,actor) AS actor,at,entity_type AS type,entity_id AS id
    FROM latest_modified WHERE was_admin AND entity_type<>'change_request')x)) AS approved`,args);
- return {...pageResult(rows.map(r=>({id:Number(r.id),type:r.entity_type,recordId:r.entity_id,action:r.action,actor:r.actor||'System / not recorded',at:r.at,reason:r.reason,
- changes:auditChanges(r.details,selected.find(s=>s.entity===r.entity_type).fields)})),query,metadata.total),summary:{modified:metadata.modified,approved:metadata.approved}};
+ return {...pageResult(items,query,metadata.total),summary:{modified:metadata.modified,approved:metadata.approved}};
 }

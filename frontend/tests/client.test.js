@@ -95,7 +95,7 @@ test('file downloads preserve authenticated requests and return the blob without
  const blob=new Blob(['csv'],{type:'text/csv'});
  globalThis.fetch=async(url,init)=>{calls.push({url,init});return {status:200,ok:true,blob:async()=>blob,json:async()=>{throw new Error('must not parse CSV as JSON');}};};
  assert.equal(await getFile('/payroll/periods/1/export.csv'),blob);
- assert.equal(calls[0].init.credentials,'include');assert.equal(calls[0].init.headers.Accept,'text/csv');
+ assert.equal(calls[0].init.credentials,'include');assert.equal(calls[0].init.headers.Accept,'*/*');
 });
 test('file errors still trigger session events and never return an error document as a download',async()=>{
  const {getFile}=await import('../src/api/client.js');
