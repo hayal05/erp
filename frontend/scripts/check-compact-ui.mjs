@@ -62,6 +62,8 @@ try{
  }
  assert.match(await render('pages/AppraisalTemplates.jsx'), />New template</);
  assert.match(await render('pages/AppraisalCycles.jsx'), />New cycle</);
+ assert.match(await render('pages/AppraisalApprovals.jsx'), /Awaiting approval/);
+ assert.match(await render('pages/portal/MyAppraisals.jsx','default',{},'/portal/appraisals'), /Approved appraisal results/);
  assert.match(await render('pages/AppraisalCycles.jsx','MyAppraisalAssignments'), /My appraisal assignments/);
  fixtures['/appraisals/templates/1/structure']={version:1,categories:[
   {id:'category-1',name:'Service',weight:10000,criteria:[{id:'criterion-1',name:'Quality',weight:5000}]},
@@ -94,6 +96,15 @@ try{
  assert.match(reportPreview, /<button[^>]*disabled=""[^>]*>Export<\/button>/);
  assert.ok(!reportPreview.includes('Export Excel'));
  assert.ok(!reportPreview.includes('Date period'));
+ fixtures['/reports/appraisal-lookups']={cycles:[{id:1,name:'Q4 review'}],ratings:[{id:'Standard',name:'Standard'}]};
+ const appraisalReport={...report,title:'Appraisal results',lookupPath:'/reports/appraisal-lookups',filters:[
+  {key:'cycleId',label:'Cycle',type:'select',lookup:'cycles',placeholder:'All cycles'},
+  {key:'rating',label:'Rating',type:'select',lookup:'ratings',placeholder:'All ratings'},
+ ]};
+ const appraisalReportPreview=await render('pages/Reports.jsx','Preview',{report:appraisalReport,today:fixtures['/reports'].today});
+ assert.match(appraisalReportPreview, /Q4 review/);
+ assert.match(appraisalReportPreview, /Standard/);
+
  const rangedReport={...report,filters:[
   {key:'from',label:'From date',type:'date',required:true},
   {key:'to',label:'To date',type:'date',required:true},

@@ -39,6 +39,7 @@ import PortalLayout, { PortalHome } from './pages/portal/PortalLayout.jsx';
 const Placeholder = ({ title }) => <section><h1>{title}</h1></section>;
 
 const PerformanceAppraisal = lazy(() => import('./pages/PerformanceAppraisal.jsx'));
+const MyAppraisals = lazy(() => import('./pages/portal/MyAppraisals.jsx'));
 const appraisalPage = <Suspense fallback={<Skeleton variant="table" />}><PerformanceAppraisal /></Suspense>;
 
 function Splash() {
@@ -144,6 +145,7 @@ export default function App() {
           <Route path="attendance" element={<History />} />
           <Route path="leave" element={<Leave />} />
           <Route path="payslips" element={<Payslips />} />
+          <Route path="appraisals" element={<Suspense fallback={<Skeleton variant="table" />}><MyAppraisals /></Suspense>} />
           <Route path="payslips/:id" element={<Payslip />} />
           <Route path="*" element={<Navigate to="/portal" replace />} />
         </Route>

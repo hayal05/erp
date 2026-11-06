@@ -176,7 +176,7 @@ export function MyAppraisalAssignments() {
         { key: 'templateName', header: 'Template', render: template },
         { key: 'status', header: 'Status' },
         { key: 'action', header: 'Action', render: row => <Button size="sm" onClick={() => setSelected(row)}>
-          {row.status === 'Submitted' ? 'View' : 'Review'}
+          {['Submitted','Approved'].includes(row.status) ? 'View' : 'Review'}
         </Button> },
       ]} />
     <Pager page={page} pageSize={PAGE_SIZE} total={assignments.data?.total ?? 0} onPage={setPage} disabled={assignments.loading} />

@@ -4,37 +4,14 @@ import { requirePermission } from '../middleware/auth.js';
 import { HttpError, wrap } from '../middleware/error.js';
 import { validate, v } from '../middleware/validate.js';
 import { audit } from '../services/audit.js';
-import { scopeSql } from '../services/accessScope.js';
+import { pageSchema } from '../services/sql.js';
+import { appraisalReviewIds as ids, loadReviewAssignment, readAppraisalReview, readAppraisalReviewHistory } from '../services/appraisalReviewRecords.js';
 import { validationError } from '../services/dbErrors.js';
 import { previewAppraisal } from '../../../shared/appraisalPreview.mjs';
 
 const router = Router();
 router.use(requirePermission('appraisals.review'));
-const ids = { cycleId: v.int({ required: true, min: 1 }), employeeId: v.int({ required: true, min: 1 }) };
 const path = '/:cycleId/:employeeId';
-
-async function loadAssignment(db, user, { cycleId, employeeId }, lock = false) {
-  const args = [cycleId, employeeId, user.id];
-  const scope = scopeSql(user, 'appraisals.review', 'e', args);
-  const { rows: [row] } = await db.query(`
-    SELECT c.name AS cycle, to_char(c.due_on,'YYYY-MM-DD') AS "dueOn",
-      u.full_name AS employee, e.employee_code AS "employeeCode", p.snapshot AS template
-    FROM appraisal_assignments a JOIN appraisal_cycles c ON c.id=a.cycle_id
-    JOIN employees e ON e.id=a.employee_id JOIN users u ON u.id=e.user_id
-    JOIN appraisal_template_publications p ON p.template_id=a.template_id AND p.version=a.template_version
-    WHERE a.cycle_id=$1 AND a.employee_id=$2 AND a.reviewer_id=$3
-      AND c.opened_at IS NOT NULL AND e.status='active' AND u.is_active AND ${scope}
-    ${lock ? 'FOR UPDATE OF a FOR SHARE OF e,u' : ''}
-  `, args);
-  if (!row) throw new HttpError(404, 'Appraisal assignment not found', 'not_found');
-  return row;
-}
-
-async function readReview(db, { cycleId, employeeId }) {
-  const { rows: [row] } = await db.query(`SELECT version,inputs,comment,result,submitted_at AS "submittedAt"
-    FROM appraisal_reviews WHERE cycle_id=$1 AND employee_id=$2`, [cycleId, employeeId]);
-  return row ?? { version: 0, inputs: {}, comment: '', result: null, submittedAt: null };
-}
 
 function reviewBody(req, _res, next) {
   const { version, inputs, comment = '' } = req.body ?? {};
@@ -62,8 +39,13 @@ function cleanInputs(inputs, categories) {
 }
 
 router.get(path, validate(ids, 'params'), wrap(async (req, res) => {
-  const assignment = await loadAssignment({ query }, req.user, req.params);
-  res.json({ ...assignment, review: await readReview({ query }, req.params) });
+  const assignment = await loadReviewAssignment({ query }, req.user, req.params, 'review');
+  res.json({ ...assignment, review: await readAppraisalReview({ query }, req.params) });
+}));
+
+router.get(path + '/history', validate(ids, 'params'), validate(pageSchema, 'query'), wrap(async (req, res) => {
+  await loadReviewAssignment({ query }, req.user, req.params, 'review');
+  res.json(await readAppraisalReviewHistory({ query }, req.params, req.query));
 }));
 
 function saveReview(submit) {
@@ -71,8 +53,8 @@ function saveReview(submit) {
     const { cycleId, employeeId } = req.params;
     const { version, comment } = req.body;
     const saved = await withTransaction(async db => {
-      const { template } = await loadAssignment(db, req.user, req.params, true);
-      const previous = await readReview(db, req.params);
+      const { template } = await loadReviewAssignment(db, req.user, req.params, 'review', true);
+      const previous = await readAppraisalReview(db, req.params);
       if (previous.submittedAt) throw new HttpError(409, 'This appraisal has already been submitted.', 'conflict');
       if (previous.version !== version) throw new HttpError(409, 'Appraisal changed. Reopen it before saving.', 'conflict');
       const inputs = cleanInputs(req.body.inputs, template.categories);
@@ -86,8 +68,8 @@ function saveReview(submit) {
       const { rows: [row] } = await db.query(`INSERT INTO appraisal_reviews(cycle_id,employee_id,inputs,comment,result,submitted_at)
         VALUES($1,$2,$3::jsonb,$4,$5::jsonb,CASE WHEN $6 THEN now() ELSE NULL END)
         ON CONFLICT(cycle_id,employee_id) DO UPDATE SET inputs=EXCLUDED.inputs,comment=EXCLUDED.comment,
-          result=EXCLUDED.result,submitted_at=EXCLUDED.submitted_at,version=appraisal_reviews.version+1
-        RETURNING version,inputs,comment,result,submitted_at AS "submittedAt"`,
+          result=EXCLUDED.result,submitted_at=EXCLUDED.submitted_at,returned_at=CASE WHEN $6 THEN NULL ELSE appraisal_reviews.returned_at END,version=appraisal_reviews.version+1
+        RETURNING version,inputs,comment,result,submitted_at AS "submittedAt",returned_at AS "returnedAt",approved_at AS "approvedAt",NULL::text AS approver`,
       [cycleId, employeeId, JSON.stringify(inputs), comment, submit ? JSON.stringify(result) : null, submit]);
       await audit(db, { actorId: req.user.id, action: submit ? 'appraisal.review.submit' : 'appraisal.review.save',
         entityType: 'appraisal_review', entityId: `${cycleId}:${employeeId}`, details: { cycleId, employeeId, version: row.version } });
