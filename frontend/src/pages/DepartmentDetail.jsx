@@ -102,7 +102,7 @@ function Detail({ id }) {
       const item = data.items.find((p) => p.id === r.id);
       return (
         <span className="row">
-          <Button size="sm" onClick={() => setGradePosition(item)} aria-label={`Job grades for ${r.name}`}>Grades</Button>
+          <Button size="sm" onClick={() => setGradePosition(item)} aria-label={`Job grades for ${r.name}`}>Job grades</Button>
           {canManage && <>
             <Button size="sm" onClick={() => setDialog({ position: item })} aria-label={`Edit ${r.name}`}>Edit</Button>
             <Button size="sm" variant="danger" onClick={() => setConfirm({ position: item, busy: false, error: '' })} aria-label={`Delete ${r.name}`}>Delete</Button>
