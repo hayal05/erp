@@ -6,6 +6,8 @@ import { validate, v } from '../middleware/validate.js';
 import { hasPermission } from '../services/permissions.js';
 import { config } from '../config.js';
 import { attendanceListQuery, ATTENDANCE_STATUSES } from '../services/hrSchemas.js';
+import { permissionScope } from '../services/accessScope.js';
+import { financeReports } from '../services/financeReportDefinitions.js';
 import { payrollReports } from '../services/payrollReportDefinitions.js';
 import { leaveReports } from '../services/leaveReportDefinitions.js';
 import { employeeReports } from '../services/employeeReportDefinitions.js';
@@ -156,6 +158,7 @@ const reports = new Map([
   ...employeeReports,
   ...leaveReports,
   ...payrollReports,
+  ...financeReports,
 ]);
 
 function reportColumns(report, filters) {
@@ -175,6 +178,7 @@ router.use(noStore, requireAuth);
 router.get('/', (req, res) => {
   const items = [...reports]
     .filter(([, report]) => hasPermission(req.user, report.permission) &&
+      (!report.companyWide || permissionScope(req.user, report.permission) === null) &&
       (!report.additionalPermission || hasPermission(req.user, report.additionalPermission)))
     .map(([id, report]) => metadata(id, report));
   res.json({ items, today: companyDate() });
@@ -192,6 +196,10 @@ router.get('/payroll-lookups', requirePermission('payroll.read'), wrap(async (re
   res.json(await employeeReportLookups(req.user, 'payroll.read'));
 }));
 
+router.get('/company-cost-lookups', requirePermission('company_costs.read'), wrap(async (req, res) => {
+  res.json(await employeeReportLookups(req.user, 'company_costs.read'));
+}));
+
 const MAX_EXPORT_ROWS = 5000;
 const contentTypes = {
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -202,6 +210,12 @@ const contentTypes = {
 for (const [id, report] of reports) {
   const guards = [requirePermission(report.permission)];
   if (report.additionalPermission) guards.push(requirePermission(report.additionalPermission));
+  if (report.companyWide) guards.push((req, _res, next) => {
+    if (permissionScope(req.user, report.permission) !== null) {
+      return next(new HttpError(403, 'This report requires All employees scope', 'forbidden'));
+    }
+    next();
+  });
   router.get(`/${id}/preview`, ...guards, validate(report.schema, 'query'),
     wrap(async (req, res) => {
       const result = await report.preview(req.user, req.query);

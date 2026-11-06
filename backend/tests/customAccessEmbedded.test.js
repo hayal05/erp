@@ -397,6 +397,14 @@ test('payroll entries, snapshots and exports are scoped; department managers edi
  await q('UPDATE salary_profiles SET basic_minor=basic_minor-100 WHERE employee_id=$1',[inside.id]);
  const cost=costs.body.items.find(c=>c.id===flexPeriod);assert.equal(cost.employeeCount,visible.length);assert.equal(cost.salaryPaidMinor,visible.reduce((sum,e)=>sum+e.netMinor,0));
  const detail=await leader.get(`/api/payroll-costs/${flexPeriod}/entries`);scopeStatus(detail);assert.ok(!detail.body.items.some(e=>e.employeeId===outside.id));
+ const costReport=await leader.get('/api/reports/employer-cost-summary/preview'+monthQuery);
+ scopeStatus(costReport);assert.equal(costReport.body.items[0].employerCost,cost.employerCostMinor/100);
+ const costDetails=await leader.get('/api/reports/employer-cost-detail/preview'+monthQuery);
+ scopeStatus(costDetails);assert.equal(costDetails.body.total,visible.length);
+ assert.ok(costDetails.body.items.every(row=>row.departmentName==='A'));
+ const excludedCost=await leader.get('/api/reports/employer-cost-detail/preview'+outsideQuery);
+ scopeStatus(excludedCost);assert.equal(excludedCost.body.total,0);
+ scopeStatus(await leader.get('/api/reports/settlement-balances/preview'+monthQuery),403);
  const audit=await leader.get('/api/audit-history?area=payroll');scopeStatus(audit);assert.ok(!audit.body.items.some(r=>r.type==='payroll_period'||r.type==='payroll_entry'&&Number(r.recordId)===entryB));
  scopeStatus(await leader.get(`/api/audit-history/payroll_period/${flexPeriod}`),403);
 });
