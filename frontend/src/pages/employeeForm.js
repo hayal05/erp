@@ -115,7 +115,7 @@ export function salaryPlan({ form, original, positions, profile, grade }) {
   const position = positions.find((p) => String(p.id) === form.positionId);
   const was = original?.positionId == null ? '' : String(original.positionId);
   if (!form.positionId) return original && was ? { kind: 'cleared' } : { kind: 'none' };
-  if (!position || (form.jobGradeId && String(grade?.id) !== form.jobGradeId)) return { kind: 'none' };
+  if (!position || (position.requiresJobGrade && !form.jobGradeId) || (form.jobGradeId && String(grade?.id) !== form.jobGradeId)) return { kind: 'none' };
   const chosen = form.jobGradeId ? { ...position, basicMinor: grade.basicMinor, allowanceMinor: grade.allowanceMinor } : position;
   const next = salarySummary(chosen);
   if (!original) return { kind: 'preview', next };

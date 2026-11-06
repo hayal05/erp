@@ -20,6 +20,7 @@ export const toPosition = (row) => ({
   id: Number(row.id), departmentId: Number(row.department_id), name: row.name,
   basicMinor: Number(row.basic_minor), allowanceMinor: Number(row.allowance_minor),
   allowanceTaxable: row.allowance_taxable, allowancePensionable: row.allowance_pensionable, pensionApplies: row.pension_applies,
+  ...(row.requires_job_grade ? { requiresJobGrade: true } : {}),
   ...(row.employee_count === undefined ? {} : { employeeCount: Number(row.employee_count) }),
 });
 

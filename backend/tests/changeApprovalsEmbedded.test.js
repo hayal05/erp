@@ -237,3 +237,29 @@ test('new positions can include their first grade in the same approval request',
  assert.equal(response.status, 200);
  assert.deepEqual(response.body.items.map(({ id, ...fields }) => fields), [grade]);
 });
+
+test('graded positions save multiple grades together and require a grade for employee assignment', async () => {
+ const path = `/api/departments/${department}/positions`;
+ const first = { name: 'Junior', basicMinor: 110000, allowanceMinor: 10000 };
+ const second = { name: 'Senior', basicMinor: 210000, allowanceMinor: 20000 };
+ const body = { name: 'Multi-grade position', basicMinor: 0, allowanceMinor: 0, initialGrades: [first, second] };
+ assert.equal((await hr.post(path).send({ ...body, initialGrades: [] })).status, 400);
+ assert.equal((await hr.post(path).send({ ...body, initialGrades: [first, { ...second, name: ' junior ' }] })).status, 400);
+ const id = await pending(await hr.post(path).send(body));
+ assert.equal((await q('SELECT id FROM positions WHERE name=$1', [body.name])).rows.length, 0);
+ await approve(hr2, id);
+ const positions = await admin.get(path + '?search=Multi-grade');
+ const position = positions.body.items[0];
+ assert.equal(position.requiresJobGrade, true);
+ const grades = (await admin.get(`/api/positions/${position.id}/grades`)).body.items;
+ assert.deepEqual(grades.map(({ id, ...grade }) => grade), [first, second]);
+
+ const employee = { employeeCode: 'multi-grade', fullName: 'Multi Grade', username: 'multi.grade',
+  password: 'password-123', gender: 'male', dateOfBirth: '1990-01-01', fieldOfStudy: 'Economics',
+  startDate: '2026-01-01', departmentId: Number(department), positionId: position.id };
+ assert.equal((await admin.post('/api/employees').send(employee)).status, 400);
+ const created = await admin.post('/api/employees').send({ ...employee, jobGradeId: grades[1].id });
+ assert.equal(created.status, 201, JSON.stringify(created.body));
+ assert.equal(created.body.jobGradeName, 'Senior');
+ assert.equal((await admin.patch(`/api/employees/${created.body.id}`).send({ jobGradeId: null })).status, 400);
+});

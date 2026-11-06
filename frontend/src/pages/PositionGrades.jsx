@@ -19,7 +19,7 @@ function useGrades(positionId) {
   return { ...result, page, setPage, search, setSearch(value) { setSearch(value); setPage(1); }, path };
 }
 
-export function JobGradePicker({ positionId, value, current, onChange, disabled, error }) {
+export function JobGradePicker({ positionId, value, current, onChange, disabled, error, required }) {
   const grades = useGrades(positionId);
   const options = (grades.data?.items ?? []).map(grade => ({ value: grade.id, label: grade.name }));
   if (value && !options.some(option => String(option.value) === value)) {
@@ -28,7 +28,7 @@ export function JobGradePicker({ positionId, value, current, onChange, disabled,
   return <div className="stack full">
     {(grades.data?.total > PAGE_SIZE || grades.search) && <Field type="search" label="Search job grades"
       placeholder="Grade name" maxLength={100} value={grades.search} onChange={e => grades.setSearch(e.target.value)} disabled={disabled} />}
-    <Field as="select" label="Job grade" placeholder="Position default" options={options} value={value}
+    <Field as="select" label="Job grade" required={required} placeholder={required ? 'Choose a grade' : 'Position default'} options={options} value={value}
       disabled={disabled || grades.loading || !!grades.error} error={error}
       onChange={e => onChange(e.target.value, grades.data?.items.find(grade => String(grade.id) === e.target.value))} />
     {grades.error && <p className="form-error" role="alert">{grades.error} <Button size="sm" onClick={grades.reload}>Try again</Button></p>}
@@ -88,7 +88,8 @@ export function GradeForm({ grade, path, onSaved, onClose, onStage }) {
     if (Object.keys(problems).length) return;
     const { name, basicMinor, allowanceMinor } = buildPosition(form);
     if (onStage) {
-      onStage({ name, basicMinor, allowanceMinor });
+      const conflict = onStage({ name, basicMinor, allowanceMinor });
+      if (conflict) setFields({ name: conflict });
       return;
     }
     setBusy(true);

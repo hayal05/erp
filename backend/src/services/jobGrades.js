@@ -29,7 +29,10 @@ export async function readJobGrades(db, positionId, filters) {
 }
 
 export async function jobGradePay(db, position, gradeId) {
-  if (gradeId == null) return position;
+  if (gradeId == null) {
+    if (position?.requiresJobGrade) throw validationError({ jobGradeId: 'Choose a job grade for this position' });
+    return position;
+  }
   if (!position) throw validationError({ jobGradeId: 'Choose a position first' });
   const { rows: [grade] } = await db.query(
     'SELECT * FROM position_job_grades WHERE position_id=$1 AND id=$2 FOR SHARE', [position.id, gradeId]);

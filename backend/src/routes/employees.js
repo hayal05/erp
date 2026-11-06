@@ -229,7 +229,7 @@ router.patch('/:id', validate(idParams, 'params'), requireSuppliedPersonalDetail
     const positionChanged = Object.hasOwn(fields, 'positionId') && fields.positionId !== optId(row.position_id);
     if (positionChanged && !Object.hasOwn(fields, 'jobGradeId')) fields.jobGradeId = null;
     const gradeId = Object.hasOwn(fields, 'jobGradeId') ? fields.jobGradeId : optId(row.job_grade_id);
-    if (!position && holdsPosition && !positionChanged && Object.hasOwn(fields, 'jobGradeId') && (gradeId != null || applyPositionSalary)) {
+    if (!position && holdsPosition && !positionChanged && Object.hasOwn(fields, 'jobGradeId')) {
       position = await loadAssignablePosition(db, row.position_id, departmentId);
     }
     if (applyPositionSalary && !position) throw validationError({ applyPositionSalary: 'Choose a position to apply its salary' });

@@ -73,7 +73,11 @@ try{
   const html=await render('pages/EmployeeDialog.jsx','default',{...props,departments:[department],shifts:[shift]});
   for(const label of ['Employee ID','Full name','Gender','Date of birth','Field of study','Username','Department','Position','Start date'])assert.ok(html.includes(label),`Employee form lost ${label}`);
  }
- await render('pages/DepartmentDialog.jsx','default',{department});assert.match(await render('pages/PositionDialog.jsx','default',{departmentId:1,position:null}), /<button type="button" class="btn sm">Add job grade<\/button>/);
+ await render('pages/DepartmentDialog.jsx','default',{department});
+ const newPosition=await render('pages/PositionDialog.jsx','default',{departmentId:1,position:null});
+ assert.match(newPosition, /<button type="button" class="btn sm">Add job grade<\/button>/);
+ assert.match(newPosition, /No job grade needed/);
+ assert.ok(!newPosition.includes('Monthly basic salary'));
  assert.match(await render('pages/PositionDialog.jsx','default',{departmentId:1,position:{id:1,name:'Officer',basicMinor:100000,allowanceMinor:0}}), /position-name-row[\s\S]*Position name[\s\S]*>Add job grade</);
  assert.match(await render('pages/PositionGrades.jsx','PositionGradeList',{positionId:1,canManage:true}), />Add grade</);
  assert.match(await render('pages/PositionGrades.jsx','PositionGradeList',{positionId:1,canManage:true,startAdding:true}), />Save grade</);
