@@ -103,7 +103,9 @@ function Preview({ report, today }) {
     </form>
     {exportError && <p role="alert" className="form-error">{exportError}</p>}
     {submitted && <>
-      <Table caption={report.title} columns={preview.data?.columns ?? report.columns}
+      <Table caption={report.title} columns={(preview.data?.columns ?? report.columns).map(column => column.type === 'money'
+          ? { ...column, align: 'num', render: row => row[column.key]?.toFixed(2) ?? '' }
+          : column)}
         rows={preview.loading ? [] : preview.data?.items} loading={preview.loading}
         error={preview.error} onRetry={preview.reload} empty="No saved records match these filters" />
       {preview.data && !preview.loading && <Pager page={page} pageSize={PAGE_SIZE}

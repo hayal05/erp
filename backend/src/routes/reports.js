@@ -6,6 +6,7 @@ import { validate, v } from '../middleware/validate.js';
 import { hasPermission } from '../services/permissions.js';
 import { config } from '../config.js';
 import { attendanceListQuery, ATTENDANCE_STATUSES } from '../services/hrSchemas.js';
+import { payrollReports } from '../services/payrollReportDefinitions.js';
 import { leaveReports } from '../services/leaveReportDefinitions.js';
 import { employeeReports } from '../services/employeeReportDefinitions.js';
 import { employeeReportLookups } from '../services/employeeReportData.js';
@@ -154,6 +155,7 @@ const reports = new Map([
   }],
   ...employeeReports,
   ...leaveReports,
+  ...payrollReports,
 ]);
 
 function reportColumns(report, filters) {
@@ -184,6 +186,10 @@ router.get('/employee-lookups', requirePermission('employees.read'), wrap(async 
 
 router.get('/leave-lookups', requirePermission('leave.read'), wrap(async (req, res) => {
   res.json(await employeeReportLookups(req.user, 'leave.read'));
+}));
+
+router.get('/payroll-lookups', requirePermission('payroll.read'), wrap(async (req, res) => {
+  res.json(await employeeReportLookups(req.user, 'payroll.read'));
 }));
 
 const MAX_EXPORT_ROWS = 5000;
@@ -218,7 +224,7 @@ for (const [id, report] of reports) {
         const period = from ? `${from} to ${to}` : undefined;
         const asOf = date || month || year || period ? undefined : result.today ?? companyDate();
         const buffer = await render({
-          title: report.title, company: config.company.name, date, month, year, period, asOf, group: report.group,
+          title: report.title, company: config.company.name, date, month, year, period, asOf, group: report.group, layout: report.layout,
           columns: reportColumns(report, req.query), rows: result.items,
         });
         res.attachment(`${id}-${date ?? month ?? year ?? (from ? `${from}-to-${to}` : asOf)}.${format}`);

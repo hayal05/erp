@@ -7,15 +7,15 @@ const MARGIN = 36;
 const DAILY_WIDTHS = [73, 144, 118, 58, 58, 72];
 const PADDING = 5;
 
-export function attendancePdf({ title, company, date, month, year, period, asOf, columns, rows }) {
-  const doc = new PDFDocument({ size: 'A4', margin: MARGIN, layout: date ? 'portrait' : 'landscape', autoFirstPage: false, info: { Title: title } });
+export function attendancePdf({ title, company, date, month, year, period, asOf, columns, rows, layout = date ? 'portrait' : 'landscape' }) {
+  const doc = new PDFDocument({ size: 'A4', margin: MARGIN, layout, autoFirstPage: false, info: { Title: title } });
   return new Promise((resolve, reject) => {
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
     doc.once('end', () => resolve(Buffer.concat(chunks)));
     doc.once('error', reject);
 
-    const tableWidth = date ? 523 : 769;
+    const tableWidth = layout === 'portrait' ? 523 : 769;
     const weights = date ? DAILY_WIDTHS : columns.map(column => column.width ?? 14);
     const weightTotal = weights.reduce((total, width) => total + width, 0);
     const widths = weights.map(weight => tableWidth * weight / weightTotal);
@@ -53,7 +53,10 @@ export function attendancePdf({ title, company, date, month, year, period, asOf,
     }
 
     addPage();
-    for (const row of rows) drawRow(columns.map(({ key }) => String(row[key] ?? '')));
+    for (const row of rows) {
+      drawRow(columns.map(({ key, type }) =>
+        type === 'money' && typeof row[key] === 'number' ? row[key].toFixed(2) : String(row[key] ?? '')));
+    }
     if (!rows.length) doc.fontSize(10).text('No saved records match these filters.', MARGIN, y + 12);
     doc.end();
   });

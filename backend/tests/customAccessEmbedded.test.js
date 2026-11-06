@@ -350,6 +350,14 @@ test('payroll entries, snapshots and exports are scoped; department managers edi
  scopeStatus(await leader.post('/api/payroll/periods').send({month}),403);
  const draft=await admin.post('/api/payroll/periods').send({month});scopeStatus(draft,201);flexPeriod=draft.body.id;
  const all=await admin.get(`/api/payroll/periods/${flexPeriod}/entries`);scopeStatus(all);entryA=all.body.items.find(e=>e.employeeId===inside.id).id;entryB=all.body.items.find(e=>e.employeeId===outside.id).id;
+ const reportsPath='/api/reports';
+ const register=reportsPath+'/payroll-register';
+ const payslip=reportsPath+'/employee-payslip';
+ const deductions=reportsPath+'/payroll-deductions';
+ const monthQuery='?month='+month;
+ const ownQuery=monthQuery+'&employeeId='+inside.id;
+ const outsideQuery=monthQuery+'&employeeId='+outside.id;
+ scopeStatus(await leader.get(payslip+'/preview'+ownQuery),404);
  const list=await leader.get(`/api/payroll/periods/${flexPeriod}/entries?pageSize=1`);scopeStatus(list);assert.equal(list.body.total,(await q('SELECT count(*)::int n FROM employees WHERE department_id=$1',[depA])).rows[0].n);
  scopeStatus(await leader.get(`/api/payroll/periods/${flexPeriod}/entries/${entryB}`),404);
  scopeStatus(await leader.patch(`/api/payroll/periods/${flexPeriod}/entries/${entryB}`).send({basicMinor:222222}),404);
@@ -360,6 +368,33 @@ test('payroll entries, snapshots and exports are scoped; department managers edi
  const csv=await leader.get(`/api/payroll/periods/${flexPeriod}/export.csv`);scopeStatus(csv);assert.ok(csv.text.includes('inside.employee'));assert.ok(!csv.text.includes('outside.employee'));
  scopeStatus(await admin.post(`/api/payroll/periods/${flexPeriod}/pay`).send({paidOn:companyDate()}));
  const costs=await leader.get('/api/payroll-costs');scopeStatus(costs);const visible=(await leader.get(`/api/payroll/periods/${flexPeriod}/entries`)).body.items;
+ const stored=visible.find(row=>row.employeeId===inside.id);
+ const registerResponse=await leader.get(register+'/preview'+monthQuery);
+ scopeStatus(registerResponse);
+ assert.equal(registerResponse.body.total,visible.length);
+ assert.ok(registerResponse.body.items.every(row=>row.departmentName==='A'));
+ const reported=registerResponse.body.items.find(row=>row.id===entryA);
+ assert.equal(reported.net,stored.netMinor/100);
+ assert.equal(reported.status,'paid');
+ const amounts=await leader.get(deductions+'/preview'+ownQuery);
+ scopeStatus(amounts);
+ assert.equal(amounts.body.items.reduce((sum,row)=>sum+Math.round(row.amount*100),0),stored.grossMinor-stored.netMinor);
+ const slip=await leader.get(payslip+'/preview'+ownQuery);
+ scopeStatus(slip);
+ assert.ok(slip.body.items.some(row=>row.label==='Net pay'&&row.value.startsWith((stored.netMinor/100).toFixed(2))));
+ assert.equal((await leader.get(register+'/preview'+outsideQuery)).body.total,0);
+ assert.equal((await leader.get(deductions+'/preview'+outsideQuery)).body.total,0);
+ scopeStatus(await leader.get(payslip+'/export.pdf'+outsideQuery),404);
+ for(const [path,format] of [[register,'xlsx'],[payslip,'pdf'],[deductions,'xlsx']]){
+  const url=path+'/export.'+format+ownQuery;
+  scopeStatus(await leader.get(url));
+  scopeStatus(await plain.get(url),403);
+ }
+ // Editing a live profile cannot change a saved payroll report.
+ await q('UPDATE salary_profiles SET basic_minor=basic_minor+100 WHERE employee_id=$1',[inside.id]);
+ assert.deepEqual((await leader.get(register+'/preview'+monthQuery)).body,registerResponse.body);
+ assert.deepEqual((await leader.get(payslip+'/preview'+ownQuery)).body,slip.body);
+ await q('UPDATE salary_profiles SET basic_minor=basic_minor-100 WHERE employee_id=$1',[inside.id]);
  const cost=costs.body.items.find(c=>c.id===flexPeriod);assert.equal(cost.employeeCount,visible.length);assert.equal(cost.salaryPaidMinor,visible.reduce((sum,e)=>sum+e.netMinor,0));
  const detail=await leader.get(`/api/payroll-costs/${flexPeriod}/entries`);scopeStatus(detail);assert.ok(!detail.body.items.some(e=>e.employeeId===outside.id));
  const audit=await leader.get('/api/audit-history?area=payroll');scopeStatus(audit);assert.ok(!audit.body.items.some(r=>r.type==='payroll_period'||r.type==='payroll_entry'&&Number(r.recordId)===entryB));
