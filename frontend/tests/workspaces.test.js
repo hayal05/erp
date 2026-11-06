@@ -75,5 +75,6 @@ test('appraisal navigation follows workspace permissions and custom grants',()=>
  assert.equal(canOpenPath(hr,'/hr/appraisals'),true);
  assert.equal(canOpenPath(finance,'/finance/appraisals'),true);
  assert.equal(canOpenPath(reviewer,'/hr/appraisals'),true);
+ assert.equal(canOpenPath(reviewer,'/hr/reports'),true);
  assert.equal(canOpenPath({...reviewer,permissions:[]},'/hr/appraisals'),false);
 });

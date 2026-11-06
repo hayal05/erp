@@ -1,6 +1,7 @@
 // Only fixed administrative operations may enter the queue. Daily attendance, QR,
 // personal profiles/passwords and existing leave decisions do not use this wrapper.
 const rules=[
+ ['hr','appraisals.configure',/^\/api\/appraisals\/cycles(?:\/\d+(?:\/(?:assignments|open))?)?$/,['appraisal_assignments','appraisal_cycles','appraisal_template_publications','employees']],
  ['hr','appraisals.configure',/^\/api\/appraisals\/templates\/\d+\/publications$/,['appraisal_template_publications','appraisal_template_ratings','appraisal_template_structures','appraisal_templates']],
  ['hr','appraisals.configure',/^\/api\/appraisals\/templates\/\d+\/structure$/,['appraisal_templates','appraisal_template_structures']],
  ['hr','appraisals.configure',/^\/api\/appraisals\/templates(?:\/\d+)?$/,['appraisal_templates','departments','positions','position_job_grades']],
