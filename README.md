@@ -434,3 +434,11 @@ Assignments support all employees, selected departments, or selected employees. 
 Custom users receive a Management workspace with only their permitted sidebar functions. Attendance lookups, rows, totals, automatic absence filling, direct record/photo/profile/attachment requests, retirement reports and attendance audit history enforce scope on the server. A scoped QR issuer’s current grant and scope are checked both before selfie upload and in the scan transaction. QR generation and own-screen lock/unlock are independently selectable; unlocking still requires that user’s password. Daily employee check-ins and existing leave decisions remain immediate.
 
 Administrative corrections still require a different authorized HR reviewer or General Admin. Custom reviewers must have the corresponding activity and the HR/Finance review checkbox, and can only review records in their own activity scope. Queues and direct request links are filtered; execution rebuilds the requester’s current grants and refuses revoked access. Custom role/assignment edits are audited in the existing Access Management bottom bar. No new environment variables.
+
+### Reports
+
+Open **Reports** in a management workspace, select a report, set filters, and preview the results. The catalog shows reports available to your account. Exports use the same filters and access scope as the preview and include all matching rows across preview pages. Available formats depend on the report and appear next to **Preview**.
+
+Each export supports up to 5,000 output rows. If a detailed attendance export exceeds the limit, narrow the dates, department, or employee filter. Use **Monthly attendance summary** for full-month totals grouped by employee or department. The export audit records the requesting user, timestamp, report, format, filters, and output row count. No new environment variables are required.
+
+Run the rollout check with `node --test backend/tests/reportsRolloutEmbedded.test.js` from the repository root. It exercises the full catalog, file formats, access boundaries, empty results, and attendance exports against an embedded PostgreSQL fixture with 30,000 daily records. Install Poppler's `pdftotext` to check text extraction from every generated PDF during the run.
