@@ -37,7 +37,7 @@ function buildUrl(path, query) {
 }
 
 export async function api(path, { method = 'GET', body, query, signal, responseType = 'json', csrfRetried = false, deltaRetried = false } = {}) {
-  const headers = { Accept: responseType === 'blob' ? 'text/csv' : 'application/json' };
+  const headers = { Accept: responseType === 'blob' ? '*/*' : 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (!SAFE.has(method) && csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
