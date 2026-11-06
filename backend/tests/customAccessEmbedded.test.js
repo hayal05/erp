@@ -477,3 +477,51 @@ test('mixed roles can be assigned to departments; company-wide activities stay u
  assert.ok((await unrestricted.client.get('/api/auth/me')).body.user.permissions.includes('announcements.manage'));
  scopeStatus(await admin.put(`/api/custom-access/roles/${mixed.id}`).send({name:mixed.name,version:mixed.version,activities:['payroll.pay']}),400);
 });
+
+test('access reports distinguish role definitions, grant allowances, and overlapping effective scope', async () => {
+ const subject = await person('access.review.subject', depA);
+ const scoped = await newRole('Report review scoped', ['attendance.read', 'payroll.pay']);
+ const other = await newRole('Report review other', ['attendance.read', 'attendance.qr']);
+ const unrestricted = await newRole('Report review global', ['attendance.read']);
+ const first = await assign(subject.id, scoped.id, 'departments', [depA, depB]);
+ await assign(subject.id, other.id, 'departments', [depB]);
+ const selected = await newRole('Report review selected', ['attendance.read']);
+ await assign(subject.id, selected.id, 'employees', [inside.id]);
+ const filters = '?employeeId=' + subject.id;
+ const report = async (id, query = filters) => {
+  const response = await admin.get('/api/reports/access-' + id + '/preview' + query);
+  scopeStatus(response);
+  return response.body.items;
+ };
+ const catalog = await admin.get('/api/reports');
+ assert.equal(catalog.body.items.filter(item => item.group === 'Access administration').length, 4);
+ assert.ok(!(await leader.get('/api/reports')).body.items.some(item => item.group === 'Access administration'));
+ const defined = await report('role-permissions', '?search=Report%20review%20scoped');
+ assert.equal(defined.find(row => row.permission === 'payroll.pay').source, 'Selected activity');
+ assert.equal(defined.find(row => row.permission === 'payroll.read').source, 'Required by activity');
+ const grants = await report('active-grants');
+ assert.deepEqual(grants.filter(row => row.grantRef === 'Custom #' + first.id).map(row => row.target), ['A', 'B']);
+ assert.ok((await report('active-grants', '?search=root')).some(row => row.roleName === 'admin'));
+ const allowances = await report('grant-permissions');
+ assert.equal(allowances.find(row => row.permission === 'payroll.pay').allowance, 'Excluded by scope');
+ assert.ok(allowances.filter(row => row.permission === 'attendance.read').every(row => row.allowance === 'Allowed by grant'));
+ const effectiveAttendance = async () => (await report('effective')).filter(row => row.permission === 'attendance.read');
+ assert.deepEqual((await effectiveAttendance()).map(row => row.target), ['A', 'B', 'inside.employee (inside.employee)']);
+ assert.ok(!(await report('effective')).some(row => row.permission === 'payroll.pay'));
+ const global = await assign(subject.id, unrestricted.id, 'all');
+ assert.deepEqual((await effectiveAttendance()).map(({ scope, target, grantCount }) => ({ scope, target, grantCount })),
+  [{ scope: 'All employees', target: '', grantCount: 4 }]);
+ scopeStatus(await admin.post(`/api/custom-access/employees/${subject.id}/custom-grants/${global.id}/revoke`).send({ reason: 'Review complete' }), 204);
+ assert.equal((await effectiveAttendance()).length, 3);
+ assert.ok(!(await report('active-grants')).some(row => row.grantRef === 'Custom #' + global.id));
+ for (const format of ['xlsx', 'pdf', 'docx']) {
+  const url = '/api/reports/access-effective/export.' + format + filters;
+  const response = await admin.get(url);
+  scopeStatus(response);
+  assert.match(response.headers['content-disposition'], new RegExp('\\.' + format));
+  scopeStatus(await leader.get(url), 403);
+ }
+ await q('UPDATE users SET is_active=false WHERE id=$1', [subject.userId]);
+ assert.deepEqual(await report('effective'), []);
+ assert.ok((await report('active-grants')).every(row => row.accountStatus === 'Inactive'));
+});

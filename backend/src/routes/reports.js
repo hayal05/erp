@@ -7,6 +7,7 @@ import { hasPermission } from '../services/permissions.js';
 import { config } from '../config.js';
 import { attendanceListQuery, ATTENDANCE_STATUSES } from '../services/hrSchemas.js';
 import { permissionScope } from '../services/accessScope.js';
+import { accessReports } from '../services/accessReportDefinitions.js';
 import { financeReports } from '../services/financeReportDefinitions.js';
 import { payrollReports } from '../services/payrollReportDefinitions.js';
 import { leaveReports } from '../services/leaveReportDefinitions.js';
@@ -159,6 +160,7 @@ const reports = new Map([
   ...leaveReports,
   ...payrollReports,
   ...financeReports,
+  ...accessReports,
 ]);
 
 function reportColumns(report, filters) {
@@ -198,6 +200,10 @@ router.get('/payroll-lookups', requirePermission('payroll.read'), wrap(async (re
 
 router.get('/company-cost-lookups', requirePermission('company_costs.read'), wrap(async (req, res) => {
   res.json(await employeeReportLookups(req.user, 'company_costs.read'));
+}));
+
+router.get('/access-lookups', requirePermission('access.manage'), wrap(async (req, res) => {
+  res.json(await employeeReportLookups(req.user, 'access.read'));
 }));
 
 const MAX_EXPORT_ROWS = 5000;
