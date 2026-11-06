@@ -13,6 +13,7 @@ export function toAppraisalTemplate(row) {
     id: Number(row.id), name: row.name, version: row.version,
     scope: target?.[0] ?? 'company', targetId: target ? Number(row[target[1].column]) : null,
     targetName: row.target_name ?? null,
+    ...(row.published_version === undefined ? {} : { publishedVersion: row.published_version }),
   };
 }
 

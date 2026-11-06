@@ -61,7 +61,9 @@ function Preview({ report, today }) {
   const needsLookups = report.filters.some(filter => filter.lookup);
   const lookups = useResource(needsLookups ? report.lookupPath ?? '/attendance-records/lookups' : null);
   const lookupOptions = {
-    departments: (lookups.data?.departments ?? []).map(department => ({ value: department.id, label: department.name })),
+    ...Object.fromEntries(['departments','cycles','positions','grades','ratings'].map(key => [
+      key, (lookups.data?.[key] ?? []).map(item => ({ value: item.id, label: item.name })),
+    ])),
     employees: (lookups.data?.employees ?? [])
       .filter(employee => !filters.departmentId || String(employee.departmentId) === filters.departmentId)
       .map(employee => ({ value: employee.id, label: `${employee.fullName} · ${employee.employeeCode}` })),

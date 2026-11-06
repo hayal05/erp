@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import EmployeeProfile from './pages/EmployeeProfile.jsx';
 import Retirement from './pages/Retirement.jsx';
 import Vacancies from './pages/Vacancies.jsx';
@@ -16,7 +17,6 @@ import DepartmentDetail from './pages/DepartmentDetail.jsx';
 import Approvals from './pages/Approvals.jsx';
 import AccessManagement from './pages/AccessManagement.jsx';
 import Announcements from './pages/Announcements.jsx';
-import PerformanceAppraisal from './pages/PerformanceAppraisal.jsx';
 import Reports from './pages/Reports.jsx';
 import Attendance from './pages/Attendance.jsx';
 import HrLeave from './pages/Leave.jsx';
@@ -37,6 +37,10 @@ import PortalLayout, { PortalHome } from './pages/portal/PortalLayout.jsx';
 
 // Placeholder pages: replaced task by task (Dashboard, Attendance, ...).
 const Placeholder = ({ title }) => <section><h1>{title}</h1></section>;
+
+const PerformanceAppraisal = lazy(() => import('./pages/PerformanceAppraisal.jsx'));
+const MyAppraisals = lazy(() => import('./pages/portal/MyAppraisals.jsx'));
+const appraisalPage = <Suspense fallback={<Skeleton variant="table" />}><PerformanceAppraisal /></Suspense>;
 
 function Splash() {
   const { status, error, reload } = useAuth();
@@ -98,7 +102,7 @@ export default function App() {
           <Route path="departments" element={<Departments />} />
           <Route path="departments/:id" element={<DepartmentDetail />} />
           <Route path="attendance" element={<Attendance />} />
-          <Route path="appraisals" element={<PerformanceAppraisal />} />
+          <Route path="appraisals" element={appraisalPage} />
           <Route path="reports" element={<Reports />} />
           <Route path="qr" element={<QrAttendance />} />
           <Route path="leave" element={<HrLeave />} />
@@ -121,7 +125,7 @@ export default function App() {
           <Route path="departments" element={<Departments />} />
           <Route path="departments/:id" element={<DepartmentDetail />} />
           <Route path="attendance" element={<Attendance />} />
-          <Route path="appraisals" element={<PerformanceAppraisal />} />
+          <Route path="appraisals" element={appraisalPage} />
           <Route path="reports" element={<Reports />} />
           <Route path="qr" element={<QrAttendance />} />
           <Route path="leave" element={<HrLeave />} />
@@ -141,6 +145,7 @@ export default function App() {
           <Route path="attendance" element={<History />} />
           <Route path="leave" element={<Leave />} />
           <Route path="payslips" element={<Payslips />} />
+          <Route path="appraisals" element={<Suspense fallback={<Skeleton variant="table" />}><MyAppraisals /></Suspense>} />
           <Route path="payslips/:id" element={<Payslip />} />
           <Route path="*" element={<Navigate to="/portal" replace />} />
         </Route>
