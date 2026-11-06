@@ -150,7 +150,7 @@ test('all advertised reports preview and every advertised export opens', { timeo
   assert.equal((await request(app).get(reports)).status, 401);
   assert.deepEqual((await checked(employee.get(reports))).body.items, []);
   const { items } = (await checked(admin.get(reports))).body;
-  assert.equal(items.length, 30);
+  assert.equal(items.length, 32);
   assert.equal(new Set(items.map(report => report.id)).size, items.length);
   for (const report of items) {
     const base = `${reports}/${report.id}`;
