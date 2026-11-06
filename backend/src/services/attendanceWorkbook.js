@@ -36,6 +36,7 @@ export async function attendanceWorkbook({ title, company, date, month, year, pe
     columns.forEach(({ key, type }, index) => {
       if (key === 'checkInTime' || key === 'checkOutTime') row.getCell(index + 1).numFmt = 'hh:mm';
       if (key === 'workDate' || type === 'date') row.getCell(index + 1).numFmt = 'yyyy-mm-dd';
+      if (type === 'money') row.getCell(index + 1).numFmt = '#,##0.00';
     });
   }
   sheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: sheet.rowCount, column: columns.length } };

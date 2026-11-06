@@ -284,6 +284,11 @@ const scopeStatus=(res,status=200)=>assert.equal(res.status,status,JSON.stringif
 async function scopedApprove(response){scopeStatus(response,202);const id=response.body.requestId;
  const inbox=await reviewer.get('/api/change-requests');scopeStatus(inbox);assert.ok(inbox.body.items.some(r=>r.id===id&&r.canReview),JSON.stringify(inbox.body));
  scopeStatus(await outsider.get(`/api/change-requests/${id}`),404);
+ const path='/api/reports/approvals-pending/preview';
+ const scopedReport=await reviewer.get(path);scopeStatus(scopedReport);
+ assert.ok(scopedReport.body.items.some(row=>Number(row.id)===id));
+ const outsideReport=await outsider.get(path);scopeStatus(outsideReport);
+ assert.ok(!outsideReport.body.items.some(row=>Number(row.id)===id));
  const result=await reviewer.post(`/api/change-requests/${id}/approve`).send({});scopeStatus(result);return result.body.applied?.body;
 }
 test('employee activities support department assignment with dependencies in existing sessions',async()=>{
@@ -350,6 +355,14 @@ test('payroll entries, snapshots and exports are scoped; department managers edi
  scopeStatus(await leader.post('/api/payroll/periods').send({month}),403);
  const draft=await admin.post('/api/payroll/periods').send({month});scopeStatus(draft,201);flexPeriod=draft.body.id;
  const all=await admin.get(`/api/payroll/periods/${flexPeriod}/entries`);scopeStatus(all);entryA=all.body.items.find(e=>e.employeeId===inside.id).id;entryB=all.body.items.find(e=>e.employeeId===outside.id).id;
+ const reportsPath='/api/reports';
+ const register=reportsPath+'/payroll-register';
+ const payslip=reportsPath+'/employee-payslip';
+ const deductions=reportsPath+'/payroll-deductions';
+ const monthQuery='?month='+month;
+ const ownQuery=monthQuery+'&employeeId='+inside.id;
+ const outsideQuery=monthQuery+'&employeeId='+outside.id;
+ scopeStatus(await leader.get(payslip+'/preview'+ownQuery),404);
  const list=await leader.get(`/api/payroll/periods/${flexPeriod}/entries?pageSize=1`);scopeStatus(list);assert.equal(list.body.total,(await q('SELECT count(*)::int n FROM employees WHERE department_id=$1',[depA])).rows[0].n);
  scopeStatus(await leader.get(`/api/payroll/periods/${flexPeriod}/entries/${entryB}`),404);
  scopeStatus(await leader.patch(`/api/payroll/periods/${flexPeriod}/entries/${entryB}`).send({basicMinor:222222}),404);
@@ -360,8 +373,43 @@ test('payroll entries, snapshots and exports are scoped; department managers edi
  const csv=await leader.get(`/api/payroll/periods/${flexPeriod}/export.csv`);scopeStatus(csv);assert.ok(csv.text.includes('inside.employee'));assert.ok(!csv.text.includes('outside.employee'));
  scopeStatus(await admin.post(`/api/payroll/periods/${flexPeriod}/pay`).send({paidOn:companyDate()}));
  const costs=await leader.get('/api/payroll-costs');scopeStatus(costs);const visible=(await leader.get(`/api/payroll/periods/${flexPeriod}/entries`)).body.items;
+ const stored=visible.find(row=>row.employeeId===inside.id);
+ const registerResponse=await leader.get(register+'/preview'+monthQuery);
+ scopeStatus(registerResponse);
+ assert.equal(registerResponse.body.total,visible.length);
+ assert.ok(registerResponse.body.items.every(row=>row.departmentName==='A'));
+ const reported=registerResponse.body.items.find(row=>row.id===entryA);
+ assert.equal(reported.net,stored.netMinor/100);
+ assert.equal(reported.status,'paid');
+ const amounts=await leader.get(deductions+'/preview'+ownQuery);
+ scopeStatus(amounts);
+ assert.equal(amounts.body.items.reduce((sum,row)=>sum+Math.round(row.amount*100),0),stored.grossMinor-stored.netMinor);
+ const slip=await leader.get(payslip+'/preview'+ownQuery);
+ scopeStatus(slip);
+ assert.ok(slip.body.items.some(row=>row.label==='Net pay'&&row.value.startsWith((stored.netMinor/100).toFixed(2))));
+ assert.equal((await leader.get(register+'/preview'+outsideQuery)).body.total,0);
+ assert.equal((await leader.get(deductions+'/preview'+outsideQuery)).body.total,0);
+ scopeStatus(await leader.get(payslip+'/export.pdf'+outsideQuery),404);
+ for(const [path,format] of [[register,'xlsx'],[payslip,'pdf'],[deductions,'xlsx']]){
+  const url=path+'/export.'+format+ownQuery;
+  scopeStatus(await leader.get(url));
+  scopeStatus(await plain.get(url),403);
+ }
+ // Editing a live profile cannot change a saved payroll report.
+ await q('UPDATE salary_profiles SET basic_minor=basic_minor+100 WHERE employee_id=$1',[inside.id]);
+ assert.deepEqual((await leader.get(register+'/preview'+monthQuery)).body,registerResponse.body);
+ assert.deepEqual((await leader.get(payslip+'/preview'+ownQuery)).body,slip.body);
+ await q('UPDATE salary_profiles SET basic_minor=basic_minor-100 WHERE employee_id=$1',[inside.id]);
  const cost=costs.body.items.find(c=>c.id===flexPeriod);assert.equal(cost.employeeCount,visible.length);assert.equal(cost.salaryPaidMinor,visible.reduce((sum,e)=>sum+e.netMinor,0));
  const detail=await leader.get(`/api/payroll-costs/${flexPeriod}/entries`);scopeStatus(detail);assert.ok(!detail.body.items.some(e=>e.employeeId===outside.id));
+ const costReport=await leader.get('/api/reports/employer-cost-summary/preview'+monthQuery);
+ scopeStatus(costReport);assert.equal(costReport.body.items[0].employerCost,cost.employerCostMinor/100);
+ const costDetails=await leader.get('/api/reports/employer-cost-detail/preview'+monthQuery);
+ scopeStatus(costDetails);assert.equal(costDetails.body.total,visible.length);
+ assert.ok(costDetails.body.items.every(row=>row.departmentName==='A'));
+ const excludedCost=await leader.get('/api/reports/employer-cost-detail/preview'+outsideQuery);
+ scopeStatus(excludedCost);assert.equal(excludedCost.body.total,0);
+ scopeStatus(await leader.get('/api/reports/settlement-balances/preview'+monthQuery),403);
  const audit=await leader.get('/api/audit-history?area=payroll');scopeStatus(audit);assert.ok(!audit.body.items.some(r=>r.type==='payroll_period'||r.type==='payroll_entry'&&Number(r.recordId)===entryB));
  scopeStatus(await leader.get(`/api/audit-history/payroll_period/${flexPeriod}`),403);
 });
@@ -382,6 +430,22 @@ test('vacancy application profiles, counts, reviews and audit stay inside applic
  scopeStatus(await leader.get(`/api/vacancies/${vacancyId}/applications/${applicationB}`),404);
  scopeStatus(await leader.patch(`/api/vacancies/${vacancyId}/applications/${applicationB}`).send({status:'shortlisted',version:1}),404);
  await scopedApprove(await leader.patch(`/api/vacancies/${vacancyId}/applications/${applicationA}`).send({status:'shortlisted',version:1}));
+ const reportPrefix='/api/reports/';
+ const filters='?vacancyId='+vacancyId;
+ const statusReport=await leader.get(reportPrefix+'vacancy-status/preview?status=open');scopeStatus(statusReport);
+ assert.equal(statusReport.body.items.find(row=>row.vacancyId===vacancyId).applicationCount,1);
+ const outcomes=await leader.get(reportPrefix+'vacancy-application-outcomes/preview'+filters+'&status=shortlisted');scopeStatus(outcomes);
+ assert.equal(outcomes.body.total,1);assert.equal(outcomes.body.items[0].id,applicationA);
+ assert.equal(outcomes.body.items[0].reviewedBy,'department.manager');
+ assert.ok(!Object.hasOwn(outcomes.body.items[0],'profile_snapshot'));
+ const summary=await leader.get(reportPrefix+'recruitment-summary/preview'+filters);scopeStatus(summary);
+ assert.equal(summary.body.items[0].applications,1);assert.equal(summary.body.items[0].shortlisted,1);
+ const adminSummary=await admin.get(reportPrefix+'recruitment-summary/preview'+filters);scopeStatus(adminSummary);
+ assert.equal(adminSummary.body.items[0].applications,2);
+ for(const [id,format] of [['vacancy-status','xlsx'],['vacancy-application-outcomes','pdf'],['recruitment-summary','docx']]){
+  const path=reportPrefix+id+'/export.'+format+filters;
+  scopeStatus(await leader.get(path));scopeStatus(await plain.get(path),403);
+ }
  scopeStatus(await leader.get(`/api/audit-history/vacancy_application/${applicationB}`),404);
  const audit=await leader.get('/api/audit-history?area=vacancies');scopeStatus(audit);assert.ok(!audit.body.items.some(r=>Number(r.recordId)===applicationB));
 });
@@ -433,4 +497,52 @@ test('mixed roles can be assigned to departments; company-wide activities stay u
  assert.ok(!(await limited.client.get('/api/auth/me')).body.user.permissions.includes('announcements.manage'));
  assert.ok((await unrestricted.client.get('/api/auth/me')).body.user.permissions.includes('announcements.manage'));
  scopeStatus(await admin.put(`/api/custom-access/roles/${mixed.id}`).send({name:mixed.name,version:mixed.version,activities:['payroll.pay']}),400);
+});
+
+test('access reports distinguish role definitions, grant allowances, and overlapping effective scope', async () => {
+ const subject = await person('access.review.subject', depA);
+ const scoped = await newRole('Report review scoped', ['attendance.read', 'payroll.pay']);
+ const other = await newRole('Report review other', ['attendance.read', 'attendance.qr']);
+ const unrestricted = await newRole('Report review global', ['attendance.read']);
+ const first = await assign(subject.id, scoped.id, 'departments', [depA, depB]);
+ await assign(subject.id, other.id, 'departments', [depB]);
+ const selected = await newRole('Report review selected', ['attendance.read']);
+ await assign(subject.id, selected.id, 'employees', [inside.id]);
+ const filters = '?employeeId=' + subject.id;
+ const report = async (id, query = filters) => {
+  const response = await admin.get('/api/reports/access-' + id + '/preview' + query);
+  scopeStatus(response);
+  return response.body.items;
+ };
+ const catalog = await admin.get('/api/reports');
+ assert.equal(catalog.body.items.filter(item => item.group === 'Access administration').length, 4);
+ assert.ok(!(await leader.get('/api/reports')).body.items.some(item => item.group === 'Access administration'));
+ const defined = await report('role-permissions', '?search=Report%20review%20scoped');
+ assert.equal(defined.find(row => row.permission === 'payroll.pay').source, 'Selected activity');
+ assert.equal(defined.find(row => row.permission === 'payroll.read').source, 'Required by activity');
+ const grants = await report('active-grants');
+ assert.deepEqual(grants.filter(row => row.grantRef === 'Custom #' + first.id).map(row => row.target), ['A', 'B']);
+ assert.ok((await report('active-grants', '?search=root')).some(row => row.roleName === 'admin'));
+ const allowances = await report('grant-permissions');
+ assert.equal(allowances.find(row => row.permission === 'payroll.pay').allowance, 'Excluded by scope');
+ assert.ok(allowances.filter(row => row.permission === 'attendance.read').every(row => row.allowance === 'Allowed by grant'));
+ const effectiveAttendance = async () => (await report('effective')).filter(row => row.permission === 'attendance.read');
+ assert.deepEqual((await effectiveAttendance()).map(row => row.target), ['A', 'B', 'inside.employee (inside.employee)']);
+ assert.ok(!(await report('effective')).some(row => row.permission === 'payroll.pay'));
+ const global = await assign(subject.id, unrestricted.id, 'all');
+ assert.deepEqual((await effectiveAttendance()).map(({ scope, target, grantCount }) => ({ scope, target, grantCount })),
+  [{ scope: 'All employees', target: '', grantCount: 4 }]);
+ scopeStatus(await admin.post(`/api/custom-access/employees/${subject.id}/custom-grants/${global.id}/revoke`).send({ reason: 'Review complete' }), 204);
+ assert.equal((await effectiveAttendance()).length, 3);
+ assert.ok(!(await report('active-grants')).some(row => row.grantRef === 'Custom #' + global.id));
+ for (const format of ['xlsx', 'pdf', 'docx']) {
+  const url = '/api/reports/access-effective/export.' + format + filters;
+  const response = await admin.get(url);
+  scopeStatus(response);
+  assert.match(response.headers['content-disposition'], new RegExp('\\.' + format));
+  scopeStatus(await leader.get(url), 403);
+ }
+ await q('UPDATE users SET is_active=false WHERE id=$1', [subject.userId]);
+ assert.deepEqual(await report('effective'), []);
+ assert.ok((await report('active-grants')).every(row => row.accountStatus === 'Inactive'));
 });
