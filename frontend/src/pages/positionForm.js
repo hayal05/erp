@@ -46,7 +46,7 @@ export function allowanceNote(p) {
 }
 
 export const positionRow = (p) => ({
-  id: p.id, name: p.name, basic: formatMoney(p.basicMinor), allowance: formatMoney(p.allowanceMinor), allowanceNote: allowanceNote(p),
+  id: p.id, name: p.name, basic: p.requiresJobGrade ? 'By grade' : formatMoney(p.basicMinor), allowance: p.requiresJobGrade ? 'By grade' : formatMoney(p.allowanceMinor), allowanceNote: allowanceNote(p),
   pension: p.pensionApplies ? 'Yes' : 'No', employees: p.employeeCount ?? 0,
 });
 

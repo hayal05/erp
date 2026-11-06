@@ -65,6 +65,8 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
     e.preventDefault();
     if (busy || readOnly) return;
     const problems = validateForm(form, mode, employee);
+    const selectedPosition = positions.items.find(item => String(item.id) === form.positionId);
+    if (selectedPosition?.requiresJobGrade && !form.jobGradeId) problems.jobGradeId = 'Choose a job grade for this position';
     setFields(problems);
     setError('');
     if (Object.keys(problems).length) return;
@@ -120,6 +122,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
           onChange={(e) => { setForm((f) => ({ ...f, positionId: e.target.value, jobGradeId: e.target.value === String(employee?.positionId ?? '') ? String(employee?.jobGradeId ?? '') : '', applyPositionSalary: true })); setFields((x) => ({ ...x, positionId: undefined, jobGradeId: undefined })); }} />
         {readOnly && employee?.jobGradeName && <Field label="Job grade" value={employee.jobGradeName} readOnly />}
         {!readOnly && form.positionId && <JobGradePicker key={form.positionId} positionId={form.positionId}
+          required={positions.items.some(item => String(item.id) === form.positionId && item.requiresJobGrade)}
           value={form.jobGradeId} current={String(grade?.id) === form.jobGradeId ? grade : { name: employee?.jobGradeName }}
           disabled={busy || readOnly} error={fields.jobGradeId}
           onChange={(jobGradeId, selected) => {

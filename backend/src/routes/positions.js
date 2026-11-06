@@ -19,7 +19,7 @@ import { POSITION_COLUMNS, parsePosition, toPosition } from '../services/positio
 // at /api/positions (edit + delete by id). Both sit behind HR-only guards; a locked tablet session is refused by lockGate.
 // A position is a template: nothing here changes any employee's salary (task 6.5 copies a package at assignment time).
 const SELECT = `SELECT p.id, p.department_id, p.name, p.basic_minor, p.allowance_minor, p.allowance_taxable, p.allowance_pensionable,
-  p.pension_applies, (SELECT count(*)::int FROM employees e WHERE e.position_id = p.id) AS employee_count FROM positions p`;
+  p.pension_applies, p.requires_job_grade, (SELECT count(*)::int FROM employees e WHERE e.position_id = p.id) AS employee_count FROM positions p`;
 async function findPosition(db, id) {
   const { rows: [r] } = await db.query(`${SELECT} WHERE p.id = $1`, [id]);
   return r ? toPosition(r) : null;
@@ -35,13 +35,27 @@ function positionBody(req, res, next) {
   next();
 }
 
-function initialGradeBody(req, res, next) {
-  if (req.body?.initialGrade === undefined) return positionBody(req, res, next);
-  const grade = parse(jobGradeBody, req.body.initialGrade);
-  if (grade.errors) return next(validationError({ initialGrade: 'Enter a valid job grade name, basic salary and allowance' }));
-  const position = parsePosition(req.body);
+function positionCreateBody(req, res, next) {
+  const body = req.body;
+  if (body?.initialGrades === undefined && body?.initialGrade === undefined) return positionBody(req, res, next);
+  const position = parsePosition(body);
   if (position.errors) return next(validationError(position.errors));
-  req.body = { ...position.value, initialGrade: grade.value };
+  const grades = body.initialGrades === undefined ? [body.initialGrade] : body.initialGrades;
+  if (!Array.isArray(grades) || !grades.length) return next(validationError({ initialGrades: 'Add at least one job grade' }));
+  const parsed = [];
+  const names = new Set();
+  for (const grade of grades) {
+    const { value, errors } = parse(jobGradeBody, grade);
+    if (errors) return next(validationError({ initialGrades: 'Each grade needs a valid name, basic salary and allowance' }));
+    const name = value.name.toLowerCase();
+    if (names.has(name)) return next(validationError({ initialGrades: 'Grade names must be unique within the position' }));
+    names.add(name);
+    parsed.push(value);
+  }
+  // Keep the existing single-grade request shape compatible with pending and older clients.
+  req.body = body.initialGrades === undefined
+    ? { ...position.value, initialGrade: parsed[0] }
+    : { ...position.value, basicMinor: 0, allowanceMinor: 0, initialGrades: parsed };
   next();
 }
 
@@ -72,21 +86,21 @@ departmentPositions.get('/', validate(idParams, 'params'), validate(positionList
   res.json(pageResult(rows.map(r=>toPosition({...r,employee_count:counts.find(c=>Number(c.position_id)===Number(r.id))?.n??0})), q, total));
 }));
 
-departmentPositions.post('/', validate(idParams, 'params'), initialGradeBody, wrap(async (req, res) => {
+departmentPositions.post('/', validate(idParams, 'params'), positionCreateBody, wrap(async (req, res) => {
   const { id } = req.params;
-  const b = req.body;
+  const { initialGrade, initialGrades, ...b } = req.body;
   const created = await withTransaction(async (db) => {
     // FOR SHARE: a concurrent department delete waits for this transaction instead of orphaning the new position.
     if (!(await db.query('SELECT 1 FROM departments WHERE id = $1 FOR SHARE', [id])).rowCount) throw noDepartment();
     const cols = Object.values(POSITION_COLUMNS);
     const { rows: [row] } = await db.query(
-      `INSERT INTO positions (department_id, ${cols.join(', ')}) VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(', ')}) RETURNING id`,
-      [id, ...Object.keys(POSITION_COLUMNS).map((key) => b[key])]);
+      `INSERT INTO positions (department_id, requires_job_grade, ${cols.join(', ')}) VALUES ($1, $2, ${cols.map((_, i) => `$${i + 3}`).join(', ')}) RETURNING id`,
+      [id, Boolean(initialGrades), ...Object.keys(POSITION_COLUMNS).map((key) => b[key])]);
     await audit(db, { actorId: req.user.id, action: 'position.create', entityType: 'position', entityId: row.id, details: { departmentId: Number(id), ...b } });
-    if (b.initialGrade) {
-      const grade = await insertGrade(db, row.id, b.initialGrade);
+    for (const input of initialGrades ?? (initialGrade ? [initialGrade] : [])) {
+      const grade = await insertGrade(db, row.id, input);
       await audit(db, { actorId: req.user.id, action: 'position.grade.create', entityType: 'position', entityId: row.id,
-        details: { gradeId: Number(grade.id), ...b.initialGrade } });
+        details: { gradeId: Number(grade.id), ...input } });
     }
     return findPosition(db, row.id);
   }).catch((err) => { throw translateDbError(err); });
