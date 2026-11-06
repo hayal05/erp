@@ -329,7 +329,7 @@ ul.form-error { margin: 0; padding-left: 28px; }
 
 .salary-sheet { gap: 10px; }
 .payroll-heading .row { gap: 6px; }
-.payroll-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.payroll-toolbar, .reports-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
 .payroll-period, .payroll-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .payroll-period .field { width: 168px; min-width: 0; }
 .payroll-period input { min-height: var(--tap); padding: 5px 8px; font-size: .9rem; }
@@ -340,6 +340,27 @@ ul.form-error { margin: 0; padding-left: 28px; }
   .payroll-toolbar { padding: 8px; }
   .payroll-actions { width: 100%; margin-left: 0; }
   .payroll-period input, .payroll-actions .btn { min-height: var(--tap); }
+}
+
+.reports-page, .reports-preview { gap: 10px; }
+.reports-picker, .reports-filters, .reports-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; min-width: 0; }
+.reports-picker { flex: 0 1 520px; }
+.reports-picker > .field:first-child { flex: 1 1 150px; }
+.reports-picker > .field:last-child { flex: 2 1 220px; }
+.reports-toolbar { align-items: end; }
+.reports-filters { flex: 1 1 300px; }
+.reports-filters .field { flex: 0 1 160px; }
+.reports-actions { margin-left: auto; align-items: center; }
+.reports-actions .btn { min-height: var(--tap); }
+.report-notes { position: relative; font-size: .85rem; }
+.report-notes summary { cursor: pointer; padding: 7px 4px; }
+.report-notes p { position: absolute; z-index: 2; right: 0; width: min(260px, 75vw); margin: 4px 0 0; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+@media (max-width: 700px) {
+  .reports-picker { flex-basis: 100%; }
+  .reports-toolbar { padding: 8px; }
+  .reports-filters .field { flex: 1 1 130px; }
+  .reports-actions { margin-left: 0; }
+  .report-notes p { right: auto; left: 0; }
 }
 
 .payslip-paper { width: 100%; max-width: 850px; margin-inline: auto; min-width: 0; }
