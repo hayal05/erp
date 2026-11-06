@@ -546,3 +546,56 @@ test('access reports distinguish role definitions, grant allowances, and overlap
  assert.deepEqual(await report('effective'), []);
  assert.ok((await report('active-grants')).every(row => row.accountStatus === 'Inactive'));
 });
+
+test('appraisal grants keep viewing, review, approval and configuration separate', async () => {
+ const path = '/api/appraisals/employees';
+ const personWithGrants = await person('appraisal.manager', depA);
+ const review = await newRole('Appraisal reviewer', ['appraisals.review']);
+ const approve = await newRole('Appraisal approver', ['appraisals.approve']);
+ const view = await newRole('Appraisal viewer', ['appraisals.read']);
+ const configure = await newRole('Appraisal configuration', ['appraisals.configure']);
+ const client = personWithGrants.client;
+ scopeStatus(await client.get(path), 403);
+ scopeStatus(await admin.post(`/api/custom-access/employees/${personWithGrants.id}/custom-grants`).send({
+  roleId: configure.id, scopeType: 'departments', departmentIds: [depA], employeeIds: [],
+ }), 400);
+ await assign(personWithGrants.id, review.id, 'departments', [depA]);
+ const scoped = await client.get(path);
+ scopeStatus(scoped);
+ assert.ok(scoped.body.items.length > 0);
+ assert.ok(scoped.body.items.every(row => row.department === 'A' && row.canReview && !row.canApprove));
+ assert.equal((await client.get(path + '?search=outside.employee')).body.total, 0);
+ await assign(personWithGrants.id, approve.id, 'employees', [outside.id]);
+ await assign(personWithGrants.id, view.id, 'all');
+ const roster = await client.get(path + '?pageSize=100');
+ scopeStatus(roster);
+ const outsideRow = roster.body.items.find(row => row.id === outside.id);
+ assert.equal(outsideRow.canReview, false);
+ assert.equal(outsideRow.canApprove, true);
+ const insideRow = roster.body.items.find(row => row.id === inside.id);
+ assert.equal(insideRow.canReview, true);
+ assert.equal(insideRow.canApprove, false);
+ assert.ok(!Object.hasOwn(outsideRow, 'email'));
+ const session = await client.get('/api/auth/me');
+ assert.ok(!session.body.user.permissions.includes('appraisals.configure'));
+ scopeStatus(await plain.get(path), 403);
+});
+
+test('cycle assignment rejects reviewers outside their department and opening requires a published match', async () => {
+ const manager = await person('cycle.scope.reviewer', depA);
+ const role = await newRole('Cycle scoped reviewer', ['appraisals.review']);
+ await assign(manager.id, role.id, 'departments', [depA]);
+ const created = await admin.post('/api/appraisals/cycles').send({
+  name: 'Scope cycle', kind: 'custom', startsOn: '2026-10-01', endsOn: '2026-10-31', dueOn: '2026-11-15',
+ });
+ scopeStatus(created, 201);
+ const path = `/api/appraisals/cycles/${created.body.id}`;
+ scopeStatus(await admin.put(path + '/assignments').send({ version: 1, assignments: [{ employeeId: outside.id, reviewerId: manager.userId }] }), 400);
+ scopeStatus(await admin.put(path + '/assignments').send({ version: 1, assignments: [{ employeeId: inside.id, reviewerId: manager.userId }] }), 204);
+ const blocked = await admin.post(path + '/open').send({ version: 2 });
+ scopeStatus(blocked, 422);
+ assert.equal(blocked.body.error.code, 'missing_template');
+ const draft = await admin.get(path + '/assignments');
+ assert.equal(draft.body.cycle.openedAt, null);
+ assert.equal(draft.body.items[0].templateVersion, null);
+});

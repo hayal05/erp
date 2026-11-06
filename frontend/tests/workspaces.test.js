@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {workspaceOptions,canOpenPath,workspacePath,canUseWorkspace} from '../src/api/workspaces.js';
 import {redirectTarget,homePath} from '../src/api/paths.js';
 const employee={role:'employee',permissions:['self.profile']};
-const reads=['vacancies.admin_read','dashboard.read','employees.read','organization.read','attendance.read','attendance.qr.read','leave.read','announcements.admin_read','settlements.read','access.read','company_costs.read'];
+const reads=['vacancies.admin_read','dashboard.read','employees.read','organization.read','attendance.read','attendance.qr.read','leave.read','announcements.admin_read','settlements.read','access.read','company_costs.read','appraisals.read'];
 const hr={role:'employee',permissions:[...reads,'employees.manage','organization.manage','attendance.manage','attendance.qr','leave.manage','announcements.manage','payroll.read','payroll_settings.read']};
 const finance={role:'employee',permissions:[...reads,'payroll.approve','payroll.read','company_costs.read','settlements.manage','payroll_settings.read']};
 const both={role:'employee',permissions:[...hr.permissions,...finance.permissions]};
@@ -67,4 +67,14 @@ test('custom attendance roles receive a management workspace and only ticked pag
  assert.deepEqual(workspaceOptions(user).map(x=>x.key),['portal','hr']);
  assert.equal(canOpenPath(user,'/hr/attendance'),true);assert.equal(canOpenPath(user,'/hr/qr'),true);
  for(const path of ['/hr/employees','/hr/payroll','/hr/access-management','/hr/departments'])assert.equal(canOpenPath(user,path),false,path);
+});
+
+test('appraisal navigation follows workspace permissions and custom grants',()=>{
+ const reviewer={role:'employee',permissions:['appraisals.read','appraisals.review'],customGrants:[{permissions:['appraisals.read','appraisals.review']}]};
+ assert.equal(canOpenPath(employee,'/hr/appraisals'),false);
+ assert.equal(canOpenPath(hr,'/hr/appraisals'),true);
+ assert.equal(canOpenPath(finance,'/finance/appraisals'),true);
+ assert.equal(canOpenPath(reviewer,'/hr/appraisals'),true);
+ assert.equal(canOpenPath(reviewer,'/hr/reports'),true);
+ assert.equal(canOpenPath({...reviewer,permissions:[]},'/hr/appraisals'),false);
 });

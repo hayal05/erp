@@ -6,11 +6,15 @@ export const ACTIVITY_GROUPS=[
  ['Leave',[['leave.read','View leave'],['leave.manage','Review leave and adjust balances']]],
  ['Payroll',[['payroll.read','View payroll'],['payroll.prepare','Edit payroll entries (generate and regenerate with All employees scope)'],['payroll.approve','Submit payroll approval'],['payroll.pay','Record payroll payment'],['payroll_settings.read','View shared payroll settings'],['payroll_settings.manage','Change payroll settings'],['deductions.read','View deductions'],['deductions.manage','Manage deductions'],['company_costs.read','View company costs'],['settlements.read','View settlements'],['settlements.manage','Record settlements']]],
  ['Communication',[['announcements.admin_read','View shared company announcements'],['announcements.manage','Manage announcements'],['vacancies.admin_read','View internal vacancies and applications'],['vacancies.manage','Post and edit vacancies'],['vacancies.review','Review applications']]],
+ ['Performance Appraisal',[['appraisals.read','View appraisals'],['appraisals.configure','Configure appraisal templates and cycles'],['appraisals.review','Review appraisals'],['appraisals.approve','Approve appraisals']]],
  ['Review and reports',[['dashboard.read','View dashboard for scoped employees'],['approvals.read','View permitted approval requests'],['changes.hr.approve','Approve another person’s permitted HR changes'],['changes.finance.approve','Approve another person’s permitted Finance changes'],['audit.hr','View permitted HR audit records'],['audit.finance','View permitted Finance audit records'],['access.read','View access assignments']]]
 ];
 export const ACTIVITY_IDS=ACTIVITY_GROUPS.flatMap(([,items])=>items.map(([id])=>id));
-export const SCOPED_ACTIVITIES=['announcements.admin_read','salary_profiles.manage','leave.read','leave.manage','deductions.read','deductions.manage','payroll.read','payroll.prepare','company_costs.read','dashboard.read','access.read','organization.read','payroll_settings.read','vacancies.read','vacancies.admin_read','vacancies.review','changes.finance.approve','audit.finance','employees.manage','employees.read','attendance.read','attendance.manage','attendance.qr.read','attendance.qr','attendance.qr.lock','approvals.read','changes.hr.approve','audit.hr'];
+export const SCOPED_ACTIVITIES=['appraisals.read','appraisals.review','appraisals.approve','announcements.admin_read','salary_profiles.manage','leave.read','leave.manage','deductions.read','deductions.manage','payroll.read','payroll.prepare','company_costs.read','dashboard.read','access.read','organization.read','payroll_settings.read','vacancies.read','vacancies.admin_read','vacancies.review','changes.finance.approve','audit.finance','employees.manage','employees.read','attendance.read','attendance.manage','attendance.qr.read','attendance.qr','attendance.qr.lock','approvals.read','changes.hr.approve','audit.hr'];
 export const ACTIVITY_DEPENDENCIES={
+ 'appraisals.configure':['appraisals.read'],
+ 'appraisals.review':['appraisals.read'],
+ 'appraisals.approve':['appraisals.read'],
  'leave.read':['employees.read','organization.read'],
  'deductions.read':['employees.read','payroll_settings.read'],
  'payroll.read':['employees.read'],
