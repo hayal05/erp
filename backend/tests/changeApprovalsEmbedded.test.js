@@ -122,3 +122,47 @@ test('proposals and final decisions are immutable at the database boundary',asyn
  await assert.rejects(q("UPDATE change_requests SET status='pending' WHERE id=$1",[id]),/immutable/);
  await assert.rejects(q('DELETE FROM change_requests WHERE id=$1',[id]),/cannot be deleted/);
 });
+
+test('approval and audit reports show scoped history and log successful downloads', async () => {
+ const id = await pending(await hr.patch(`/api/departments/${department}`).send({ name: 'Report review change' }));
+ const prefix = '/api/reports/';
+ const pendingUrl = prefix + 'approvals-pending/preview?department=hr';
+ const pendingReport = await hr.get(pendingUrl);
+ assert.equal(pendingReport.status, 200, JSON.stringify(pendingReport.body));
+ const request = pendingReport.body.items.find(row => Number(row.id) === id);
+ assert.equal(request.requester, 'hr@approval.test');
+ assert.match(request.requestedAt, /^\d{4}-\d{2}-\d{2}/);
+ assert.ok(!Object.hasOwn(request, 'payload_preview'));
+ assert.ok(!(await hr.get(prefix + 'approvals-pending/preview?from=2099-01-01')).body.items.some(row => Number(row.id) === id));
+ await approve(hr2, id);
+ assert.ok(!(await hr.get(pendingUrl)).body.items.some(row => Number(row.id) === id));
+ const decisions = prefix + 'approval-decisions';
+ const day = new Date().toISOString().slice(0, 10);
+ const filters = '?department=hr&status=approved&from=' + day + '&to=' + day;
+ const decided = await hr.get(decisions + '/preview' + filters);
+ assert.equal(decided.status, 200, JSON.stringify(decided.body));
+ const row = decided.body.items.find(item => Number(item.id) === id);
+ assert.equal(row.reviewer, 'hr2@approval.test');
+ assert.match(row.reviewedAt, /^\d{4}-\d{2}-\d{2}/);
+ assert.equal((await plain.get(decisions + '/preview')).status, 403);
+ const history = prefix + 'audit-change-history';
+ const historyResult = await hr.get(history + '/preview?area=departments&to=' + day);
+ assert.equal(historyResult.status, 200, JSON.stringify(historyResult.body));
+ assert.ok(historyResult.body.items.some(item => item.action === 'department.update' && item.changes.includes('Report review change')));
+ assert.equal((await fin.get(history + '/preview?area=departments')).status, 403);
+ assert.equal((await hr.get(history + '/preview?from=2026-11-02&to=2026-11-01')).status, 400);
+ for (const [path, format] of [[decisions, 'docx'], [decisions, 'xlsx'], [history, 'pdf']]) {
+  const url = path + '/export.' + format + (path === history ? '?area=departments' : filters);
+  const response = await hr.get(url);
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.match(response.headers['content-disposition'], new RegExp('\\.' + format));
+  assert.equal((await plain.get(url)).status, 403);
+ }
+ const { rows } = await q("SELECT * FROM audit_logs WHERE action='report.export' ORDER BY id");
+ assert.equal(rows.length, 3);
+ assert.ok(rows.every(entry => Number(entry.actor_user_id) === Number(hrId) && entry.occurred_at));
+ assert.equal(rows[0].entity_id, 'approval-decisions');
+ assert.deepEqual(rows[0].details.filters, { department: 'hr', status: 'approved', from: day, to: day });
+ assert.equal(rows[0].details.format, 'docx');
+ assert.equal(rows[2].details.report, 'audit-change-history');
+});
