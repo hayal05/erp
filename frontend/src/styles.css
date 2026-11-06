@@ -329,7 +329,7 @@ ul.form-error { margin: 0; padding-left: 28px; }
 
 .salary-sheet { gap: 10px; }
 .payroll-heading .row { gap: 6px; }
-.payroll-toolbar, .reports-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.payroll-toolbar, .reports-toolbar, .retirement-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
 .payroll-period, .payroll-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .payroll-period .field { width: 168px; min-width: 0; }
 .payroll-period input { min-height: var(--tap); padding: 5px 8px; font-size: .9rem; }
@@ -864,12 +864,24 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 @media (max-width: 700px) { .portal-leave-page .leave-balances { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 360px) { .portal-leave-page .leave-balances { grid-template-columns: minmax(0,1fr); } }
 
-.retirement-heading h1 { margin: 0; }
-.retirement-age { display: flex; align-items: end; gap: var(--space-sm); }
-.retirement-age .field { width: 130px; }
-.retirement-filters { flex-wrap: wrap; }
-.retirement-filters .field { margin: 0; }
-.retirement-filters .field:first-child { width: min(300px,100%); }
+.retirement-page { gap: 10px; }
+.retirement-toolbar { align-items: end; }
+.retirement-heading time, .retirement-setting > .muted { font-size: .85rem; }
+.retirement-filters, .retirement-age { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.retirement-filters { flex: 1 1 420px; }
+.retirement-filters .field { flex: 0 1 170px; }
+.retirement-filters .field:first-child { flex-basis: 230px; }
+.retirement-setting { margin-left: auto; }
+.retirement-setting > .muted { display: block; padding-block: 8px; }
+.retirement-age .field { width: 150px; }
+.retirement-age .btn { min-height: var(--tap); }
+.retirement-setting p { margin: 4px 0 0; }
+@media (max-width: 700px) {
+  .retirement-toolbar { padding: 8px; }
+  .retirement-filters .field { flex: 1 1 145px; }
+  .retirement-filters .field:first-child { flex-basis: 100%; }
+  .retirement-setting { margin-left: 0; }
+}
 .retirement-page .table { min-width: 1100px; }
 .retirement-page .table th, .retirement-page .table td { white-space: nowrap; }
 

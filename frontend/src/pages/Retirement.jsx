@@ -34,7 +34,7 @@ export function RetirementAgeForm({settings,onSaved,disabled=false}){
   catch(e){if(e.code==='approval_pending'){setNotice('Submitted for approval');onSaved();}else setError(e.message);}finally{setBusy(false);}
  }
  return <div><form className="retirement-age" onSubmit={save} aria-label="Retirement age settings">
-  <Field label="Retirement age" type="number" min={18} max={100} step={1} required placeholder="Years" value={age} onChange={e=>setAge(e.target.value)} disabled={busy||disabled}/>
+  <Field label={settings.retirementAge===null?'Retirement age (not set)':'Retirement age'} type="number" min={18} max={100} step={1} required placeholder="Years" value={age} onChange={e=>setAge(e.target.value)} disabled={busy||disabled}/>
   <Button size="sm" type="submit" variant="primary" busy={busy} disabled={disabled||age===''||Number(age)===settings.retirementAge}>Save</Button>
  </form>{error&&<p className="form-error" role="alert">{error}</p>}{notice&&<p className="muted" role="status">{notice}</p>}</div>;
 }
@@ -45,13 +45,22 @@ export default function Retirement(){
  const r=useResource('/retirement',{search:debounced,status,employmentStatus,page,pageSize:25});
  const d=r.data;
  return <section className="stack retirement-page">
-  <div className="row between retirement-heading"><h1>Retirement</h1>{d&& (canManage&&d.canManageSettings!==false?<RetirementAgeForm key={d.settings.version} settings={d.settings} onSaved={r.reload} disabled={r.loading||!!r.error}/>:<span className="muted">Retirement age: {d.settings.retirementAge===null?'Not set':`${d.settings.retirementAge} years`}</span>)}</div>
-  <div className="row between"><div className="row retirement-filters">
-   <Field type="search" label="Employee search" placeholder="Name, ID, department or position" maxLength={100} value={search} onChange={e=>setSearch(e.target.value)}/>
-   <Field as="select" hideLabel label="Employment status" options={[{value:'active',label:'Active employees'},{value:'inactive',label:'Inactive employees'},{value:'all',label:'All employees'}]} value={employmentStatus} onChange={e=>{setEmploymentStatus(e.target.value);setPage(1);}}/>
-   <Field as="select" hideLabel label="Retirement status" placeholder="All retirement statuses" options={statusOptions} value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}/>
-  </div>{d&&<time className="muted" dateTime={d.today}>As of {d.today}</time>}</div>
-  {d?.settings.retirementAge===null&&<p className="muted" role="status">Retirement age not set.</p>}
+  <div className="row between retirement-heading">
+   <h1>Retirement</h1>
+   {d&&<time className="muted" dateTime={d.today}>As of {d.today}</time>}
+  </div>
+  <div className="retirement-toolbar">
+   <div className="retirement-filters">
+    <Field type="search" label="Employee search" placeholder="Name, ID, department or position" maxLength={100} value={search} onChange={e=>setSearch(e.target.value)}/>
+    <Field as="select" hideLabel label="Employment status" options={[{value:'active',label:'Active employees'},{value:'inactive',label:'Inactive employees'},{value:'all',label:'All employees'}]} value={employmentStatus} onChange={e=>{setEmploymentStatus(e.target.value);setPage(1);}}/>
+    <Field as="select" hideLabel label="Retirement status" placeholder="All retirement statuses" options={statusOptions} value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}/>
+   </div>
+   {d&&<div className="retirement-setting">
+    {canManage&&d.canManageSettings!==false
+     ?<RetirementAgeForm key={d.settings.version} settings={d.settings} onSaved={r.reload} disabled={r.loading||!!r.error}/>
+     :<span className="muted">Retirement age: {d.settings.retirementAge===null?'Not set':`${d.settings.retirementAge} years`}</span>}
+   </div>}
+  </div>
   <RetirementTable items={d?.items} loading={r.loading} error={r.error} onRetry={r.reload}/>
   <Pager page={page} pageSize={25} total={d?.total??0} onPage={setPage} disabled={r.loading}/>
  </section>;
