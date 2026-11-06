@@ -4,24 +4,27 @@ import PDFDocument from 'pdfkit';
 const require = createRequire(import.meta.url);
 const font = require.resolve('@expo-google-fonts/noto-sans-ethiopic/400Regular/NotoSansEthiopic_400Regular.ttf');
 const MARGIN = 36;
-const WIDTHS = [73, 144, 118, 58, 58, 72];
+const DAILY_WIDTHS = [73, 144, 118, 58, 58, 72];
 const PADDING = 5;
 
-export function attendancePdf({ title, company, date, columns, rows }) {
-  const doc = new PDFDocument({ size: 'A4', margin: MARGIN, autoFirstPage: false, info: { Title: title } });
+export function attendancePdf({ title, company, date, month, columns, rows }) {
+  const doc = new PDFDocument({ size: 'A4', margin: MARGIN, layout: month ? 'landscape' : 'portrait', autoFirstPage: false, info: { Title: title } });
   return new Promise((resolve, reject) => {
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
     doc.once('end', () => resolve(Buffer.concat(chunks)));
     doc.once('error', reject);
 
-    const tableWidth = WIDTHS.reduce((total, width) => total + width, 0);
+    const tableWidth = month ? 769 : 523;
+    const weights = month ? columns.map(column => column.width ?? 14) : DAILY_WIDTHS;
+    const weightTotal = weights.reduce((total, width) => total + width, 0);
+    const widths = weights.map(weight => tableWidth * weight / weightTotal);
     let page = 0;
     let y;
 
     function drawRow(values, heading = false) {
       doc.fontSize(9);
-      const options = index => ({ width: WIDTHS[index] - 2 * PADDING, lineGap: 1 });
+      const options = index => ({ width: widths[index] - 2 * PADDING, lineGap: 1 });
       const height = Math.max(...values.map((value, index) => doc.heightOfString(value, options(index)))) + 2 * PADDING;
       if (!heading && y + height > doc.page.height - MARGIN - 18) addPage();
       if (heading) doc.rect(MARGIN, y, tableWidth, height).fill('#e8edf3');
@@ -30,7 +33,7 @@ export function attendancePdf({ title, company, date, columns, rows }) {
       doc.fillColor('#17212b');
       values.forEach((value, index) => {
         doc.text(value, x + PADDING, y + PADDING, options(index));
-        x += WIDTHS[index];
+        x += widths[index];
       });
       y += height;
       doc.moveTo(MARGIN, y).lineTo(MARGIN + tableWidth, y).lineWidth(0.5).strokeColor('#cdd5df').stroke();
@@ -44,7 +47,7 @@ export function attendancePdf({ title, company, date, columns, rows }) {
       });
       doc.fontSize(11).fillColor('#405267').text(company, MARGIN, MARGIN, { width: tableWidth });
       doc.fontSize(18).fillColor('#17212b').text(title, MARGIN, doc.y + 5, { width: tableWidth });
-      doc.fontSize(10).text(`Date: ${date}    Records: ${rows.length}`, MARGIN, doc.y + 5, { width: tableWidth });
+      doc.fontSize(10).text(date ? `Date: ${date}    Records: ${rows.length}` : `Month: ${month}    Groups: ${rows.length}`, MARGIN, doc.y + 5, { width: tableWidth });
       y = doc.y + 12;
       drawRow(columns.map(column => column.header), true);
     }

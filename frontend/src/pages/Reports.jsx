@@ -34,7 +34,7 @@ export default function Reports() {
 
 function Preview({ report, today }) {
   const [filters, setFilters] = useState(() => Object.fromEntries(
-    report.filters.map(filter => [filter.key, filter.type === 'date' ? today : ''])));
+    report.filters.map(filter => [filter.key, filter.default ?? (filter.type === 'date' ? today : filter.type === 'month' ? today.slice(0, 7) : '')])));
   const [submitted, setSubmitted] = useState(null);
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
@@ -66,7 +66,7 @@ function Preview({ report, today }) {
       const url = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${report.id}-${submitted.date}.${format}`;
+      link.download = `${report.id}-${submitted.date ?? submitted.month}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -81,6 +81,7 @@ function Preview({ report, today }) {
   const filtersChanged = submitted && report.filters.some(filter => filters[filter.key] !== submitted[filter.key]);
 
   return <section className="stack">
+    {report.description && <small className="muted">{report.description}</small>}
     {lookups.error && <ResourceState error={lookups.error} onRetry={lookups.reload} />}
     <form className="row" onSubmit={run}>
       {report.filters.map(filter => <Field key={filter.key} label={filter.label}
@@ -97,11 +98,11 @@ function Preview({ report, today }) {
       <Button size="sm" type="submit" variant="primary" busy={preview.loading} disabled={exporting}>Preview</Button>
       {report.formats.map(format => <Button key={format} size="sm" busy={exporting === format}
         disabled={Boolean(exporting || !submitted || filtersChanged || preview.loading || !preview.data || preview.error)}
-        onClick={() => download(format)}>Export {format === 'xlsx' ? 'Excel' : format.toUpperCase()}</Button>)}
+        onClick={() => download(format)}>Export {({ xlsx: 'Excel', pdf: 'PDF', docx: 'Word' })[format]}</Button>)}
     </form>
     {exportError && <p role="alert" className="form-error">{exportError}</p>}
     {submitted && <>
-      <Table caption={report.title} columns={report.columns}
+      <Table caption={report.title} columns={preview.data?.columns ?? report.columns}
         rows={preview.loading ? [] : preview.data?.items} loading={preview.loading}
         error={preview.error} onRetry={preview.reload} empty="No saved records match these filters" />
       {preview.data && !preview.loading && <Pager page={page} pageSize={PAGE_SIZE}

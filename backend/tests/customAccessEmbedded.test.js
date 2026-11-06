@@ -47,7 +47,7 @@ test('department grants are effective in existing sessions and scope lists, coun
  const a=await leader.get('/api/attendance-records?view=today');assert.equal(a.status,200,JSON.stringify(a.body));assert.ok(a.body.items.every(x=>x.departmentId===depA));assert.ok(a.body.items.every(x=>x.canCorrect===false));
  const catalog=await leader.get('/api/reports');
  assert.equal(catalog.status,200);
- assert.deepEqual(catalog.body.items.map(report=>report.id),['daily-attendance']);
+ assert.deepEqual(catalog.body.items.map(report=>report.id),['daily-attendance','monthly-attendance']);
  assert.deepEqual((await plain.get('/api/reports')).body.items,[]);
  const previewPath='/api/reports/daily-attendance/preview';
  const filters='?date='+companyDate()+'&departmentId='+depA;
@@ -95,6 +95,29 @@ test('department grants are effective in existing sessions and scope lists, coun
  assert.equal(preview.body.total,preview.body.items.length);
  assert.equal((await plain.get(previewPath+'?date='+companyDate())).status,403);
  assert.equal((await leader.get(previewPath+'?date=invalid')).status,400);
+ const month=companyDate().slice(0,7);
+ const monthly='/api/reports/monthly-attendance';
+ const monthFilters='?month='+month+'&departmentId='+depA;
+ const byEmployee=await leader.get(monthly+'/preview'+monthFilters);
+ assert.equal(byEmployee.status,200,JSON.stringify(byEmployee.body));
+ assert.ok(byEmployee.body.items.some(row=>row.id===inside.id));
+ assert.equal(byEmployee.body.items.reduce((sum,row)=>sum+row.total,0),preview.body.total);
+ const department=await leader.get(monthly+'/preview'+monthFilters+'&groupBy=department');
+ assert.equal(department.status,200,JSON.stringify(department.body));
+ assert.equal(department.body.items.length,1);
+ for(const key of ['present','late','absent','onLeave','incomplete','total']){
+  assert.equal(department.body.items[0][key],byEmployee.body.items.reduce((sum,row)=>sum+row[key],0));
+ }
+ assert.equal((await leader.get(monthly+'/preview?month='+month+'&departmentId='+depB)).body.total,0);
+ assert.equal((await leader.get(monthly+'/preview?month=2026-13')).status,400);
+ for(const format of ['xlsx','pdf','docx']){
+  const path=monthly+'/export.'+format+monthFilters+'&groupBy=department';
+  const exported=await leader.get(path);
+  assert.equal(exported.status,200,JSON.stringify(exported.body));
+  assert.ok(exported.headers['content-disposition'].endsWith(month+'.'+format+'"'));
+  assert.equal((await plain.get(path)).status,403);
+ }
+
  const lookup=await leader.get('/api/attendance-records/lookups');assert.equal(lookup.status,200);assert.ok(lookup.body.employees.every(e=>Number(e.departmentId)===depA));
  assert.equal((await leader.get('/api/retirement')).body.total,3);
  assert.equal((await leader.get(`/api/employees/${outside.id}/attachments?direction=incoming`)).status,404);
