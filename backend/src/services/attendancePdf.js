@@ -7,7 +7,7 @@ const MARGIN = 36;
 const DAILY_WIDTHS = [73, 144, 118, 58, 58, 72];
 const PADDING = 5;
 
-export function attendancePdf({ title, company, date, month, period, asOf, columns, rows }) {
+export function attendancePdf({ title, company, date, month, year, period, asOf, columns, rows }) {
   const doc = new PDFDocument({ size: 'A4', margin: MARGIN, layout: date ? 'portrait' : 'landscape', autoFirstPage: false, info: { Title: title } });
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -47,7 +47,7 @@ export function attendancePdf({ title, company, date, month, period, asOf, colum
       });
       doc.fontSize(11).fillColor('#405267').text(company, MARGIN, MARGIN, { width: tableWidth });
       doc.fontSize(18).fillColor('#17212b').text(title, MARGIN, doc.y + 5, { width: tableWidth });
-      doc.fontSize(10).text(date ? `Date: ${date}    Records: ${rows.length}` : month ? `Month: ${month}    Groups: ${rows.length}` : `${period ? `Range: ${period}` : `As of: ${asOf}`}    Records: ${rows.length}`, MARGIN, doc.y + 5, { width: tableWidth });
+      doc.fontSize(10).text(date ? `Date: ${date}    Records: ${rows.length}` : month ? `Month: ${month}    Groups: ${rows.length}` : `${year ? `Year: ${year}` : period ? `Range: ${period}` : `As of: ${asOf}`}    Records: ${rows.length}`, MARGIN, doc.y + 5, { width: tableWidth });
       y = doc.y + 12;
       drawRow(columns.map(column => column.header), true);
     }

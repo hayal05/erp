@@ -6,9 +6,9 @@ import { pageOffset, pageResult } from './sql.js';
 
 export { readEmployeeDirectory };
 
-export async function employeeReportLookups(user) {
+export async function employeeReportLookups(user, permission = 'employees.read') {
   const args = [];
-  const scope = scopeSql(user, 'employees.read', 'e', args);
+  const scope = scopeSql(user, permission, 'e', args);
   const { rows: employees } = await query(`
     SELECT e.id, e.employee_code AS "employeeCode", u.full_name AS "fullName",
       e.department_id AS "departmentId", d.name AS "departmentName"

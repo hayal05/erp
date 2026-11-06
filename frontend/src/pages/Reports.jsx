@@ -34,7 +34,7 @@ export default function Reports() {
 
 function Preview({ report, today }) {
   const [filters, setFilters] = useState(() => Object.fromEntries(
-    report.filters.map(filter => [filter.key, filter.default ?? (filter.type === 'date' ? today : filter.type === 'month' ? today.slice(0, 7) : '')])));
+    report.filters.map(filter => [filter.key, filter.default ?? (filter.type === 'date' ? today : filter.type === 'month' ? today.slice(0, 7) : filter.key === 'year' ? today.slice(0, 4) : '')])));
   const [submitted, setSubmitted] = useState(null);
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
@@ -66,7 +66,7 @@ function Preview({ report, today }) {
       const url = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${report.id}-${submitted.date ?? submitted.month ?? (submitted.from ? `${submitted.from}-to-${submitted.to}` : preview.data?.today ?? today)}.${format}`;
+      link.download = `${report.id}-${submitted.date ?? submitted.month ?? submitted.year ?? (submitted.from ? `${submitted.from}-to-${submitted.to}` : preview.data?.today ?? today)}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -89,6 +89,7 @@ function Preview({ report, today }) {
         type={filter.type === 'select' ? undefined : filter.type}
         placeholder={filter.placeholder} options={filter.options ?? lookupOptions[filter.lookup]}
         disabled={Boolean(filter.lookup && lookups.loading)}
+        min={filter.min} max={filter.max}
         required={filter.required} value={filters[filter.key]}
         onChange={e => setFilters(current => ({
           ...current,
