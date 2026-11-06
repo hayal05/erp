@@ -2,7 +2,6 @@ import {workspacePath} from '../api/workspaces.js';
 import {useLocation} from 'react-router-dom';
 import {Link as RouterLink} from 'react-router-dom';
 import Table,{Badge} from '../components/Table.jsx';
-import {formatMoney} from '../api/money.js';
 import {useResource,ResourceState} from './payrollResource.jsx';
 const labels={present:'Present',late:'Late',absent:'Absent',on_leave:'On leave',incomplete:'Incomplete'};
 const tone={present:'ok',late:'warn',absent:'danger',on_leave:'info',incomplete:'neutral'};
@@ -13,7 +12,7 @@ export default function Dashboard(){
  </section>;
 }
 function DashboardContent({data:d}){
- const s=d.stats,p=d.payroll;
+ const s=d.stats;
  const attendance=[{key:'employeeName',header:'Employee',render:r=><span className="dashboard-employee"><strong>{r.employeeName}</strong><small className="muted">{r.employeeCode}</small></span>},
   {key:'date',header:'Date',className:'nowrap'},{key:'status',header:'Status',render:r=><Badge tone={tone[r.status]??'neutral'}>{labels[r.status]??r.status}</Badge>},
   {key:'checkIn',header:'In',render:r=>r.checkIn??'—'},{key:'checkOut',header:'Out',render:r=>r.checkOut??'—'}];
@@ -24,7 +23,6 @@ function DashboardContent({data:d}){
     <dl className="dashboard-gender" aria-label="Employee gender share">{[['male','Male'],['female','Female'],['unspecified','Unspecified']].filter(([key])=>key!=='unspecified'||d.employeeGender?.[key]?.count>0).map(([key,label])=><div key={key}><dt>{label}</dt><dd><strong>{d.employeeGender?.[key]?.count??0}</strong> <span className="muted">({d.employeeGender?.[key]?.percentage??0}%)</span></dd></div>)}</dl>
    </article>
    <article className="card dashboard-stat"><div className="row between"><h2>Present today</h2><WorkspaceLink to="/hr/attendance" aria-label="View attendance">View</WorkspaceLink></div><strong className="dashboard-number">{s.presentToday}</strong></article>
-   <article className="card dashboard-stat dashboard-payroll"><div className="row between"><h2>Payroll · {p.month}</h2><WorkspaceLink to={`/hr/payroll?month=${p.month}`} aria-label="View payroll">View</WorkspaceLink></div><strong className="dashboard-number">{p.totalMinor===null?'—':formatMoney(p.totalMinor)}</strong><span className="muted">{p.status?`${p.currencyCode} net salary · ${p.status} · ${p.employeeCount} employees`:'No payroll yet'}</span></article>
    <article className="card dashboard-stat dashboard-retirement"><div className="row between"><h2>Retirement</h2><WorkspaceLink to="/hr/retirement" aria-label="View retirement">View</WorkspaceLink></div>
     {d.retirement?.retirementAge!=null?<dl className="dashboard-retirement-counts"><div><dt>Nearing · 3 months</dt><dd className="dashboard-number">{d.retirement.nearing}</dd></div><div><dt>Passed</dt><dd className="dashboard-number">{d.retirement.passed}</dd></div></dl>:<span className="muted">Retirement age not set</span>}
    </article>
