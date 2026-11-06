@@ -34,13 +34,13 @@ export default function Reports() {
 
 function Preview({ report, today }) {
   const [filters, setFilters] = useState(() => Object.fromEntries(
-    report.filters.map(filter => [filter.key, filter.default ?? (filter.type === 'date' ? today : filter.type === 'month' ? today.slice(0, 7) : '')])));
+    report.filters.map(filter => [filter.key, filter.default ?? (filter.type === 'date' ? today : filter.type === 'month' ? today.slice(0, 7) : filter.key === 'year' ? today.slice(0, 4) : '')])));
   const [submitted, setSubmitted] = useState(null);
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
   const needsLookups = report.filters.some(filter => filter.lookup);
-  const lookups = useResource(needsLookups ? '/attendance-records/lookups' : null);
+  const lookups = useResource(needsLookups ? report.lookupPath ?? '/attendance-records/lookups' : null);
   const lookupOptions = {
     departments: (lookups.data?.departments ?? []).map(department => ({ value: department.id, label: department.name })),
     employees: (lookups.data?.employees ?? [])
@@ -66,7 +66,7 @@ function Preview({ report, today }) {
       const url = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${report.id}-${submitted.date ?? submitted.month}.${format}`;
+      link.download = `${report.id}-${submitted.date ?? submitted.month ?? submitted.year ?? (submitted.from && submitted.to ? `${submitted.from}-to-${submitted.to}` : submitted.from || submitted.to || preview.data?.today || today)}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -89,6 +89,7 @@ function Preview({ report, today }) {
         type={filter.type === 'select' ? undefined : filter.type}
         placeholder={filter.placeholder} options={filter.options ?? lookupOptions[filter.lookup]}
         disabled={Boolean(filter.lookup && lookups.loading)}
+        min={filter.min} max={filter.max}
         required={filter.required} value={filters[filter.key]}
         onChange={e => setFilters(current => ({
           ...current,
@@ -102,7 +103,9 @@ function Preview({ report, today }) {
     </form>
     {exportError && <p role="alert" className="form-error">{exportError}</p>}
     {submitted && <>
-      <Table caption={report.title} columns={preview.data?.columns ?? report.columns}
+      <Table caption={report.title} columns={(preview.data?.columns ?? report.columns).map(column => column.type === 'money'
+          ? { ...column, align: 'num', render: row => row[column.key]?.toFixed(2) ?? '' }
+          : column)}
         rows={preview.loading ? [] : preview.data?.items} loading={preview.loading}
         error={preview.error} onRetry={preview.reload} empty="No saved records match these filters" />
       {preview.data && !preview.loading && <Pager page={page} pageSize={PAGE_SIZE}

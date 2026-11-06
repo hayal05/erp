@@ -51,11 +51,10 @@ async function findEmployee(db, id) {
 }
 const notFound = () => new HttpError(404, 'Employee not found', 'not_found');
 
-router.get('/', validate(employeeListQuery, 'query'), wrap(async (req, res) => {
-  const q = req.query;
+export async function readEmployeeDirectory(user, q) {
   const params = [];
-  const where = [scopeSql(req.user,'employees.read','e',params)];
-  if(q.scope){if(!hasPermission(req.user,q.scope))throw new HttpError(403,'This activity is not allowed','forbidden');where.push(scopeSql(req.user,q.scope,'e',params));}
+  const where = [scopeSql(user,'employees.read','e',params)];
+  if(q.scope){if(!hasPermission(user,q.scope))throw new HttpError(403,'This activity is not allowed','forbidden');where.push(scopeSql(user,q.scope,'e',params));}
   if (q.search) {
     params.push(likePattern(q.search));
     const n = `$${params.length}`;
@@ -73,7 +72,11 @@ router.get('/', validate(employeeListQuery, 'query'), wrap(async (req, res) => {
     [...params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n FROM employees e JOIN users u ON u.id = e.user_id ${whereSql}`, params),
   ]);
-  res.json(pageResult(rows.map(r=>({...toEmployee(r),canManage:coversEmployee(req.user,'employees.manage',r.id,r.department_id),canReadSalary:coversEmployee(req.user,'payroll.read',r.id,r.department_id)})), q, total));
+  return pageResult(rows.map(r=>({...toEmployee(r),canManage:coversEmployee(user,'employees.manage',r.id,r.department_id),canReadSalary:coversEmployee(user,'payroll.read',r.id,r.department_id)})), q, total);
+}
+
+router.get('/', validate(employeeListQuery, 'query'), wrap(async (req, res) => {
+  res.json(await readEmployeeDirectory(req.user, req.query));
 }));
 
 router.get('/lookups',wrap(async(req,res)=>{
@@ -108,19 +111,23 @@ router.get('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
 }));
 
 // Administrative profile is read-only; position history is paged in the same snapshot.
-router.get('/:id/profile',validate(idParams,'params'),validate(pageSchema,'query'),wrap(async(req,res)=>{
- const profile=await withTransaction(async db=>{
+export function readEmployeeProfile(user, employeeId, pagination) {
+ return withTransaction(async db=>{
   await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  await assertEmployeeScope(db, user, 'employees.read', employeeId);
   const {rows:[r]}=await db.query(`SELECT ${COLUMNS},e.experience_summary,
-   to_char(now() AT TIME ZONE $2,'YYYY-MM-DD') AS today ${FROM} WHERE e.id=$1`,[req.params.id,config.company.timezone]);
+   to_char(now() AT TIME ZONE $2,'YYYY-MM-DD') AS today ${FROM} WHERE e.id=$1`,[employeeId,config.company.timezone]);
   if(!r)throw notFound();
   const {rows}=await db.query(`SELECT id,department_name AS department,position_name AS position,
    to_char(recorded_at AT TIME ZONE $4,'YYYY-MM-DD') AS "recordedOn",is_baseline AS baseline
-   FROM employee_position_history WHERE employee_id=$1 ORDER BY recorded_at DESC,id DESC LIMIT $2 OFFSET $3`,[req.params.id,req.query.pageSize,pageOffset(req.query),config.company.timezone]);
-  const {rows:[count]}=await db.query('SELECT count(*)::int AS total FROM employee_position_history WHERE employee_id=$1',[req.params.id]);
-  return {...toEmployee(r),canManage:coversEmployee(req.user,'employees.manage',r.id,r.department_id),experienceSummary:r.experience_summary,today:r.today,
-   positionHistory:pageResult(rows.map(row=>({...row,id:Number(row.id)})),req.query,count.total)};
- });res.json(profile);
+   FROM employee_position_history WHERE employee_id=$1 ORDER BY recorded_at DESC,id DESC LIMIT $2 OFFSET $3`,[employeeId,pagination.pageSize,pageOffset(pagination),config.company.timezone]);
+  const {rows:[count]}=await db.query('SELECT count(*)::int AS total FROM employee_position_history WHERE employee_id=$1',[employeeId]);
+  return {...toEmployee(r),canManage:coversEmployee(user,'employees.manage',r.id,r.department_id),experienceSummary:r.experience_summary,today:r.today,
+   positionHistory:pageResult(rows.map(row=>({...row,id:Number(row.id)})),pagination,count.total)};
+ });
+}
+router.get('/:id/profile',validate(idParams,'params'),validate(pageSchema,'query'),wrap(async(req,res)=>{
+ res.json(await readEmployeeProfile(req.user, req.params.id, req.query));
 }));
 
 const requireSuppliedPersonalDetails=(req,res,next)=>{
