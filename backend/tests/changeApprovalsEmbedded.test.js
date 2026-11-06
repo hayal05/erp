@@ -449,3 +449,38 @@ test('appraisal cycles validate reviewers and pin published templates at opening
  await ok(admin.post(templatePath + '/publications').send({ version: published.version + 1 }), 201);
  assert.equal((await ok(hr.get('/api/appraisals/assignments'))).items[0].templateVersion, 3);
 });
+
+test('assigned reviewer can save a draft and submit only valid scores from the pinned template', async () => {
+ const ok = async (res, status = 200) => { const r = await res; assert.equal(r.status, status, JSON.stringify(r.body)); return r.body; };
+ const mine = '/api/appraisals/assignments';
+ const [assignment] = (await ok(hr.get(mine))).items;
+ const path = `/api/appraisals/reviews/${assignment.cycleId}/${assignment.employeeId}`;
+ const opened = await ok(hr.get(path));
+ assert.equal(opened.template.version, 3);
+ assert.equal(opened.review.version, 0);
+ assert.equal(assignment.status, 'Not started');
+ await ok(hr2.get(path), 404);
+ await ok(fin.get(path), 403);
+ const criterion = opened.template.categories[0].criteria[0].id;
+ await ok(hr.post(path + '/submit').send({ version: 0, inputs: {} }), 422);
+ await ok(hr.put(path).send({ version: 0, inputs: { other: { value: 90 } } }), 400);
+ await ok(hr.put(path).send({ version: 0, inputs: { [criterion]: { value: 110 } } }), 400);
+ await ok(hr.put(path).send({ version: 0, inputs: { [criterion]: { notApplicable: true } } }), 400);
+ const draft = await ok(hr.put(path).send({ version: 0, inputs: { [criterion]: { comment: ' Evidence pending ' } }, comment: ' Draft ' }));
+ assert.equal(draft.version, 1);
+ assert.equal(draft.comment, 'Draft');
+ assert.equal(draft.inputs[criterion].comment, 'Evidence pending');
+ assert.equal((await ok(hr.get(mine))).items[0].status, 'Draft');
+ await ok(hr.put(path).send({ version: 0, inputs: {} }), 409);
+ await ok(hr2.post(path + '/submit').send({ version: 1, inputs: { [criterion]: { value: 82.5 } } }), 404);
+ const submitted = await ok(hr.post(path + '/submit').send({
+  version: 1, inputs: { [criterion]: { value: 82.5, comment: 'Verified' } }, comment: 'Completed', result: { rating: { score: 100 } },
+ }));
+ assert.ok(submitted.submittedAt);
+ assert.equal(submitted.result.rating.score, 82.5);
+ assert.equal(submitted.result.rating.label, 'Standard');
+ assert.equal(submitted.version, 2);
+ assert.equal((await ok(hr.get(mine))).items[0].status, 'Submitted');
+ await ok(hr.put(path).send({ version: 2, inputs: {} }), 409);
+ assert.deepEqual((await ok(hr.get(path))).review, submitted);
+});

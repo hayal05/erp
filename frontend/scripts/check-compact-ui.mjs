@@ -76,6 +76,13 @@ try{
  const completeCategories=[{id:'category-1',name:'Service',weight:10000,criteria:[{id:'criterion-1',name:'Quality',weight:10000}]}];
  const scorePreview=await render('pages/AppraisalScorePreview.jsx','default',{categories:completeCategories,brackets:[{label:'Standard',min:0,max:10000}]});
  for(const label of ['Score preview','Category score','Quality','Input required']) assert.ok(scorePreview.includes(label));
+ fixtures['/appraisals/reviews/1/1']={employee:'Example Employee',cycle:'Q4',dueOn:'2027-01-15',
+  template:{name:'Sample template',version:2,categories:completeCategories,brackets:[{label:'Standard',min:0,max:10000}]},
+  review:{version:0,inputs:{},comment:'',submittedAt:null,result:null},
+ };
+ const reviewerForm=await render('pages/AppraisalReview.jsx','default',{assignment:{cycleId:1,employeeId:1},onClose(){},onChanged(){}});
+ for(const label of ['Save draft','Submit appraisal','Overall comment','Quality','Input required']) assert.ok(reviewerForm.includes(label));
+
  for(const label of ['Add category','Add criterion','Weights incomplete','50.00%','Save draft','Add bracket','Mandatory criterion']) assert.ok(appraisalWeights.includes(label));
 
  const reportPicker=await render('pages/Reports.jsx');
