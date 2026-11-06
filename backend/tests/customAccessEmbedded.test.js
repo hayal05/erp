@@ -44,6 +44,18 @@ test('department grants are effective in existing sessions and scope lists, coun
  await q('UPDATE employees SET department_id=$1 WHERE id=$2',[depA,outside.id]);assert.equal((await leader.get('/api/employees')).body.total,4);await q('UPDATE employees SET department_id=$1 WHERE id=$2',[depB,outside.id]);
  assert.equal((await leader.get(`/api/employees/${inside.id}/profile`)).status,200);assert.equal((await leader.get(`/api/employees/${outside.id}/profile`)).status,404);
  const a=await leader.get('/api/attendance-records?view=today');assert.equal(a.status,200,JSON.stringify(a.body));assert.ok(a.body.items.every(x=>x.departmentId===depA));assert.ok(a.body.items.every(x=>x.canCorrect===false));
+ const catalog=await leader.get('/api/reports');
+ assert.equal(catalog.status,200);
+ assert.deepEqual(catalog.body.items.map(report=>report.id),['daily-attendance']);
+ assert.deepEqual((await plain.get('/api/reports')).body.items,[]);
+ const previewPath='/api/reports/daily-attendance/preview';
+ const preview=await leader.get(previewPath+'?date='+companyDate()+'&departmentId='+depB);
+ assert.equal(preview.status,200,JSON.stringify(preview.body));
+ assert.ok(preview.body.items.some(row=>row.id===recordA));
+ assert.ok(preview.body.items.every(row=>row.departmentName==='A'));
+ assert.equal(preview.body.total,preview.body.items.length);
+ assert.equal((await plain.get(previewPath+'?date='+companyDate())).status,403);
+ assert.equal((await leader.get(previewPath+'?date=invalid')).status,400);
  const lookup=await leader.get('/api/attendance-records/lookups');assert.equal(lookup.status,200);assert.ok(lookup.body.employees.every(e=>Number(e.departmentId)===depA));
  assert.equal((await leader.get('/api/retirement')).body.total,3);
  assert.equal((await leader.get(`/api/employees/${outside.id}/attachments?direction=incoming`)).status,404);
