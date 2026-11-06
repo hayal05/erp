@@ -386,3 +386,33 @@ test('rating brackets and mandatory criteria persist together after draft approv
  assert.equal(legacy.status, 200);
  assert.deepEqual(legacy.body.brackets, [brackets[0]]);
 });
+
+test('appraisal publishing validates drafts, preserves snapshots, and rejects competing targets', async () => {
+ const root = '/api/appraisals/templates';
+ const ok = async (res, status = 200) => { const r = await res; assert.equal(r.status, status, JSON.stringify(r.body)); return r.body; };
+ const brackets = [{ label: 'Standard', min: 0, max: 10000 }];
+ const categories = [{ id: randomUUID(), name: 'Work', weight: 10000,
+  criteria: [{ id: randomUUID(), name: 'Accuracy', weight: 10000 }] }];
+ const template = await ok(admin.post(root).send({ name: 'Original template', scope: 'company' }), 201);
+ const path = `${root}/${template.id}`;
+ await ok(admin.post(path + '/publications').send({ version: 1 }), 422);
+ await ok(admin.put(path + '/structure').send({ version: 1, categories, brackets }));
+ const requestId = await pending(await hr.post(path + '/publications').send({ version: 2 }));
+ assert.equal((await ok(admin.get(path + '/publications'))).total, 0);
+ await approve(hr2, requestId);
+ const original = await ok(admin.get(path + '/publications/2'));
+ assert.deepEqual(original.categories, categories);
+ assert.equal(original.name, 'Original template');
+ await ok(admin.patch(path).send({ name: 'Revised template', scope: 'company', version: 2 }));
+ await ok(admin.post(path + '/publications').send({ version: 2 }), 409);
+ await ok(admin.post(path + '/publications').send({ version: 3 }), 201);
+ assert.deepEqual(await ok(admin.get(path + '/publications/2')), original);
+ assert.equal((await ok(admin.get(path + '/publications/3'))).name, 'Revised template');
+ await ok(admin.delete(path), 409);
+ await assert.rejects(q('UPDATE appraisal_template_publications SET version=4 WHERE template_id=$1', [template.id]), /immutable/);
+ const competing = await ok(admin.post(root).send({ name: 'Competing template', scope: 'company' }), 201);
+ const otherPath = `${root}/${competing.id}`;
+ await ok(admin.put(otherPath + '/structure').send({ version: 1, categories, brackets }));
+ await ok(admin.post(otherPath + '/publications').send({ version: 2 }), 409);
+ await ok(fin.get(path + '/publications/2'), 403);
+});

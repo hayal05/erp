@@ -4,6 +4,7 @@ import { appraisalWeightStatus } from '../../../shared/appraisalWeights.mjs';
 import { scoringRuleError } from '../../../shared/appraisalScoring.mjs';
 import { appraisalBracketStatus } from '../../../shared/appraisalRatings.mjs';
 import AppraisalRatings, { boundaryText, boundaryValue, invalidBoundary, MandatoryCriterion } from './AppraisalRatings.jsx';
+import AppraisalScorePreview from './AppraisalScorePreview.jsx';
 import AppraisalScoringRule from './AppraisalScoringRule.jsx';
 import { put } from '../api/client.js';
 import { formatMoney } from '../api/money.js';
@@ -155,6 +156,7 @@ function WeightEditor({ template, draft, path, onClose, onSaved }) {
         </section>;
       })}
       <AppraisalRatings brackets={brackets} status={ratings} onChange={setBrackets} disabled={busy} />
+      {!invalid && <AppraisalScorePreview categories={payload} brackets={ratingBrackets} disabled={busy} />}
     </form>
   </Modal>;
 }

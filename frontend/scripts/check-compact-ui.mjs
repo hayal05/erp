@@ -69,6 +69,11 @@ try{
   method:'lookup',cap:100,missing:'required',allowNotApplicable:false,belowScore:0,thresholds:[{minimum:0,score:75}],
  },onChange(){}});
  for(const label of ['Custom scoring table','Score cap','Missing input','Allow not applicable','Add threshold']) assert.ok(scoringMarkup.includes(label));
+ const publication=await render('pages/AppraisalPublications.jsx','default',{template:{id:1,name:'Sample template'},onClose(){},onSaved(){}});
+ assert.match(publication, /Publish draft/);
+ const completeCategories=[{id:'category-1',name:'Service',weight:10000,criteria:[{id:'criterion-1',name:'Quality',weight:10000}]}];
+ const scorePreview=await render('pages/AppraisalScorePreview.jsx','default',{categories:completeCategories,brackets:[{label:'Standard',min:0,max:10000}]});
+ for(const label of ['Score preview','Category score','Quality','Input required']) assert.ok(scorePreview.includes(label));
  for(const label of ['Add category','Add criterion','Weights incomplete','50.00%','Save draft','Add bracket','Mandatory criterion']) assert.ok(appraisalWeights.includes(label));
 
  const reportPicker=await render('pages/Reports.jsx');
