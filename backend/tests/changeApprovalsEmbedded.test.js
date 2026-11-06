@@ -362,3 +362,27 @@ test('criterion scoring rules survive draft approval and reject invalid configur
  const saved = (await admin.get(path)).body.categories[0].criteria[0];
  assert.deepEqual(saved.scoring, { ...scoring, thresholds: [...scoring.thresholds].reverse() });
 });
+
+test('rating brackets and mandatory criteria persist together after draft approval', async () => {
+ const template = await admin.post('/api/appraisals/templates').send({ name: 'Rated draft', scope: 'company' });
+ assert.equal(template.status, 201);
+ const path = `/api/appraisals/templates/${template.body.id}/structure`;
+ const criterion = { id: randomUUID(), name: 'Safety', weight: 10000, mandatory: { minimum: 8000, ceiling: 5999 } };
+ const categories = [{ id: randomUUID(), name: 'Quality', weight: 10000, criteria: [criterion] }];
+ const brackets = [{ label: 'Needs improvement', min: 0, max: 6000 }, { label: 'Meets expectations', min: 6000, max: 10000 }];
+ assert.equal((await hr.put(path).send({ version: 1, categories, brackets: [{ ...brackets[0], min: -10 }] })).status, 400);
+ const id = await pending(await hr.put(path).send({ version: 1, categories, brackets }));
+ assert.deepEqual((await admin.get(path)).body.brackets, []);
+ await approve(hr2, id);
+ const saved = (await admin.get(path)).body;
+ assert.deepEqual(saved.categories, categories);
+ assert.deepEqual(saved.brackets, brackets);
+ assert.equal(saved.ratings.ready, true);
+ const partial = await admin.put(path).send({ version: saved.version, categories, brackets: [brackets[0]] });
+ assert.equal(partial.status, 200);
+ assert.equal(partial.body.ratings.ready, false);
+ assert.match(partial.body.ratings.errors[0], /Gap/);
+ const legacy = await admin.put(path).send({ version: partial.body.version, categories });
+ assert.equal(legacy.status, 200);
+ assert.deepEqual(legacy.body.brackets, [brackets[0]]);
+});

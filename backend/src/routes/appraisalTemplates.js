@@ -61,14 +61,16 @@ router.get('/', validate(pageSchema, 'query'), wrap(async (req, res) => {
 }));
 
 router.get('/:id/structure', validate(idParams, 'params'), wrap(async (req, res) => {
-  const { rows: [row] } = await query(`SELECT t.version, COALESCE(s.categories,'[]'::jsonb) AS categories
-    FROM appraisal_templates t LEFT JOIN appraisal_template_structures s ON s.template_id=t.id WHERE t.id=$1`, [req.params.id]);
+  const { rows: [row] } = await query(`SELECT t.version, COALESCE(s.categories,'[]'::jsonb) AS categories,
+      COALESCE(r.brackets,'[]'::jsonb) AS brackets
+    FROM appraisal_templates t LEFT JOIN appraisal_template_structures s ON s.template_id=t.id
+    LEFT JOIN appraisal_template_ratings r ON r.template_id=t.id WHERE t.id=$1`, [req.params.id]);
   if (!row) throw new HttpError(404, 'Appraisal template not found', 'not_found');
-  res.json(structureResult(row.version, row.categories));
+  res.json(structureResult(row.version, row.categories, row.brackets));
 }));
 
 router.put('/:id/structure', validate(idParams, 'params'), structureBody, approvalWrap(async (req, res) => {
-  const { version, categories } = req.body;
+  const { version, categories, brackets } = req.body;
   const { id } = req.params;
   const result = await withTransaction(async db => {
     const { rows: [before] } = await db.query('SELECT version FROM appraisal_templates WHERE id=$1 FOR UPDATE', [id]);
@@ -76,12 +78,18 @@ router.put('/:id/structure', validate(idParams, 'params'), structureBody, approv
     if (before.version !== version) throw new HttpError(409, 'Template changed. Reopen it before saving.', 'conflict');
     await db.query(`INSERT INTO appraisal_template_structures(template_id,categories) VALUES($1,$2::jsonb)
       ON CONFLICT(template_id) DO UPDATE SET categories=EXCLUDED.categories`, [id, JSON.stringify(categories)]);
+    if (brackets !== undefined) {
+      await db.query(`INSERT INTO appraisal_template_ratings(template_id,brackets) VALUES($1,$2::jsonb)
+        ON CONFLICT(template_id) DO UPDATE SET brackets=EXCLUDED.brackets`, [id, JSON.stringify(brackets)]);
+    }
+    const { rows: [rating] } = await db.query('SELECT brackets FROM appraisal_template_ratings WHERE template_id=$1', [id]);
     const { rows: [saved] } = await db.query('UPDATE appraisal_templates SET version=version+1 WHERE id=$1 RETURNING version', [id]);
-    const result = structureResult(saved.version, categories);
+    const result = structureResult(saved.version, categories, rating?.brackets ?? []);
     await audit(db, { actorId: req.user.id, action: 'appraisal.template.structure.update',
       entityType: 'appraisal_template', entityId: id, details: {
         categoryCount: categories.length, criterionCount: categories.reduce((count, category) => count + category.criteria.length, 0),
         totalWeight: result.weights.total, weightsReady: result.weights.ready,
+        bracketCount: result.brackets.length, ratingsReady: result.ratings.ready,
       } });
     return result;
   });

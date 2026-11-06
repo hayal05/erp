@@ -62,7 +62,7 @@ export default function AppraisalTemplates() {
         { key: 'targetName', header: 'Target', render: row => row.targetName ?? 'All employees' },
         { key: 'actions', header: 'Actions', render: row => <div className="row">
           <Button size="sm" onClick={() => setEditing(row)}>Edit</Button>
-          <Button size="sm" onClick={() => setWeightTemplate(row)}>Weights</Button>
+          <Button size="sm" onClick={() => setWeightTemplate(row)}>Scorecard</Button>
           <Button size="sm" onClick={() => { setRemoving(row); setError(''); }}>Delete</Button>
         </div> },
       ]} />

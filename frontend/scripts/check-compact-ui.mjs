@@ -69,7 +69,7 @@ try{
   method:'lookup',cap:100,missing:'required',allowNotApplicable:false,belowScore:0,thresholds:[{minimum:0,score:75}],
  },onChange(){}});
  for(const label of ['Custom scoring table','Score cap','Missing input','Allow not applicable','Add threshold']) assert.ok(scoringMarkup.includes(label));
- for(const label of ['Add category','Add criterion','Weights incomplete','50.00%','Save draft']) assert.ok(appraisalWeights.includes(label));
+ for(const label of ['Add category','Add criterion','Weights incomplete','50.00%','Save draft','Add bracket','Mandatory criterion']) assert.ok(appraisalWeights.includes(label));
 
  const reportPicker=await render('pages/Reports.jsx');
  assert.match(reportPicker, /<optgroup label="Attendance">/);
