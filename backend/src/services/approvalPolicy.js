@@ -6,6 +6,7 @@ const rules=[
  ['hr','vacancies.review',/^\/api\/vacancies\/\d+\/applications\/\d+$/,['vacancy_applications']],
  ['hr','vacancies.manage',/^\/api\/vacancies(?:\/\d+)?$/,['internal_vacancies','positions','departments']],
  ['hr','employees.manage',/^\/api\/employees(?:\/\d+(?:\/(?:activate|deactivate))?)?$/,['employees','users','salary_profiles','positions','departments','shifts']],
+ ['hr','organization.manage',/^\/api\/positions\/\d+\/grades(?:\/\d+)?$/,['positions','position_job_grades']],
  ['hr','organization.manage',/^\/api\/(?:departments(?:\/\d+(?:\/positions)?)?|positions\/\d+|shifts(?:\/\d+)?|settings\/holidays(?:\/\d+)?)$/,['departments','positions','employees','shifts','holidays']],
  ['hr','salary_profiles.manage',/^\/api\/salary-profiles\/\d+$/,['salary_profiles','employees']],
  ['hr','attendance.manage',/^\/api\/attendance-records\/\d+$/,['attendance_records','employees','shifts']],

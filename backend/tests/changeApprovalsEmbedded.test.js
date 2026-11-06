@@ -166,3 +166,60 @@ test('approval and audit reports show scoped history and log successful download
  assert.equal(rows[0].details.format, 'docx');
  assert.equal(rows[2].details.report, 'audit-change-history');
 });
+
+test('position grades are approved, paginated, and copy pay only when assigned', async () => {
+ const pos = await admin.post(`/api/departments/${department}/positions`).send({
+  name: 'Graded Officer', basicMinor: 100000, allowanceMinor: 2000, allowanceTaxable: false,
+ });
+ assert.equal(pos.status, 201, JSON.stringify(pos.body));
+ const positionId = pos.body.id;
+ const grades = `/api/positions/${positionId}/grades`;
+ const gradeBody = { name: 'Grade A', basicMinor: 220000, allowanceMinor: 16000 };
+ const requestId = await pending(await hr.post(grades).send(gradeBody));
+ assert.equal((await admin.get(grades)).body.total, 0);
+ await approve(hr2, requestId);
+ const [grade] = (await admin.get(grades)).body.items;
+ assert.equal(grade.basicMinor, 220000);
+ assert.equal((await plain.get(grades)).status, 403);
+ assert.equal((await fin.post(grades).send({ ...gradeBody, name: 'Finance' })).status, 403);
+ assert.equal((await admin.post(grades).send({ ...gradeBody, name: ' grade a ' })).status, 409);
+ assert.equal((await admin.post(grades).send({ ...gradeBody, name: 'Invalid', basicMinor: -1 })).status, 400);
+
+ const other = await admin.post(`/api/departments/${department}/positions`).send({
+  name: 'Other grade position', basicMinor: 70000, allowanceMinor: 0,
+ });
+ const body = { employeeCode: 'graded-employee', fullName: 'Graded Employee', username: 'graded.employee',
+  password: 'password-123', gender: 'male', dateOfBirth: '1990-01-01', fieldOfStudy: 'Economics',
+  startDate: '2026-01-01', departmentId: Number(department), positionId, jobGradeId: grade.id };
+ assert.equal((await admin.post('/api/employees').send({ ...body, positionId: other.body.id })).status, 400);
+ const created = await admin.post('/api/employees').send(body);
+ assert.equal(created.status, 201, JSON.stringify(created.body));
+ assert.equal(created.body.jobGradeName, 'Grade A');
+ const employeePath = '/api/employees/' + created.body.id;
+ const pay = async () => (await admin.get(employeePath + '/salary-preview')).body;
+ assert.equal((await pay()).basicMinor, 220000);
+ assert.equal((await pay()).allowanceMinor, 16000);
+ assert.equal((await pay()).allowanceTaxable, false);
+ assert.equal((await admin.patch(`${grades}/${grade.id}`).send({ ...gradeBody, basicMinor: 310000 })).status, 200);
+ assert.equal((await pay()).basicMinor, 220000);
+ const otherGrade = await admin.post(grades).send({ name: 'Grade B', basicMinor: 280000, allowanceMinor: 20000 });
+ assert.equal(otherGrade.status, 201);
+ const changed = await admin.patch(employeePath).send({ jobGradeId: otherGrade.body.id, applyPositionSalary: true });
+ assert.equal(changed.status, 200, JSON.stringify(changed.body));
+ assert.equal(changed.body.jobGradeName, 'Grade B');
+ assert.equal((await pay()).basicMinor, 280000);
+ const payroll = await admin.post('/api/payroll/periods').send({ month: '2026-08' });
+ assert.equal(payroll.status, 201, JSON.stringify(payroll.body));
+ const entries = await admin.get(`/api/payroll/periods/${payroll.body.id}/entries`);
+ const entry = entries.body.items.find(item => item.employeeId === created.body.id);
+ assert.equal(entry.basicMinor, 280000);
+ assert.equal(entry.allowanceMinor, 20000);
+ assert.equal((await admin.patch(employeePath).send({ positionId: other.body.id })).body.jobGradeId, null);
+ assert.equal((await pay()).basicMinor, 280000);
+ await q(`INSERT INTO position_job_grades(position_id,name,basic_minor,allowance_minor)
+  SELECT $1,'Scale '||n,100000,0 FROM generate_series(1,105) n`, [positionId]);
+ const lastPage = await admin.get(grades + '?page=2&pageSize=100');
+ assert.equal(lastPage.body.total, 107);
+ assert.equal(lastPage.body.items.length, 7);
+ assert.equal((await admin.get(grades + '?search=grade%20a')).body.total, 1);
+});

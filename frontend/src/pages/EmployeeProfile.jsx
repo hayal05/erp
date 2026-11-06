@@ -36,7 +36,7 @@ export function EmployeeProfileDetails({profile:p,page=1,onPage,loading=false}){
    <section className="card stack employee-profile-section"><h2>Personal details</h2><Facts items={[
     ['Full name',p.fullName],['Gender',p.gender==='male'?'Male':p.gender==='female'?'Female':null],['Date of birth',p.dateOfBirth?formatWorkDate(p.dateOfBirth):null],['Field of study',p.fieldOfStudy]]}/></section>
    <section className="card stack employee-profile-section"><h2>Employment</h2><Facts items={[
-    ['Department',p.departmentName],['Position',p.positionName||p.jobTitle||null],['Joined',formatWorkDate(p.startDate)],['Time employed',tenure(p.startDate,p.today)],['Employment type',types[p.employmentType]||p.employmentType],['Shift',p.shiftName]]}/></section>
+    ['Department',p.departmentName],['Position',p.positionName||p.jobTitle||null],...(p.jobGradeName?[['Job grade',p.jobGradeName]]:[]),['Joined',formatWorkDate(p.startDate)],['Time employed',tenure(p.startDate,p.today)],['Employment type',types[p.employmentType]||p.employmentType],['Shift',p.shiftName]]}/></section>
    <section className="card stack employee-profile-section"><h2>Contact &amp; account</h2><Facts items={[
     ['Username',p.username],['Email',p.email],['Phone',p.phone]]}/></section>
   </div>
