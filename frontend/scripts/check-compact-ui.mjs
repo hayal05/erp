@@ -68,6 +68,14 @@ try{
  assert.match(reportPreview, /Export format/);
  assert.match(reportPreview, /<button[^>]*disabled=""[^>]*>Export<\/button>/);
  assert.ok(!reportPreview.includes('Export Excel'));
+ assert.ok(!reportPreview.includes('Date period'));
+ const rangedReport={...report,filters:[
+  {key:'from',label:'From date',type:'date',required:true},
+  {key:'to',label:'To date',type:'date',required:true},
+ ]};
+ const rangePreview=await render('pages/Reports.jsx','Preview',{report:rangedReport,today:fixtures['/reports'].today});
+ for(const label of ['Weekly','Monthly','Custom range','From date','To date']) assert.ok(rangePreview.includes(label));
+
  const department={id:1,name:'Operations'},shift={id:1,name:'Day',startTime:'08:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:10};
  for(const props of [{employee:null},{employee:person}]){
   const html=await render('pages/EmployeeDialog.jsx','default',{...props,departments:[department],shifts:[shift]});
