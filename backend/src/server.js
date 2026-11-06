@@ -24,6 +24,7 @@ import positionRoutes from './routes/positions.js';
 import shiftRoutes from './routes/shifts.js';
 import qrRoutes from './routes/qr.js';
 import attendanceRoutes from './routes/attendance.js';
+import myAppraisalRoutes from './routes/myAppraisals.js';
 import appraisalRoutes from './routes/appraisals.js';
 import reportRoutes from './routes/reports.js';
 import attendanceRecordRoutes from './routes/attendanceRecords.js';
@@ -117,6 +118,7 @@ export function createApp({ serveFrontend = config.isProd, frontendDist } = {}) 
   app.use('/api/payslips', payslipRoutes);
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/appraisals', appraisalRoutes);
+  app.use('/api/my-appraisals', myAppraisalRoutes);
   app.use('/api/reports', reportRoutes);
   app.use('/api/settings', settingsRoutes); // holidays (3.7); payroll settings join in Phase 4
   // More routers are mounted here by later tasks (qr, attendance, ...).

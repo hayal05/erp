@@ -62,6 +62,8 @@ try{
  }
  assert.match(await render('pages/AppraisalTemplates.jsx'), />New template</);
  assert.match(await render('pages/AppraisalCycles.jsx'), />New cycle</);
+ assert.match(await render('pages/AppraisalApprovals.jsx'), /Awaiting approval/);
+ assert.match(await render('pages/portal/MyAppraisals.jsx','default',{},'/portal/appraisals'), /Approved appraisal results/);
  assert.match(await render('pages/AppraisalCycles.jsx','MyAppraisalAssignments'), /My appraisal assignments/);
  fixtures['/appraisals/templates/1/structure']={version:1,categories:[
   {id:'category-1',name:'Service',weight:10000,criteria:[{id:'criterion-1',name:'Quality',weight:5000}]},

@@ -1,5 +1,6 @@
 import {usePageRefresh} from '../../api/pageRefresh.jsx';
 import Skeleton from '../../components/Skeleton.jsx';
+import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Button from '../../components/Button.jsx';
 import Field from '../../components/Field.jsx';
@@ -49,7 +50,7 @@ export function ProfileDetails({profile,history,page,onPage,onRetry,summary,edit
   const employment=[['Joined',formatWorkDate(profile.startDate)],['Time employed',tenure(profile.startDate,profile.today)],['Employment type',employmentLabel(profile.employmentType)],['Shift',profile.shift]];
   const facts=items=><dl className="profile-facts">{items.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value || 'Not provided'}</dd></div>)}</dl>;
   return <section className="stack portal-profile-page">
-    <h1>My profile</h1>
+    <div className="row between"><h1>My profile</h1><Link className="btn sm" to="/portal/appraisals">My appraisals</Link></div>
     <header className="card employee-profile-hero">
       <div className="employee-profile-avatar" aria-hidden="true">{initials(profile.fullName)}</div>
       <div className="employee-profile-identity">

@@ -484,3 +484,57 @@ test('assigned reviewer can save a draft and submit only valid scores from the p
  await ok(hr.put(path).send({ version: 2, inputs: {} }), 409);
  assert.deepEqual((await ok(hr.get(path))).review, submitted);
 });
+
+test('an independent scoped approver can return and finalize, and only the employee sees the finalized portal result', async () => {
+ const ok = async (res, status = 200) => { const r = await res; assert.equal(r.status, status, JSON.stringify(r.body)); return r.body; };
+ const [assignment] = (await ok(hr.get('/api/appraisals/assignments'))).items;
+ const key = `${assignment.cycleId}/${assignment.employeeId}`;
+ const path = '/api/appraisals/approvals/' + key;
+ const reviewerPath = '/api/appraisals/reviews/' + key;
+ const own = '/api/my-appraisals/' + assignment.cycleId;
+ const pendingReview = (await ok(hr2.get(path))).review;
+ assert.equal((await ok(hr2.get('/api/appraisals/approvals'))).total, 1);
+ assert.equal((await ok(hr.get('/api/appraisals/approvals'))).total, 0);
+ assert.equal((await ok(plain.get('/api/my-appraisals'))).total, 0);
+ await ok(plain.get(own), 404);
+ await ok(hr.post(path + '/decision').send({ version: pendingReview.version, decision: 'approve' }), 404);
+
+ const otherDepartment = await ok(admin.post('/api/departments').send({ name: 'Outside appraisal scope' }), 201);
+ const role = await ok(admin.post('/api/custom-access/roles').send({ name: 'Scoped appraisal approver', activities: ['appraisals.approve'] }), 201);
+ const [financeEmployee] = (await q('SELECT id FROM employees WHERE user_id=$1', [finId])).rows;
+ await ok(admin.post(`/api/custom-access/employees/${financeEmployee.id}/custom-grants`).send({
+  roleId: role.id, scopeType: 'departments', departmentIds: [otherDepartment.id], employeeIds: [],
+ }), 201);
+ assert.equal((await ok(fin.get('/api/appraisals/approvals'))).total, 0);
+ await ok(fin.get(path), 404);
+ await ok(fin.post(path + '/decision').send({ version: pendingReview.version, decision: 'approve' }), 404);
+
+ await ok(hr2.post(path + '/decision').send({ version: pendingReview.version, decision: 'return' }), 400);
+ const returned = await ok(hr2.post(path + '/decision').send({
+  version: pendingReview.version, decision: 'return', reason: 'Verify the evidence',
+ }));
+ assert.ok(returned.returnedAt);
+ assert.equal(returned.submittedAt, null);
+ assert.deepEqual(returned.inputs, pendingReview.inputs);
+ assert.equal((await ok(hr.get('/api/appraisals/assignments'))).items[0].status, 'Returned');
+ assert.equal((await ok(hr.get(reviewerPath + '/history'))).items[0].reason, 'Verify the evidence');
+ await ok(plain.get(own), 404);
+
+ const resubmitted = await ok(hr.post(reviewerPath + '/submit').send({
+  version: returned.version, inputs: returned.inputs, comment: 'Evidence verified',
+ }));
+ assert.equal(resubmitted.returnedAt, null);
+ await ok(hr2.post(path + '/decision').send({ version: returned.version, decision: 'approve' }), 409);
+ const approved = await ok(hr2.post(path + '/decision').send({ version: resubmitted.version, decision: 'approve' }));
+ assert.ok(approved.approvedAt);
+ assert.equal(approved.approver, 'hr2');
+ assert.equal((await ok(hr2.get('/api/appraisals/approvals?status=approved'))).total, 1);
+ const result = await ok(plain.get(own));
+ assert.equal(result.result.rating.score, 82.5);
+ assert.equal(result.comment, 'Evidence verified');
+ assert.equal((await ok(plain.get('/api/my-appraisals'))).total, 1);
+ await ok(fin.get(own), 404);
+ await ok(hr.put(reviewerPath).send({ version: approved.version, inputs: {} }), 409);
+ assert.deepEqual((await ok(hr2.get(path + '/history?pageSize=3'))).items.map(row => row.action),
+  ['appraisal.review.approve', 'appraisal.review.submit', 'appraisal.review.return']);
+});

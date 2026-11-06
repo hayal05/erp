@@ -5,6 +5,7 @@ import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
 import Modal from '../components/Modal.jsx';
 import { useToast } from '../components/Toast.jsx';
+import AppraisalReviewHistory from './AppraisalReviewHistory.jsx';
 import { AppraisalScoreFields } from './AppraisalScorePreview.jsx';
 import { ResourceState, useResource } from './payrollResource.jsx';
 
@@ -65,11 +66,13 @@ function ReviewEditor({ assignment, path, onClose, onChanged }) {
     </>}>
     <div className="stack">
       <small className="muted">{cycle} · Deadline {dueOn} · {template.name} v{template.version}</small>
-      {submitted && <p role="status">Submitted for approval</p>}
+      {review.approvedAt ? <p role="status">Approved</p> : submitted ? <p role="status">Submitted for approval</p>
+        : review.returnedAt && <p role="status">Returned for revision. See the decision note in review history.</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <AppraisalScoreFields categories={template.categories} inputs={inputs} result={result} onChange={change} disabled={!!busy || submitted} review />
       <Field as="textarea" rows={3} label="Overall comment" value={comment} maxLength={4000} disabled={!!busy || submitted}
         onChange={event => setComment(event.target.value)} />
+      <AppraisalReviewHistory key={review.version} path={path} initiallyOpen={Boolean(review.returnedAt)} />
     </div>
   </Modal>;
 }

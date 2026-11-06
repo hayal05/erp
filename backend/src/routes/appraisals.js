@@ -7,6 +7,7 @@ import { validate, v } from '../middleware/validate.js';
 import { coversEmployee, scopeSql } from '../services/accessScope.js';
 import { likePattern, pageOffset, pageResult, pageSchema } from '../services/sql.js';
 
+import decisionRoutes from './appraisalDecisions.js';
 import reviewRoutes from './appraisalReviews.js';
 import cycleRoutes from './appraisalCycles.js';
 import templateRoutes from './appraisalTemplates.js';
@@ -17,6 +18,7 @@ router.use(noStore, requirePermission('appraisals.read'));
 router.use('/templates', templateRoutes);
 router.use('/cycles', cycleRoutes);
 router.use('/reviews', reviewRoutes);
+router.use('/approvals', decisionRoutes);
 
 router.get('/employees', validate({ ...pageSchema, search: v.string({ max: 120 }) }, 'query'), wrap(async (req, res) => {
   const filters = req.query;
@@ -55,7 +57,8 @@ router.get('/assignments', requirePermission('appraisals.review'), validate(page
     WITH eligible AS (
       SELECT c.id AS "cycleId", c.name AS cycle, to_char(c.due_on,'YYYY-MM-DD') AS "dueOn",
         e.id AS "employeeId", u.full_name AS employee, e.employee_code AS "employeeCode",
-        a.template_version AS "templateVersion", CASE WHEN r.submitted_at IS NOT NULL THEN 'Submitted'
+        a.template_version AS "templateVersion", CASE WHEN r.approved_at IS NOT NULL THEN 'Approved' WHEN r.submitted_at IS NOT NULL THEN 'Submitted'
+          WHEN r.returned_at IS NOT NULL THEN 'Returned'
           WHEN r.version IS NOT NULL THEN 'Draft' ELSE 'Not started' END AS status, p.snapshot->>'name' AS "templateName"
       FROM appraisal_assignments a JOIN appraisal_cycles c ON c.id=a.cycle_id
       JOIN employees e ON e.id=a.employee_id JOIN users u ON u.id=e.user_id
