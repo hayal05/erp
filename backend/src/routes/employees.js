@@ -14,6 +14,7 @@ import { hashPassword, passwordProblem } from '../services/password.js';
 import { likePattern, pageOffset, pageResult, pageSchema, setClause } from '../services/sql.js';
 import { translateDbError, validationError } from '../services/dbErrors.js';
 import { loadAssignablePosition, positionSalary, toPosition } from '../services/positions.js';
+import { jobGradePay } from '../services/jobGrades.js';
 import {companyDate} from '../services/attendance.js';
 import { saveSalaryProfile, loadSalaryProfile } from '../services/salaryProfiles.js';
 import { employeeCreate, employeeListQuery, employeeUpdate, idParams, reasonBody } from '../services/hrSchemas.js';
@@ -29,9 +30,10 @@ const FROM = `FROM employees e
   JOIN users u ON u.id = e.user_id
   LEFT JOIN departments d ON d.id = e.department_id
   JOIN shifts s ON s.id = e.shift_id
-  LEFT JOIN positions p ON p.id = e.position_id`;
+  LEFT JOIN positions p ON p.id = e.position_id
+  LEFT JOIN position_job_grades g ON g.id = e.job_grade_id`;
 const COLUMNS = `e.id, e.employee_code, e.user_id, u.full_name, u.username, u.email, e.phone, e.department_id,
-  d.name AS department_name, e.position_id, p.name AS position_name, e.job_title, to_char(e.start_date, 'YYYY-MM-DD') AS start_date,
+  d.name AS department_name, e.position_id, p.name AS position_name, e.job_grade_id, g.name AS job_grade_name, e.job_title, to_char(e.start_date, 'YYYY-MM-DD') AS start_date,
   e.gender, to_char(e.date_of_birth, 'YYYY-MM-DD') AS date_of_birth, e.field_of_study,
   e.employment_type, e.status, e.shift_id, s.name AS shift_name, e.created_at`;
 
@@ -42,6 +44,7 @@ const toEmployee = (r) => ({
   fullName: r.full_name, username: r.username, email: r.email, phone: r.phone,
   departmentId: optId(r.department_id), departmentName: r.department_name,
   positionId: optId(r.position_id), positionName: r.position_name ?? null, jobTitle: r.job_title,
+  jobGradeId: optId(r.job_grade_id), jobGradeName: r.job_grade_name ?? null,
   startDate: r.start_date, employmentType: r.employment_type, status: r.status,
   shiftId: Number(r.shift_id), shiftName: r.shift_name, createdAt: r.created_at,
 });
@@ -156,6 +159,7 @@ router.post('/', requireSuppliedPersonalDetails, validate(employeeCreate), valid
     // salary profile, in this same transaction (any failure rolls back the login, the employee and the salary together).
     // Salary figures in the request are never read (not in the schema).
     const position = b.positionId != null ? await loadAssignablePosition(db, b.positionId, b.departmentId ?? null) : null;
+    const pay = await jobGradePay(db, position, b.jobGradeId);
     let shiftId = b.shiftId;
     if (shiftId == null) {
       const { rows: [first] } = await db.query('SELECT id FROM shifts ORDER BY id LIMIT 1');
@@ -166,14 +170,14 @@ router.post('/', requireSuppliedPersonalDetails, validate(employeeCreate), valid
       `INSERT INTO users (email, full_name, password_hash, role, must_change_password, username) VALUES ($1, $2, $3, 'employee', true, $4) RETURNING id`,
       [b.email??null, b.fullName, hash,b.username]);
     const { rows: [emp] } = await db.query(
-      `INSERT INTO employees (employee_code, user_id, phone, department_id, position_id, job_title, start_date, employment_type, shift_id, gender, date_of_birth, field_of_study)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+      `INSERT INTO employees (employee_code, user_id, phone, department_id, position_id, job_title, start_date, employment_type, shift_id, gender, date_of_birth, field_of_study, job_grade_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
       [b.employeeCode, user.id, b.phone ?? null, b.departmentId ?? null, position?.id ?? null, position ? position.name : b.jobTitle ?? null,
-        b.startDate, b.employmentType, shiftId, b.gender??null, b.dateOfBirth??null, b.fieldOfStudy??null]);
+        b.startDate, b.employmentType, shiftId, b.gender??null, b.dateOfBirth??null, b.fieldOfStudy??null, b.jobGradeId??null]);
     await audit(db, { actorId: req.user.id, action: 'employee.create', entityType: 'employee', entityId: emp.id,
       details: { gender:b.gender??null,dateOfBirth:b.dateOfBirth??null,fieldOfStudy:b.fieldOfStudy??null,username:b.username,employeeCode: b.employeeCode, userId: Number(user.id), departmentId: b.departmentId ?? null, shiftId: Number(shiftId),
-        positionId: position?.id ?? null, salaryApplied: Boolean(position) } });
-    if (position) await saveSalaryProfile(db, { employeeId: emp.id, actorId: req.user.id, values: positionSalary(position), source: { type: 'position', positionId: position.id } });
+        positionId: position?.id ?? null, jobGradeId: b.jobGradeId ?? null, salaryApplied: Boolean(position) } });
+    if (position) await saveSalaryProfile(db, { employeeId: emp.id, actorId: req.user.id, values: positionSalary(pay), source: { type: 'position', positionId: position.id, ...(b.jobGradeId ? { jobGradeId: b.jobGradeId } : {}) } });
     return findEmployee(db, emp.id);
   }).catch((err) => { throw translateDbError(accountConflict(err)); });
   res.status(201).json(created);
@@ -181,7 +185,7 @@ router.post('/', requireSuppliedPersonalDetails, validate(employeeCreate), valid
 
 const USER_COLUMNS = { fullName: 'full_name', email: 'email',username:'username' };
 const EMPLOYEE_COLUMNS = {
-  employeeCode: 'employee_code', phone: 'phone', departmentId: 'department_id', positionId: 'position_id', jobTitle: 'job_title',
+  employeeCode: 'employee_code', phone: 'phone', departmentId: 'department_id', positionId: 'position_id', jobGradeId: 'job_grade_id', jobTitle: 'job_title',
   gender:'gender', dateOfBirth:'date_of_birth', fieldOfStudy:'field_of_study',
   startDate: 'start_date', employmentType: 'employment_type', shiftId: 'shift_id',
 };
@@ -194,19 +198,19 @@ const EMPLOYEE_COLUMNS = {
 //  - changing the department without choosing a position of the new department clears the position (the database would
 //    refuse the mismatch), in the same UPDATE statement as the department change.
 //  - while a position is held, job_title belongs to the position: a jobTitle in the request is ignored.
-//  - applyPositionSalary: true without a positionId is 422, so a salary can never be replaced by accident.
+//  - A grade change can apply pay using the current position. Other salary replacements require a positionId.
 router.patch('/:id', validate(idParams, 'params'), requireSuppliedPersonalDetails, validate(employeeUpdate), validateBirthDate, wrap(async (req, res) => {
   const { id } = req.params;
   const { applyPositionSalary, ...fields } = req.body;
   if(fields.username)fields.username=fields.username.toLowerCase();
   if (!Object.keys(req.body).length) throw new HttpError(400, 'No changes supplied', 'validation', { fields: { _: 'Provide at least one field to change' } });
   const assigning = fields.positionId != null;
-  if (applyPositionSalary && !assigning) {
+  if (applyPositionSalary && !assigning && !Object.hasOwn(fields, 'jobGradeId')) {
     throw new HttpError(422, 'Choose a position to apply its salary', 'validation', { fields: { applyPositionSalary: 'Choose a position to apply its salary' } });
   }
 
   const updated = await withTransaction(async (db) => {
-    const { rows: [row] } = await db.query('SELECT user_id, department_id, position_id FROM employees WHERE id = $1 FOR UPDATE', [id]);
+    const { rows: [row] } = await db.query('SELECT user_id, department_id, position_id, job_grade_id FROM employees WHERE id = $1 FOR UPDATE', [id]);
     if (!row) throw notFound();
     if (Object.hasOwn(fields,'username')) await protectPrivilegedAccount(db,req.user,row.user_id);
     const holdsPosition = row.position_id != null;
@@ -222,6 +226,14 @@ router.patch('/:id', validate(idParams, 'params'), requireSuppliedPersonalDetail
       delete fields.jobTitle; // still on the same position: its name stays the title
     }
 
+    const positionChanged = Object.hasOwn(fields, 'positionId') && fields.positionId !== optId(row.position_id);
+    if (positionChanged && !Object.hasOwn(fields, 'jobGradeId')) fields.jobGradeId = null;
+    const gradeId = Object.hasOwn(fields, 'jobGradeId') ? fields.jobGradeId : optId(row.job_grade_id);
+    if (!position && holdsPosition && !positionChanged && Object.hasOwn(fields, 'jobGradeId') && (gradeId != null || applyPositionSalary)) {
+      position = await loadAssignablePosition(db, row.position_id, departmentId);
+    }
+    if (applyPositionSalary && !position) throw validationError({ applyPositionSalary: 'Choose a position to apply its salary' });
+    const pay = position || Object.hasOwn(fields, 'jobGradeId') ? await jobGradePay(db, position, gradeId) : null;
     const before = await findEmployee(db, id);
     const missing={};
     for(const key of ['gender','dateOfBirth','fieldOfStudy'])if(!(Object.hasOwn(fields,key)?fields[key]:before[key]))missing[key]='Required';
@@ -231,7 +243,7 @@ router.patch('/:id', validate(idParams, 'params'), requireSuppliedPersonalDetail
       if (sets.length) await db.query(`UPDATE ${table} SET ${sets.join(', ')} WHERE id = $1`, [key, ...params]);
     }
     if (applyPositionSalary) {
-      await saveSalaryProfile(db, { employeeId: id, actorId: req.user.id, values: positionSalary(position), source: { type: 'position', positionId: position.id } });
+      await saveSalaryProfile(db, { employeeId: id, actorId: req.user.id, values: positionSalary(pay), source: { type: 'position', positionId: position.id, ...(gradeId ? { jobGradeId: gradeId } : {}) } });
     }
     const after = await findEmployee(db, id);
     const changes = diffFields(before, after, Object.keys(fields));

@@ -18,7 +18,7 @@ function Package({ title, data, id }) {
 
 // The salary part of the employee form (task 6.10). `plan` comes from salaryPlan() in employeeForm.js; `profile` is the load state of the
 // employee's current salary ({ status: 'idle' | 'loading' | 'ready' | 'error', error }).
-export default function PositionSalaryPreview({ plan, profile, busy, onApplyChange, onRetry }) {
+export default function PositionSalaryPreview({ plan, profile, busy, gradeName, onApplyChange, onRetry }) {
   if (plan.kind === 'none') return null;
 
   if (plan.kind === 'cleared') {
@@ -28,7 +28,7 @@ export default function PositionSalaryPreview({ plan, profile, busy, onApplyChan
   if (plan.kind === 'preview') {
     return (
       <div className="stack full" aria-live="polite">
-        <Package title="Salary from position" data={plan.next} id="salary-preview" />
+        <Package title={gradeName ? `Salary from ${gradeName}` : "Salary from position"} data={plan.next} id="salary-preview" />
         <small className="muted">Applied on save.</small>
       </div>
     );
@@ -43,11 +43,11 @@ export default function PositionSalaryPreview({ plan, profile, busy, onApplyChan
       )}
       <div className="salary-compare">
         {plan.current && <Package title="Current salary" data={plan.current} id="salary-current" />}
-        <Package title="New position salary" data={plan.next} id="salary-next" />
+        <Package title={gradeName ? `New salary · ${gradeName}` : "New position salary"} data={plan.next} id="salary-next" />
       </div>
       {plan.same && <p className="muted">Salary is unchanged.</p>}
       <label>
-        <input type="checkbox" checked={plan.apply} disabled={busy} onChange={(e) => onApplyChange(e.target.checked)} /> Apply new position salary
+        <input type="checkbox" checked={plan.apply} disabled={busy} onChange={(e) => onApplyChange(e.target.checked)} /> {gradeName ? 'Apply job grade pay' : 'Apply new position salary'}
       </label>
       <small className="muted">
         {plan.apply

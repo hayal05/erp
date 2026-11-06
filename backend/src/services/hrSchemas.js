@@ -22,6 +22,7 @@ const employeeFields = (create) => ({
   phone: v.string({ nullable: true, max: 30, pattern: /^[0-9+()\-.\s]+$/, patternMessage: 'Digits and + ( ) - . only' }),
   departmentId: v.int({ nullable: true, min: 1 }),
   jobTitle: v.string({ nullable: true, max: JOB_TITLE_MAX }), // ignored while the employee holds a position: the position name is the title
+  jobGradeId: v.int({ nullable: true, min: 1 }),
   positionId: v.int({ nullable: true, min: 1 }), // must belong to departmentId (task 6.5); null clears it
   startDate: v.date({ required: create }),
   employmentType: v.enum({ values: EMPLOYMENT_TYPES, ...(create ? { default: 'full_time' } : {}) }),

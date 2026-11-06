@@ -7,6 +7,7 @@ import Field from '../components/Field.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { get, patch, post } from '../api/client.js';
 import { EMPLOYMENT_TYPES, GENDER_OPTIONS, MIN_PASSWORD, buildCreate, buildPatch, changeDepartment, emptyForm, employeeSaveError, formFromEmployee, needsCurrentSalary, positionOptions, salaryPlan, savedMessage, validateForm } from './employeeForm.js';
+import { JobGradePicker } from './PositionGrades.jsx';
 import PositionSalaryPreview from './PositionSalaryPreview.jsx';
 
 const POSITION_LIMIT = 100; // the API caps pageSize at 100
@@ -19,6 +20,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
   const mode = employee ? 'edit' : 'create';
   const toast = useToast();
   const [form, setForm] = useState(() => (employee ? formFromEmployee(employee) : { ...emptyForm(), shiftId: shifts[0] ? String(shifts[0].id) : '' }));
+  const [grade, setGrade] = useState(null);
   const [fields, setFields] = useState({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -51,7 +53,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
     return () => ctrl.abort();
   }, [wantProfile, employee?.id, retry.profile, pageRefresh]);
 
-  const plan = salaryPlan({ form, original: employee, positions: positions.items, profile: profile.status === 'ready' ? profile.value : null });
+  const plan = salaryPlan({ form, original: employee, positions: positions.items, grade, profile: profile.status === 'ready' ? profile.value : null });
   const departmentChosen = Boolean(form.departmentId);
   const positionHint = !departmentChosen ? 'Choose a department first.'
     : positions.status === 'error' ? `Could not load positions: ${positions.error}`
@@ -112,10 +114,19 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
         </fieldset>
         <fieldset className="employee-form-group form-grid"><legend>Employment</legend>
         <Field as="select" label="Department" placeholder="No department" options={departments.map((d) => ({ value: d.id, label: d.name }))}
-          value={form.departmentId} error={fields.departmentId} onChange={(e) => { setForm((f) => changeDepartment(f, e.target.value, employee)); setFields((x) => ({ ...x, departmentId: undefined, positionId: undefined })); }} />
+          value={form.departmentId} error={fields.departmentId} onChange={(e) => { setForm((f) => changeDepartment(f, e.target.value, employee)); setFields((x) => ({ ...x, departmentId: undefined, positionId: undefined, jobGradeId: undefined })); }} />
         <Field as="select" label="Position" placeholder="No position" options={positionOptions(positions.items)} disabled={!departmentChosen || busy}
           hint={positionHint} value={form.positionId} error={fields.positionId}
-          onChange={(e) => { setForm((f) => ({ ...f, positionId: e.target.value, applyPositionSalary: true })); setFields((x) => ({ ...x, positionId: undefined })); }} />
+          onChange={(e) => { setForm((f) => ({ ...f, positionId: e.target.value, jobGradeId: e.target.value === String(employee?.positionId ?? '') ? String(employee?.jobGradeId ?? '') : '', applyPositionSalary: true })); setFields((x) => ({ ...x, positionId: undefined, jobGradeId: undefined })); }} />
+        {readOnly && employee?.jobGradeName && <Field label="Job grade" value={employee.jobGradeName} readOnly />}
+        {!readOnly && form.positionId && <JobGradePicker key={form.positionId} positionId={form.positionId}
+          value={form.jobGradeId} current={String(grade?.id) === form.jobGradeId ? grade : { name: employee?.jobGradeName }}
+          disabled={busy || readOnly} error={fields.jobGradeId}
+          onChange={(jobGradeId, selected) => {
+            setGrade(selected ?? null);
+            setForm(f => ({ ...f, jobGradeId, applyPositionSalary: true }));
+            setFields(f => ({ ...f, jobGradeId: undefined }));
+          }} />}
         {form.positionId === '' && employee?.jobTitle && (
           <Field className="full" label="Current job title" value={employee.jobTitle} readOnly
             hint="Replaced when a position is selected." />
@@ -123,7 +134,7 @@ export default function EmployeeDialog({ employee, departments, shifts, onClose,
         <Field label="Start date" type="date" {...bind('startDate')} />
         <Field as="select" label="Employment type" options={EMPLOYMENT_TYPES} {...bind('employmentType')} />
         <Field as="select" label="Shift" options={shifts.map((s) => ({ value: s.id, label: `${s.name} (${s.startTime}–${s.endTime})` }))} {...bind('shiftId')} />
-        <PositionSalaryPreview plan={plan} profile={profile} busy={busy}
+        <PositionSalaryPreview plan={plan} profile={profile} busy={busy} gradeName={String(grade?.id) === form.jobGradeId ? grade.name : undefined}
           onApplyChange={(apply) => setForm((f) => ({ ...f, applyPositionSalary: apply }))}
           onRetry={() => setRetry((r) => ({ ...r, profile: r.profile + 1 }))} />
         </fieldset>

@@ -16,7 +16,7 @@ const MAX_PASSWORD_BYTES = 72; // bcrypt limit, same rule as the server
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const emptyForm = () => ({
-  employeeCode: '', fullName: '', gender:'',dateOfBirth:'',fieldOfStudy:'', username:'',email: '', phone: '', departmentId: '', positionId: '', jobTitle: '',
+  employeeCode: '', fullName: '', gender:'',dateOfBirth:'',fieldOfStudy:'', username:'',email: '', phone: '', departmentId: '', positionId: '', jobGradeId: '', jobTitle: '',
   startDate: '', employmentType: 'full_time', shiftId: '', password: '', applyPositionSalary: true,
 });
 
@@ -24,6 +24,7 @@ export const formFromEmployee = (e) => ({
   gender:e.gender??'',dateOfBirth:e.dateOfBirth??'',fieldOfStudy:e.fieldOfStudy??'',
   employeeCode: e.employeeCode, fullName: e.fullName, username:e.username??'',email: e.email??'', phone: e.phone ?? '',
   departmentId: e.departmentId == null ? '' : String(e.departmentId), positionId: e.positionId == null ? '' : String(e.positionId),
+  jobGradeId: e.jobGradeId == null ? '' : String(e.jobGradeId),
   jobTitle: e.jobTitle ?? '', // shown read-only: the position owns the title once one is chosen (task 6.10)
   startDate: e.startDate, employmentType: e.employmentType, shiftId: String(e.shiftId), password: '',
   applyPositionSalary: true, // checked by default; only sent when the position actually changes
@@ -36,7 +37,7 @@ const clean = (form) => Object.fromEntries(Object.entries(form).map(([k, v]) => 
 // employee started in restores their original position, so an accidental switch costs nothing.
 export function changeDepartment(form, departmentId, original) {
   const restore = original && String(original.departmentId ?? '') === String(departmentId) && departmentId !== '' && original.positionId != null;
-  return { ...form, departmentId, positionId: restore ? String(original.positionId) : '', applyPositionSalary: true };
+  return { ...form, departmentId, positionId: restore ? String(original.positionId) : '', jobGradeId: restore ? String(original.jobGradeId ?? '') : '', applyPositionSalary: true };
 }
 
 // Returns { field: message } (empty object = fine). `mode` is 'create' or 'edit'.
@@ -77,6 +78,7 @@ export function buildCreate(form) {
   if (f.departmentId) body.departmentId = Number(f.departmentId);
   // The position's salary is copied by the server; no salary figures are ever sent, and the title comes from the position.
   if (f.positionId && f.departmentId) body.positionId = Number(f.positionId);
+  if (body.positionId && f.jobGradeId) body.jobGradeId = Number(f.jobGradeId);
   if (f.shiftId) body.shiftId = Number(f.shiftId);
   return body;
 }
@@ -92,10 +94,11 @@ export function buildPatch(form, original) {
   if(now.email!==was.email)body.email=now.email||null;
   if (now.phone !== was.phone) body.phone = now.phone || null;
   if (now.departmentId !== was.departmentId) body.departmentId = toId(now.departmentId);
-  // Position: sent only when it changed. Choosing one also says whether its salary replaces the current one (the checkbox);
-  // clearing one sends null and the server keeps the salary and the last title.
-  if (now.positionId !== was.positionId) {
+  // A position or grade change can copy the selected pay package; the checkbox controls replacement.
+  // Clearing the position keeps the salary and the last title.
+  if (now.positionId !== was.positionId || now.jobGradeId !== was.jobGradeId) {
     body.positionId = toId(now.positionId);
+    if (now.jobGradeId !== was.jobGradeId) body.jobGradeId = toId(now.jobGradeId);
     if (body.positionId !== null) body.applyPositionSalary = form.applyPositionSalary === true;
   }
   if (now.shiftId !== was.shiftId && now.shiftId !== '') body.shiftId = Number(now.shiftId);
@@ -108,14 +111,15 @@ export function buildPatch(form, original) {
 //   { kind: 'preview', next }               new employee: the salary the position will give them (read-only)
 //   { kind: 'change', current, next, same, apply }   position changed on an existing employee: current versus new + the checkbox
 //   { kind: 'cleared' }                     position removed: the salary stays
-export function salaryPlan({ form, original, positions, profile }) {
-  const chosen = positions.find((p) => String(p.id) === form.positionId);
+export function salaryPlan({ form, original, positions, profile, grade }) {
+  const position = positions.find((p) => String(p.id) === form.positionId);
   const was = original?.positionId == null ? '' : String(original.positionId);
   if (!form.positionId) return original && was ? { kind: 'cleared' } : { kind: 'none' };
-  if (!chosen) return { kind: 'none' }; // positions still loading, or not in the list
+  if (!position || (form.jobGradeId && String(grade?.id) !== form.jobGradeId)) return { kind: 'none' };
+  const chosen = form.jobGradeId ? { ...position, basicMinor: grade.basicMinor, allowanceMinor: grade.allowanceMinor } : position;
   const next = salarySummary(chosen);
   if (!original) return { kind: 'preview', next };
-  if (form.positionId === was) return { kind: 'none' };
+  if (!needsCurrentSalary(form, original)) return { kind: 'none' };
   return {
     kind: 'change', next, current: profile ? salarySummary(profile) : null,
     same: profile ? sameSalary(profile, chosen) : false, apply: form.applyPositionSalary === true,
@@ -123,13 +127,15 @@ export function salaryPlan({ form, original, positions, profile }) {
 }
 
 // True when the form changes the position of an existing employee to a real position: the current salary is then worth loading.
-export const needsCurrentSalary = (form, original) => Boolean(original) && form.positionId !== '' && form.positionId !== (original.positionId == null ? '' : String(original.positionId));
+export const needsCurrentSalary = (form, original) => Boolean(original) && form.positionId !== '' && (form.positionId !== String(original.positionId ?? '') || (form.jobGradeId ?? '') !== String(original.jobGradeId ?? ''));
 
 export const positionOptions = (positions) => positions.map((p) => ({ value: p.id, label: p.name }));
 
 // The toast after a successful save, naming what happened to the salary when a position was involved.
 export function savedMessage(mode, body, saved) {
+  if (mode === 'create' && saved.jobGradeName) return `${saved.fullName} was added with ${saved.jobGradeName} pay`;
   if (mode === 'create') return body.positionId ? `${saved.fullName} was added with the salary of the ${saved.positionName ?? 'chosen'} position` : `${saved.fullName} was added`;
+  if (body.applyPositionSalary === true && body.jobGradeId != null) return 'Changes saved. Job grade pay applied';
   if (body.applyPositionSalary === true) return 'Changes saved. The salary now follows the new position';
   if (body.applyPositionSalary === false) return 'Changes saved. The current salary was kept';
   return 'Changes saved';

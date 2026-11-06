@@ -11,6 +11,7 @@ import Modal from '../components/Modal.jsx';
 import Table, { Pager } from '../components/Table.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { del, get } from '../api/client.js';
+import PositionGrades from './PositionGrades.jsx';
 import PositionDialog from './PositionDialog.jsx';
 import { departmentIdFromParam, plural, saveErrorView } from './departmentView.js';
 import { deletePositionView, positionRow } from './positionForm.js';
@@ -41,6 +42,7 @@ function Detail({ id }) {
   const [page, setPage] = useState(1);
   const [data, setData] = useState({ items: [], total: 0 });
   const [state, setState] = useState({ loading: true, error: '' });
+  const [gradePosition, setGradePosition] = useState(null);
   const [dialog, setDialog] = useState(null);     // null | { position: null | item }
   const [confirm, setConfirm] = useState(null);   // null | { position, busy, error }
   const [reload, setReload] = useState(0);
@@ -100,8 +102,11 @@ function Detail({ id }) {
       const item = data.items.find((p) => p.id === r.id);
       return (
         <span className="row">
-          <Button size="sm" onClick={() => setDialog({ position: item })} aria-label={`Edit ${r.name}`}>Edit</Button>
-          <Button size="sm" variant="danger" onClick={() => setConfirm({ position: item, busy: false, error: '' })} aria-label={`Delete ${r.name}`}>Delete</Button>
+          <Button size="sm" onClick={() => setGradePosition(item)} aria-label={`Job grades for ${r.name}`}>Grades</Button>
+          {canManage && <>
+            <Button size="sm" onClick={() => setDialog({ position: item })} aria-label={`Edit ${r.name}`}>Edit</Button>
+            <Button size="sm" variant="danger" onClick={() => setConfirm({ position: item, busy: false, error: '' })} aria-label={`Delete ${r.name}`}>Delete</Button>
+          </>}
         </span>
       );
     } },
@@ -121,9 +126,11 @@ function Detail({ id }) {
         </div>
       </div>
 
-      <Table caption="Positions and salary" columns={columns.filter(c=>canManage||c.key!=='actions')} rows={data.items.map(positionRow)} loading={state.loading} error={state.error} onRetry={refresh}
+      <Table caption="Positions and salary" columns={columns} rows={data.items.map(positionRow)} loading={state.loading} error={state.error} onRetry={refresh}
         empty={search ? 'No positions match this search' : 'No positions yet. Add the first one.'} />
       <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onPage={setPage} disabled={state.loading} />
+
+      {gradePosition && <PositionGrades key={gradePosition.id} position={gradePosition} canManage={canManage} onClose={() => setGradePosition(null)} />}
 
       {canManage && dialog && (
         <PositionDialog key={dialog.position?.id ?? 'new'} departmentId={id} position={dialog.position}

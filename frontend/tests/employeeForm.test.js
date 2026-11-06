@@ -218,3 +218,18 @@ test('mandatory personal details round-trip, trim and reject clearing',()=>{
   assert.ok(validateForm({...form,dateOfBirth:'2001-02-29'},'create').dateOfBirth);
   assert.ok(validateForm({...form,fieldOfStudy:'x'.repeat(151)},'create').fieldOfStudy);
 });
+
+test('job grade selection uses grade amounts and preserves the optional salary replacement', () => {
+  const original = { ...employee, positionId: 9, jobGradeId: 1 };
+  const form = { ...formFromEmployee(original), jobGradeId: '2', applyPositionSalary: false };
+  const position = { id: 9, basicMinor: 100000, allowanceMinor: 5000, allowanceTaxable: true, allowancePensionable: false, pensionApplies: true };
+  const grade = { id: 2, basicMinor: 240000, allowanceMinor: 8000 };
+  const plan = salaryPlan({ form, original, positions: [position], grade, profile: position });
+  assert.equal(plan.kind, 'change');
+  assert.equal(plan.next.total, '2,480.00');
+  assert.equal(plan.apply, false);
+  assert.equal(needsCurrentSalary(form, original), true);
+  assert.equal(buildCreate({ ...form, password: filled.password }).jobGradeId, 2);
+  assert.deepEqual(buildPatch(form, original), { positionId: 9, jobGradeId: 2, applyPositionSalary: false });
+  assert.deepEqual(buildPatch(formFromEmployee(original), original), {});
+});

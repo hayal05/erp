@@ -1,15 +1,17 @@
-import {scopeSql,assertDepartmentReadScope} from '../services/accessScope.js';
+import {scopeSql,departmentScopeSql} from '../services/accessScope.js';
 import {approvalWrap as wrap} from '../middleware/approval.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../db/pool.js';
 import { HttpError } from '../middleware/error.js';
-import { requirePermission } from '../middleware/auth.js';
+import { requireAuth, requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
-import { validate } from '../middleware/validate.js';
+import { validate, v } from '../middleware/validate.js';
 import { audit, diffFields } from '../services/audit.js';
 import { likePattern, pageOffset, pageResult } from '../services/sql.js';
 import { isFkViolation, translateDbError, validationError } from '../services/dbErrors.js';
 import { idParams, positionListQuery } from '../services/hrSchemas.js';
+import { hasPermission } from '../services/permissions.js';
+import { jobGradeBody, jobGradeListQuery, jobGradeNotFound, readJobGrades, toJobGrade } from '../services/jobGrades.js';
 import { POSITION_COLUMNS, parsePosition, toPosition } from '../services/positions.js';
 
 // Positions (task 6.3). Two routers share this file: `departmentPositions` is mounted by routes/departments.js at
@@ -71,8 +73,50 @@ departmentPositions.post('/', validate(idParams, 'params'), positionBody, wrap(a
 
 // ---- /api/positions
 const router = Router();
+router.get('/:id/grades', noStore, requireAuth, validate(idParams, 'params'), validate(jobGradeListQuery, 'query'), wrap(async (req, res) => {
+  const args = [req.params.id];
+  const scopes = ['organization.read', 'employees.manage'].filter(permission => hasPermission(req.user, permission))
+    .map(permission => departmentScopeSql(req.user, permission, 'p.department_id', args));
+  if (!scopes.length) throw new HttpError(403, 'You do not have access to job grades', 'forbidden');
+  const result = await withTransaction(async db => {
+    await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    if (!(await db.query(`SELECT 1 FROM positions p WHERE p.id=$1 AND (${scopes.join(' OR ')})`, args)).rowCount) throw notFound();
+    return readJobGrades(db, req.params.id, req.query);
+  });
+  res.json(result);
+}));
 router.use(noStore, requirePermission('organization.read'));
 router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('organization.manage')(req,res,next));
+
+function saveGrade(editing) {
+  return wrap(async (req, res) => {
+    const { id, gradeId } = req.params;
+    const { name, basicMinor, allowanceMinor } = req.body;
+    const grade = await withTransaction(async db => {
+      // Serialize with position salary reads and include grade changes in existing position approval fingerprints.
+      if (!(await db.query('UPDATE positions SET updated_at=now() WHERE id=$1', [id])).rowCount) throw notFound();
+      const args = [id, name, basicMinor, allowanceMinor];
+      const before = editing ? (await db.query('SELECT * FROM position_job_grades WHERE position_id=$1 AND id=$2', [id, gradeId])).rows[0] : null;
+      if (editing && !before) throw jobGradeNotFound();
+      const { rows: [saved] } = editing
+        ? await db.query('UPDATE position_job_grades SET name=$2,basic_minor=$3,allowance_minor=$4 WHERE position_id=$1 AND id=$5 RETURNING *', [...args, gradeId])
+        : await db.query('INSERT INTO position_job_grades(position_id,name,basic_minor,allowance_minor) VALUES($1,$2,$3,$4) RETURNING *', args);
+      const item = toJobGrade(saved);
+      const changes = before ? diffFields(toJobGrade(before), item, Object.keys(jobGradeBody)) : undefined;
+      await audit(db, { actorId: req.user.id, action: editing ? 'position.grade.update' : 'position.grade.create',
+        entityType: 'position', entityId: id, details: { gradeId: item.id, ...(editing ? { changes, gradeName: item.name } : req.body) } });
+      return item;
+    }).catch(err => {
+      if (err.code === '23505' && err.constraint === 'position_job_grades_name_key') {
+        throw new HttpError(409, 'A grade with this name already exists for this position.', 'conflict', { fields: { name: 'Choose a different grade name' } });
+      }
+      throw err;
+    });
+    res.status(editing ? 200 : 201).json(grade);
+  });
+}
+router.post('/:id/grades', validate(idParams, 'params'), validate(jobGradeBody), saveGrade(false));
+router.patch('/:id/grades/:gradeId', validate({ ...idParams, gradeId: v.int({ required: true, min: 1 }) }, 'params'), validate(jobGradeBody), saveGrade(true));
 
 // Full replacement of the editable fields (name + the five salary fields). The department never changes here.
 router.patch('/:id', validate(idParams, 'params'), positionBody, wrap(async (req, res) => {
