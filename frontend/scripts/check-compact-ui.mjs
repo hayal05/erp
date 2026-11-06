@@ -12,10 +12,13 @@ const entry={id:1,employeeCode:'E-1',employeeName:'Example Employee',basicMinor:
 const salary={entry,period,items:[]},calc={employeePensionRate:7,companyPensionRate:11,taxBase:'basic_plus_taxable_allowance',pensionBase:'basic'};
 const vacancy={id:1,title:'Internal officer',department:'Operations',position:'Officer',departmentId:1,positionId:1,closingOn:'2026-12-01',status:'open',acceptingApplications:true,unopened:true,applicationCount:0};
 const fixtures={'/retirement':{settings:{retirementAge:60,version:1},today:'2026-11-04',items:[],total:0},'/dashboard':{retirement:{retirementAge:60,nearing:4,passed:2},employeeGender:{male:{count:1,percentage:100},female:{count:0,percentage:0},unspecified:{count:0,percentage:0}},date:'2026-10-30',stats:{totalEmployees:1,presentToday:1,lateToday:0,absentToday:0,onLeaveToday:0,pendingLeave:0},payroll:{...period,totalMinor:101000},recentAttendance:[],pendingLeave:[]},'/vacancies':{items:[vacancy],total:1,today:'2026-10-30'},'/employees':{items:[person],total:1},'/departments':{items:[{id:1,name:'Operations'}],total:1},'/departments/1/positions':{items:[{id:1,name:'Officer'}],total:1},'/payroll-settings/calculation':calc,'/payroll-settings/brackets':{items:[],problems:[]},'/payroll-settings/other-taxes':{items:[],bases:['gross','basic']},'/payroll-settings/attendance-deductions':{absenceDeductionEnabled:true,unpaidLeaveDeductionEnabled:true},'/deductions':{items:[]},'/payslips':{items:[{...period,netMinor:101000}],total:1},'/payslips/1':salary};
+const report={id:'monthly-attendance',title:'Monthly attendance summary',group:'Attendance',description:'Uses saved records.',
+ filters:[{key:'month',label:'Attendance month',type:'month',required:true}],formats:['xlsx','pdf','docx'],columns:[]};
+fixtures['/reports']={today:'2026-10-30',items:[report,{...report,id:'payroll-register',title:'Payroll register',group:'Payroll'}]};
 globalThis.__compactReview={user:null,fixtures};
 globalThis.document={body:{},documentElement:{dataset:{theme:'dark'}}};
 const extraExports={
- 'Dashboard.jsx':['DashboardContent'],'Payroll.jsx':['SalaryEditDialog'],
+ 'Dashboard.jsx':['DashboardContent'],'Payroll.jsx':['SalaryEditDialog'],'Reports.jsx':['Preview'],
  'IncomeTaxTab.jsx':['TaxBase','BracketEditor','Preview'],'PensionTab.jsx':['PensionForm'],
  'OtherTaxesTab.jsx':['OtherTaxDialog'],'DeductionsTab.jsx':['DeductionDialog'],
  'Settlements.jsx':['PaymentForm','SettlementDetails'],'Vacancies.jsx':['VacancyEditor','Applications','ApplicantProfile'],
@@ -57,6 +60,14 @@ try{
   document.documentElement.dataset.theme=theme;
   await render('components/HrLayout.jsx');await render('components/Skeleton.jsx','default',{variant:'dashboard'});
  }
+ const reportPicker=await render('pages/Reports.jsx');
+ assert.match(reportPicker, /<optgroup label="Attendance">/);
+ assert.match(reportPicker, /<optgroup label="Payroll">/);
+ const reportPreview=await render('pages/Reports.jsx','Preview',{report,today:fixtures['/reports'].today});
+ assert.match(reportPreview, /<summary>Notes<\/summary>/);
+ assert.match(reportPreview, /Export format/);
+ assert.match(reportPreview, /<button[^>]*disabled=""[^>]*>Export<\/button>/);
+ assert.ok(!reportPreview.includes('Export Excel'));
  const department={id:1,name:'Operations'},shift={id:1,name:'Day',startTime:'08:00',endTime:'17:00',workDays:[1,2,3,4,5],graceMinutes:10};
  for(const props of [{employee:null},{employee:person}]){
   const html=await render('pages/EmployeeDialog.jsx','default',{...props,departments:[department],shifts:[shift]});

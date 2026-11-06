@@ -6,29 +6,37 @@ import Table, { Pager } from '../components/Table.jsx';
 import { ResourceState, useResource } from './payrollResource.jsx';
 
 const PAGE_SIZE = 20;
+const formatLabels = { xlsx: 'Excel', pdf: 'PDF', docx: 'Word' };
 
 export default function Reports() {
   const catalog = useResource('/reports');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState('');
   const reports = catalog.data?.items ?? [];
-  const visible = reports.filter(report =>
-    `${report.title} ${report.group}`.toLowerCase().includes(search.trim().toLowerCase()));
-  const report = reports.find(item => item.id === selected);
+  const term = search.trim().toLowerCase();
+  const visible = reports.filter(report => `${report.title} ${report.group}`.toLowerCase().includes(term));
+  const grouped = new Map();
+  for (const report of visible) {
+    if (!grouped.has(report.group)) grouped.set(report.group, []);
+    grouped.get(report.group).push({ value: report.id, label: report.title });
+  }
+  const groups = [...grouped].map(([label, options]) => ({ label, options }));
+  const report = visible.find(item => item.id === selected);
 
-  return <section className="stack">
-    <h1>Reports</h1>
-    <ResourceState loading={catalog.loading} error={catalog.error} onRetry={catalog.reload} />
-    {catalog.data && <>
-      <div className="row">
-        <Field label="Search reports" type="search" placeholder="Search reports" value={search} onChange={e => setSearch(e.target.value)} />
-        <Field label="Report" as="select" placeholder="Choose a report" value={visible.some(item => item.id === selected) ? selected : ''}
-          options={visible.map(item => ({ value: item.id, label: item.title }))}
+  return <section className="stack reports-page">
+    <div className="row between reports-heading">
+      <h1>Reports</h1>
+      {catalog.data && !!reports.length && <div className="reports-picker">
+        <Field label="Search reports" type="search" placeholder="Search reports" value={search}
+          onChange={e => setSearch(e.target.value)} />
+        <Field hideLabel label="Report" as="select" placeholder={visible.length ? 'Choose a report' : 'No matching reports'}
+          value={report?.id ?? ''} groups={groups} disabled={!visible.length}
           onChange={e => setSelected(e.target.value)} />
-      </div>
-      {!visible.length && <p className="muted">{reports.length ? 'No matching reports' : 'No reports available'}</p>}
-      {report && visible.includes(report) && <Preview key={report.id} report={report} today={catalog.data.today} />}
-    </>}
+      </div>}
+    </div>
+    <ResourceState loading={catalog.loading && !catalog.data} error={catalog.error} onRetry={catalog.reload} />
+    {catalog.data && !reports.length && <p className="muted">No reports available</p>}
+    {report && <Preview key={report.id} report={report} today={catalog.data.today} />}
   </section>;
 }
 
@@ -37,6 +45,7 @@ function Preview({ report, today }) {
     report.filters.map(filter => [filter.key, filter.default ?? (filter.type === 'date' ? today : filter.type === 'month' ? today.slice(0, 7) : filter.key === 'year' ? today.slice(0, 4) : '')])));
   const [submitted, setSubmitted] = useState(null);
   const [page, setPage] = useState(1);
+  const [format, setFormat] = useState(report.formats[0]);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
   const needsLookups = report.filters.some(filter => filter.lookup);
@@ -58,8 +67,8 @@ function Preview({ report, today }) {
     preview.reload();
   }
 
-  async function download(format) {
-    setExporting(format);
+  async function download() {
+    setExporting(true);
     setExportError('');
     try {
       const file = await getFile(`/reports/${report.id}/export.${format}`, { query: submitted });
@@ -80,11 +89,12 @@ function Preview({ report, today }) {
 
   const filtersChanged = submitted && report.filters.some(filter => filters[filter.key] !== submitted[filter.key]);
 
-  return <section className="stack">
-    {report.description && <small className="muted">{report.description}</small>}
+  const exportDisabled = Boolean(exporting || !submitted || filtersChanged || preview.loading || !preview.data || preview.error);
+
+  return <section className="stack reports-preview" aria-label={report.title}>
     {lookups.error && <ResourceState error={lookups.error} onRetry={lookups.reload} />}
-    <form className="row" onSubmit={run}>
-      {report.filters.map(filter => <Field key={filter.key} label={filter.label}
+    <form className="reports-toolbar" onSubmit={run}>
+      <div className="reports-filters">{report.filters.map(filter => <Field key={filter.key} label={filter.label} hideLabel={filter.type === 'select' && Boolean(filter.placeholder)}
         as={filter.type === 'select' ? 'select' : undefined}
         type={filter.type === 'select' ? undefined : filter.type}
         placeholder={filter.placeholder} options={filter.options ?? lookupOptions[filter.lookup]}
@@ -95,11 +105,20 @@ function Preview({ report, today }) {
           ...current,
           ...(filter.key === 'departmentId' ? { employeeId: '' } : {}),
           [filter.key]: e.target.value,
-        }))} />)}
-      <Button size="sm" type="submit" variant="primary" busy={preview.loading} disabled={exporting}>Preview</Button>
-      {report.formats.map(format => <Button key={format} size="sm" busy={exporting === format}
-        disabled={Boolean(exporting || !submitted || filtersChanged || preview.loading || !preview.data || preview.error)}
-        onClick={() => download(format)}>Export {({ xlsx: 'Excel', pdf: 'PDF', docx: 'Word' })[format]}</Button>)}
+        }))} />)}</div>
+      <div className="reports-actions">
+        {report.description && <details className="report-notes">
+          <summary>Notes</summary>
+          <p>{report.description}</p>
+        </details>}
+        <Button size="sm" type="submit" variant="primary" busy={preview.loading} disabled={exporting}>Preview</Button>
+        {report.formats.length > 1 && <Field hideLabel label="Export format" as="select"
+          options={report.formats.map(value => ({ value, label: formatLabels[value] }))}
+          value={format} disabled={exportDisabled} onChange={e => setFormat(e.target.value)} />}
+        <Button size="sm" busy={exporting} disabled={exportDisabled} onClick={download}>
+          {report.formats.length === 1 ? `Export ${formatLabels[format]}` : 'Export'}
+        </Button>
+      </div>
     </form>
     {exportError && <p role="alert" className="form-error">{exportError}</p>}
     {submitted && <>

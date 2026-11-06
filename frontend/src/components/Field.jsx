@@ -5,17 +5,19 @@ import { Search } from 'lucide-react';
 //   <Field label="Email" type="email" value={v} onChange={...} error={fields.email} />
 //   <Field as="select" label="Department" options={[{ value: 1, label: 'Sales' }]} placeholder="Choose…" />
 //   <Field as="textarea" label="Reason" />
-export default function Field({ label, error, hint, as = 'input', options = [], placeholder, className = '', hideLabel = false, ...rest }) {
+export default function Field({ label, error, hint, as = 'input', options = [], groups = [], placeholder, className = '', hideLabel = false, ...rest }) {
   const id = useId();
   const describedBy = [hint && `${id}-hint`, error && `${id}-err`].filter(Boolean).join(' ') || undefined;
   const common = { id, 'aria-invalid': error ? true : undefined, 'aria-describedby': describedBy, ...rest };
 
+  const option = o => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>;
   let control;
   if (as === 'select') {
     control = (
       <select {...common}>
         {placeholder !== undefined && <option value="">{placeholder}</option>}
-        {options.map((o) => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>)}
+        {options.map(option)}
+        {groups.map(group => <optgroup key={group.label} label={group.label}>{group.options.map(option)}</optgroup>)}
       </select>
     );
   } else if (as === 'textarea') control = <textarea {...common} placeholder={placeholder} />;
