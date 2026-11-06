@@ -416,3 +416,36 @@ test('appraisal publishing validates drafts, preserves snapshots, and rejects co
  await ok(admin.post(otherPath + '/publications').send({ version: 2 }), 409);
  await ok(fin.get(path + '/publications/2'), 403);
 });
+
+test('appraisal cycles validate reviewers and pin published templates at opening', async () => {
+ const base = '/api/appraisals/cycles';
+ const ok = async (res, status = 200) => { const r = await res; assert.equal(r.status, status, JSON.stringify(r.body)); return r.body; };
+ const dates = { name: '2026 Q4', kind: 'quarterly', startsOn: '2026-10-01', endsOn: '2026-12-31', dueOn: '2027-01-15' };
+ await ok(admin.post(base).send({ ...dates, dueOn: '2026-01-01' }), 400);
+ const id = await pending(await hr.post(base).send(dates));
+ assert.equal((await ok(admin.get(base))).total, 0);
+ await approve(hr2, id);
+ const [cycle] = (await ok(admin.get(base))).items;
+ const path = `${base}/${cycle.id}`;
+ await ok(fin.get(path + '/assignments'), 403);
+ await ok(admin.post(path + '/open').send({ version: 1 }), 422);
+ await ok(admin.put(path + '/assignments').send({ version: 1, assignments: [{ employeeId: person.id, reviewerId: person.userId }] }), 400);
+ await ok(admin.put(path + '/assignments').send({ version: 1, assignments: [{ employeeId: person.id, reviewerId: finId }] }), 400);
+ await ok(admin.put(path + '/assignments').send({ version: 1, assignments: [{ employeeId: person.id, reviewerId: hrId }] }), 204);
+ assert.equal((await ok(hr.get('/api/appraisals/assignments'))).total, 0);
+ const openId = await pending(await hr.post(path + '/open').send({ version: 2 }));
+ await approve(hr2, openId);
+ const { cycle: opened, items } = await ok(admin.get(path + '/assignments'));
+ assert.ok(opened.openedAt);
+ assert.equal(items[0].templateName, 'Revised template');
+ assert.equal(items[0].templateVersion, 3);
+ assert.equal((await ok(hr.get('/api/appraisals/assignments'))).items[0].employeeId, person.id);
+ assert.equal((await ok(hr2.get('/api/appraisals/assignments'))).total, 0);
+ await ok(admin.put(path + '/assignments').send({ version: 3, assignments: [] }), 409);
+ const templates = await ok(admin.get('/api/appraisals/templates'));
+ const published = templates.items.find(row => row.name === 'Revised template');
+ const templatePath = '/api/appraisals/templates/' + published.id;
+ await ok(admin.patch(templatePath).send({ name: 'Later template', scope: 'company', version: published.version }));
+ await ok(admin.post(templatePath + '/publications').send({ version: published.version + 1 }), 201);
+ assert.equal((await ok(hr.get('/api/appraisals/assignments'))).items[0].templateVersion, 3);
+});

@@ -61,6 +61,8 @@ try{
   await render('components/HrLayout.jsx');await render('components/Skeleton.jsx','default',{variant:'dashboard'});
  }
  assert.match(await render('pages/AppraisalTemplates.jsx'), />New template</);
+ assert.match(await render('pages/AppraisalCycles.jsx'), />New cycle</);
+ assert.match(await render('pages/AppraisalCycles.jsx','MyAppraisalAssignments'), /My appraisal assignments/);
  fixtures['/appraisals/templates/1/structure']={version:1,categories:[
   {id:'category-1',name:'Service',weight:10000,criteria:[{id:'criterion-1',name:'Quality',weight:5000}]},
  ]};

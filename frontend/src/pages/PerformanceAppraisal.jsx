@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePermission } from '../api/auth.jsx';
+import AppraisalCycles, { MyAppraisalAssignments } from './AppraisalCycles.jsx';
 import AppraisalTemplates, { templateScopeLabels } from './AppraisalTemplates.jsx';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -10,16 +11,24 @@ const PAGE_SIZE = 25;
 
 export default function PerformanceAppraisal() {
   const canConfigure = usePermission('appraisals.configure');
+  const canReview = usePermission('appraisals.review');
   const [tab, setTab] = useState('employees');
   return <section className="stack">
     <div className="row between">
       <h1>Performance Appraisal</h1>
-      {canConfigure && <div className="row" role="group" aria-label="Appraisal sections">
+      {(canConfigure || canReview) && <div className="row" role="group" aria-label="Appraisal sections">
         <Button size="sm" aria-pressed={tab === 'employees'} onClick={() => setTab('employees')}>Employees</Button>
-        <Button size="sm" aria-pressed={tab === 'templates'} onClick={() => setTab('templates')}>Templates</Button>
+         {canConfigure && <>
+          <Button size="sm" aria-pressed={tab === 'templates'} onClick={() => setTab('templates')}>Templates</Button>
+          <Button size="sm" aria-pressed={tab === 'cycles'} onClick={() => setTab('cycles')}>Cycles</Button>
+        </>}
+        {canReview && <Button size="sm" aria-pressed={tab === 'assignments'} onClick={() => setTab('assignments')}>My assignments</Button>}
       </div>}
     </div>
-    {canConfigure && tab === 'templates' ? <AppraisalTemplates /> : <EmployeeRoster />}
+    {canConfigure && tab === 'templates' ? <AppraisalTemplates />
+      : canConfigure && tab === 'cycles' ? <AppraisalCycles />
+      : canReview && tab === 'assignments' ? <MyAppraisalAssignments />
+      : <EmployeeRoster />}
   </section>;
 }
 
