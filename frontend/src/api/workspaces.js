@@ -23,7 +23,7 @@ export function canOpenPath(user,path){
  const area=workspaceArea(path);if(!canUseWorkspace(user,area))return false;
  const normalized=path.replace(/^\/finance(?=\/|$)/,'/hr');
  if(normalized==='/hr'||normalized==='/hr/')return true;
- if(normalized==='/hr/reports'||normalized.startsWith('/hr/reports/'))return ['attendance.read','employees.read','leave.read','payroll.read','company_costs.read','settlements.read','access.manage'].some(permission=>allowed(user,permission));
+ if(normalized==='/hr/reports'||normalized.startsWith('/hr/reports/'))return ['attendance.read','employees.read','leave.read','payroll.read','company_costs.read','settlements.read','access.manage','approvals.read','audit.hr','audit.finance','audit.access','vacancies.admin_read','vacancies.review','announcements.admin_read'].some(permission=>allowed(user,permission));
  const match=HR_PATHS.find(([prefix])=>normalized===prefix||normalized.startsWith(prefix+'/'));
  return !!match&&allowed(user,match[1]);
 }

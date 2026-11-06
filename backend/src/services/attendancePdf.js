@@ -25,14 +25,20 @@ export function attendancePdf({ title, company, date, month, year, period, asOf,
     function drawRow(values, heading = false) {
       doc.fontSize(9);
       const options = index => ({ width: widths[index] - 2 * PADDING, lineGap: 1 });
-      const height = Math.max(...values.map((value, index) => doc.heightOfString(value, options(index)))) + 2 * PADDING;
+      const heights = values.map((value, index) => {
+        const measured = doc.heightOfString(value, options(index));
+        return heading ? measured : Math.min(measured, columns[index]?.pdfMaxHeight ?? Infinity);
+      });
+      const height = Math.max(...heights) + 2 * PADDING;
       if (!heading && y + height > doc.page.height - MARGIN - 18) addPage();
       if (heading) doc.rect(MARGIN, y, tableWidth, height).fill('#e8edf3');
 
       let x = MARGIN;
       doc.fillColor('#17212b');
       values.forEach((value, index) => {
-        doc.text(value, x + PADDING, y + PADDING, options(index));
+        const cell = options(index);
+        if (!heading && columns[index]?.pdfMaxHeight) Object.assign(cell, { height: heights[index] + 1, ellipsis: true });
+        doc.text(value, x + PADDING, y + PADDING, cell);
         x += widths[index];
       });
       y += height;
