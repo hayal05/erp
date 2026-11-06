@@ -377,7 +377,7 @@ ul.form-error { margin: 0; padding-left: 28px; }
 .dashboard { min-width: 0; }
 .dashboard-heading h1, .dashboard h2 { margin: 0; }
 .dashboard-heading time { font-size: .85rem; }
-.dashboard-main-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--space-sm); }
+.dashboard-main-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-sm); }
 .dashboard-small-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--space-sm); }
 .dashboard .card { min-width: 0; }
 .dashboard .card h2 { font-size: .9rem; }
