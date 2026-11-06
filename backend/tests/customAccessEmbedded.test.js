@@ -430,6 +430,22 @@ test('vacancy application profiles, counts, reviews and audit stay inside applic
  scopeStatus(await leader.get(`/api/vacancies/${vacancyId}/applications/${applicationB}`),404);
  scopeStatus(await leader.patch(`/api/vacancies/${vacancyId}/applications/${applicationB}`).send({status:'shortlisted',version:1}),404);
  await scopedApprove(await leader.patch(`/api/vacancies/${vacancyId}/applications/${applicationA}`).send({status:'shortlisted',version:1}));
+ const reportPrefix='/api/reports/';
+ const filters='?vacancyId='+vacancyId;
+ const statusReport=await leader.get(reportPrefix+'vacancy-status/preview?status=open');scopeStatus(statusReport);
+ assert.equal(statusReport.body.items.find(row=>row.vacancyId===vacancyId).applicationCount,1);
+ const outcomes=await leader.get(reportPrefix+'vacancy-application-outcomes/preview'+filters+'&status=shortlisted');scopeStatus(outcomes);
+ assert.equal(outcomes.body.total,1);assert.equal(outcomes.body.items[0].id,applicationA);
+ assert.equal(outcomes.body.items[0].reviewedBy,'department.manager');
+ assert.ok(!Object.hasOwn(outcomes.body.items[0],'profile_snapshot'));
+ const summary=await leader.get(reportPrefix+'recruitment-summary/preview'+filters);scopeStatus(summary);
+ assert.equal(summary.body.items[0].applications,1);assert.equal(summary.body.items[0].shortlisted,1);
+ const adminSummary=await admin.get(reportPrefix+'recruitment-summary/preview'+filters);scopeStatus(adminSummary);
+ assert.equal(adminSummary.body.items[0].applications,2);
+ for(const [id,format] of [['vacancy-status','xlsx'],['vacancy-application-outcomes','pdf'],['recruitment-summary','docx']]){
+  const path=reportPrefix+id+'/export.'+format+filters;
+  scopeStatus(await leader.get(path));scopeStatus(await plain.get(path),403);
+ }
  scopeStatus(await leader.get(`/api/audit-history/vacancy_application/${applicationB}`),404);
  const audit=await leader.get('/api/audit-history?area=vacancies');scopeStatus(audit);assert.ok(!audit.body.items.some(r=>Number(r.recordId)===applicationB));
 });
