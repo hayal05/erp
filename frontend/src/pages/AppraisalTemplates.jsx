@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { del, patch, post } from '../api/client.js';
+import AppraisalWeights from './AppraisalWeights.jsx';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
 import Modal from '../components/Modal.jsx';
@@ -15,6 +16,7 @@ const emptyTemplate = { name: '', scope: 'company', targetId: null };
 export default function AppraisalTemplates() {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState(null);
+  const [weightTemplate, setWeightTemplate] = useState(null);
   const [removing, setRemoving] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -60,11 +62,14 @@ export default function AppraisalTemplates() {
         { key: 'targetName', header: 'Target', render: row => row.targetName ?? 'All employees' },
         { key: 'actions', header: 'Actions', render: row => <div className="row">
           <Button size="sm" onClick={() => setEditing(row)}>Edit</Button>
+          <Button size="sm" onClick={() => setWeightTemplate(row)}>Weights</Button>
           <Button size="sm" onClick={() => { setRemoving(row); setError(''); }}>Delete</Button>
         </div> },
       ]} />
     <Pager page={page} pageSize={PAGE_SIZE} total={templates.data?.total ?? 0} onPage={setPage} disabled={templates.loading} />
     {editing && <TemplateEditor key={editing.id ?? 'new'} template={editing} onSaved={saved} onClose={() => setEditing(null)} />}
+    {weightTemplate && <AppraisalWeights key={weightTemplate.id} template={weightTemplate}
+      onClose={() => setWeightTemplate(null)} onSaved={() => { setWeightTemplate(null); templates.reload(); }} />}
     {removing && <Modal open title="Delete template?" onClose={() => !busy && setRemoving(null)} footer={<>
       <Button disabled={busy} onClick={() => setRemoving(null)}>Cancel</Button>
       <Button variant="danger" busy={busy} onClick={remove}>Delete</Button>

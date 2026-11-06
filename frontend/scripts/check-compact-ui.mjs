@@ -61,6 +61,12 @@ try{
   await render('components/HrLayout.jsx');await render('components/Skeleton.jsx','default',{variant:'dashboard'});
  }
  assert.match(await render('pages/AppraisalTemplates.jsx'), />New template</);
+ fixtures['/appraisals/templates/1/structure']={version:1,categories:[
+  {id:'category-1',name:'Service',weight:10000,criteria:[{id:'criterion-1',name:'Quality',weight:5000}]},
+ ]};
+ const appraisalWeights=await render('pages/AppraisalWeights.jsx','default',{template:{id:1,name:'Sample template'},onClose(){},onSaved(){}});
+ for(const label of ['Add category','Add criterion','Weights incomplete','50.00%','Save draft']) assert.ok(appraisalWeights.includes(label));
+
  const reportPicker=await render('pages/Reports.jsx');
  assert.match(reportPicker, /<optgroup label="Attendance">/);
  assert.match(reportPicker, /<optgroup label="Payroll">/);

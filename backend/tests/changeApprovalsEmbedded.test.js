@@ -304,3 +304,43 @@ test('appraisal templates respect scope precedence, flag ties and follow HR appr
  const targets = await ok(admin.get(path + '/targets?scope=grade&search=Test%20grade'));
  assert.equal(targets.items[0].id, grade.id);
 });
+
+test('appraisal weight drafts preserve order and flag incomplete or invalid totals', async () => {
+ const created = await admin.post('/api/appraisals/templates').send({ name: 'Weighted draft', scope: 'company' });
+ assert.equal(created.status, 201, JSON.stringify(created.body));
+ const path = `/api/appraisals/templates/${created.body.id}/structure`;
+ const group = (name, weight, criteria) => ({ id: randomUUID(), name, weight, criteria });
+ const item = (name, weight) => ({ id: randomUUID(), name, weight });
+ const draft = [group('Service', 4000, [item('Quality', 10000)]),
+  group('Delivery', 6000, [item('On time', 3333), item('Accuracy', null)])];
+ const get = async () => {
+  const response = await admin.get(path);
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  return response.body;
+ };
+ assert.equal((await fin.get(path)).status, 403);
+ assert.deepEqual((await get()).categories, []);
+ const requestId = await pending(await hr.put(path).send({ version: 1, categories: draft }));
+ assert.deepEqual((await get()).categories, []);
+ await approve(hr2, requestId);
+ const partial = await get();
+ assert.deepEqual(partial.categories, draft);
+ assert.equal(partial.weights.total, 10000);
+ assert.deepEqual(partial.weights.groups.map(row => [row.total, row.ready]), [[10000, true], [3333, false]]);
+ assert.equal(partial.weights.ready, false);
+ const complete = structuredClone(draft).reverse();
+ complete[0].criteria[1].weight = 6667;
+ complete[0].criteria.reverse();
+ const invalid = structuredClone(complete);
+ invalid[0].weight = 10001;
+ assert.equal((await admin.put(path).send({ version: 2, categories: invalid })).status, 400);
+ const dup = structuredClone(complete);
+ dup[0].criteria[0].id = dup[1].id;
+ assert.equal((await admin.put(path).send({ version: 2, categories: dup })).status, 400);
+ assert.equal((await admin.put(path).send({ version: 1, categories: complete })).status, 409);
+ const saved = await admin.put(path).send({ version: 2, categories: complete });
+ assert.equal(saved.status, 200, JSON.stringify(saved.body));
+ assert.equal(saved.body.version, 3);
+ assert.equal(saved.body.weights.ready, true);
+ assert.deepEqual((await get()).categories, complete);
+});

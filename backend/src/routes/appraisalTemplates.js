@@ -8,6 +8,7 @@ import { audit, diffFields } from '../services/audit.js';
 import { validationError } from '../services/dbErrors.js';
 import { idParams } from '../services/hrSchemas.js';
 import { likePattern, pageOffset, pageResult, pageSchema } from '../services/sql.js';
+import { structureBody, structureResult } from '../services/appraisalStructure.js';
 import { templateTargets, toAppraisalTemplate } from '../services/appraisalTemplates.js';
 
 const router = Router();
@@ -57,6 +58,34 @@ router.get('/', validate(pageSchema, 'query'), wrap(async (req, res) => {
       COALESCE((SELECT json_agg(selected ORDER BY lower(name),id) FROM selected),'[]'::json) AS items
   `, [filters.pageSize, pageOffset(filters)]);
   res.json(pageResult(result.items.map(toAppraisalTemplate), filters, result.total));
+}));
+
+router.get('/:id/structure', validate(idParams, 'params'), wrap(async (req, res) => {
+  const { rows: [row] } = await query(`SELECT t.version, COALESCE(s.categories,'[]'::jsonb) AS categories
+    FROM appraisal_templates t LEFT JOIN appraisal_template_structures s ON s.template_id=t.id WHERE t.id=$1`, [req.params.id]);
+  if (!row) throw new HttpError(404, 'Appraisal template not found', 'not_found');
+  res.json(structureResult(row.version, row.categories));
+}));
+
+router.put('/:id/structure', validate(idParams, 'params'), structureBody, approvalWrap(async (req, res) => {
+  const { version, categories } = req.body;
+  const { id } = req.params;
+  const result = await withTransaction(async db => {
+    const { rows: [before] } = await db.query('SELECT version FROM appraisal_templates WHERE id=$1 FOR UPDATE', [id]);
+    if (!before) throw new HttpError(404, 'Appraisal template not found', 'not_found');
+    if (before.version !== version) throw new HttpError(409, 'Template changed. Reopen it before saving.', 'conflict');
+    await db.query(`INSERT INTO appraisal_template_structures(template_id,categories) VALUES($1,$2::jsonb)
+      ON CONFLICT(template_id) DO UPDATE SET categories=EXCLUDED.categories`, [id, JSON.stringify(categories)]);
+    const { rows: [saved] } = await db.query('UPDATE appraisal_templates SET version=version+1 WHERE id=$1 RETURNING version', [id]);
+    const result = structureResult(saved.version, categories);
+    await audit(db, { actorId: req.user.id, action: 'appraisal.template.structure.update',
+      entityType: 'appraisal_template', entityId: id, details: {
+        categoryCount: categories.length, criterionCount: categories.reduce((count, category) => count + category.criteria.length, 0),
+        totalWeight: result.weights.total, weightsReady: result.weights.ready,
+      } });
+    return result;
+  });
+  res.json(result);
 }));
 
 function saveTemplate(editing) {
