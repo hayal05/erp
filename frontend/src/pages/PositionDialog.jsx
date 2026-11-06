@@ -96,9 +96,11 @@ export default function PositionDialog({ departmentId, position, onClose, onSave
           <Field label="Monthly allowance" inputMode="decimal" autoComplete="off" value={form.allowance} error={fields.allowance} onChange={set('allowance')} />
         </>}
         {(position || noGradeNeeded || grades.length > 0) && <fieldset className="salary-profile-flags full"><legend>Tax &amp; pension</legend>
-          <label><input type="checkbox" checked={form.allowanceTaxable} onChange={check('allowanceTaxable')} /> Taxable allowance</label>
-          <label><input type="checkbox" checked={form.allowancePensionable} onChange={check('allowancePensionable')} /> Pensionable allowance</label>
-          <label><input type="checkbox" checked={form.pensionApplies} onChange={check('pensionApplies')} /> Employee pension</label>
+          <div className="row">
+            <label><input type="checkbox" checked={form.allowanceTaxable} onChange={check('allowanceTaxable')} /> Taxable allowance</label>
+            <label><input type="checkbox" checked={form.allowancePensionable} onChange={check('allowancePensionable')} /> Pensionable allowance</label>
+            <label><input type="checkbox" checked={form.pensionApplies} onChange={check('pensionApplies')} /> Employee pension</label>
+          </div>
           <small className="muted">Allowance flags require matching payroll base settings.</small>
         </fieldset>}
         {total && <div className="position-total full" aria-live="polite"><span>Monthly total</span><strong>{total}</strong></div>}
