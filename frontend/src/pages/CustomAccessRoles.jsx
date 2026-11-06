@@ -9,7 +9,7 @@ import Table,{Badge,Pager} from '../components/Table.jsx';
 import {useToast} from '../components/Toast.jsx';
 export default function CustomAccessRoles(){
  const r=useResource('/custom-access/roles'),[editing,setEditing]=useState(null);
- return <section className="stack"><div className="row between"><h1>Custom access roles</h1><Button size="sm" variant="primary" onClick={()=>setEditing({name:'',activities:[]})}>New role</Button></div>
+ return <section className="stack access-role-page"><div className="access-toolbar"><h2>Custom roles</h2><Button size="sm" variant="primary" onClick={()=>setEditing({name:'',activities:[]})}>New role</Button></div>
   <Table caption="Custom access roles" rows={r.data?.items??[]} loading={r.loading} error={r.error} onRetry={r.reload} empty="No custom roles" columns={[
    {key:'name',header:'Role'},{key:'activities',header:'Activities',render:r=>r.activities.length},{key:'scope',header:'Available scope',render:r=>activityScopePlan(r.activities,'departments').permissions.length?'All, departments or employees':'Company-wide only'},
    {key:'edit',header:'Actions',render:r=><Button size="sm" onClick={()=>setEditing(r)}>Edit role</Button>}

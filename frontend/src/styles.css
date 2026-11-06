@@ -113,7 +113,9 @@ a { color: var(--accent); }
 /* Keep employee and access columns readable; scroll within the table on narrow screens. */
 :is(.employees-page, .access-management-page) { min-width: 0; grid-template-columns: minmax(0, 1fr); }
 :is(.employees-page, .access-management-page) > .table-wrap { min-width: 0; max-width: 100%; }
-:is(.employees-page, .access-management-page) > .table-wrap .table { min-width: 1120px; }
+.employees-page > .table-wrap .table { min-width: 1120px; }
+.access-management-page > .table-wrap .table { min-width: 960px; }
+.access-role-page > .table-wrap .table { min-width: 480px; }
 :is(.employees-page, .access-management-page) > .table-wrap th, :is(.employees-page, .access-management-page) > .table-wrap td { white-space: nowrap; }
 :is(.employees-page, .access-management-page) > .table-wrap .row { flex-wrap: nowrap; }
 
@@ -329,7 +331,7 @@ ul.form-error { margin: 0; padding-left: 28px; }
 
 .salary-sheet { gap: 10px; }
 .payroll-heading .row { gap: 6px; }
-.payroll-toolbar, .reports-toolbar, .retirement-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.payroll-toolbar, .reports-toolbar, .retirement-toolbar, .access-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
 .payroll-period, .payroll-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .payroll-period .field { width: 168px; min-width: 0; }
 .payroll-period input { min-height: var(--tap); padding: 5px 8px; font-size: .9rem; }
@@ -692,7 +694,13 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 
 /* Compact access directory and role controls retain single-line history rows. */
 .access-heading h1, .access-details h2, .access-revoke h3 { margin: 0; }
-.access-heading .field { width: 280px; max-width: 100%; }
+.access-management, .access-management-page, .access-role-page { gap: 10px; }
+.access-heading .tabs { max-width: 100%; }
+.access-toolbar .field { width: min(100%, 260px); }
+.access-toolbar h2 { margin: 0; font-size: 1rem; }
+@media (max-width: 700px) {
+  .access-toolbar { padding: 8px; }
+}
 .access-identity { font-size: .85rem; overflow-wrap: anywhere; }
 .access-role-list { display: inline-flex; align-items: center; flex-wrap: nowrap; gap: 6px; }
 .access-details > .access-role-list { flex-wrap: wrap; }
