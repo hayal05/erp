@@ -12,13 +12,14 @@ export async function retirementSettings(db){
 export async function loadRetirement(db,query,{today=companyDate(),user=null}={}){
  const settings=await retirementSettings(db);
  const args=[today,settings.retirementAge,query.employmentStatus,query.search?likePattern(query.search):null,query.status??null];
+ const departmentFilter = query.departmentId == null ? 'TRUE' : `e.department_id=$${args.push(query.departmentId)}`;
  const scope=user?scopeSql(user,'employees.read','e',args):'TRUE';
  const cte=`WITH dates AS (
   SELECT e.id,e.employee_code,u.full_name,d.name AS department,p.name AS position,e.status AS employment_status,e.date_of_birth,
    CASE WHEN e.date_of_birth<=$1::date THEN EXTRACT(YEAR FROM $1::date)::int-EXTRACT(YEAR FROM e.date_of_birth)::int END AS year_difference,
    CASE WHEN e.date_of_birth<=$1::date AND $2::int IS NOT NULL THEN (e.date_of_birth+make_interval(years=>$2::int))::date END AS retirement_date
   FROM employees e JOIN users u ON u.id=e.user_id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN positions p ON p.id=e.position_id
-  WHERE ${scope} AND ($3='all' OR e.status=$3) AND ($4::text IS NULL OR u.full_name ILIKE $4 ESCAPE '\\' OR e.employee_code ILIKE $4 ESCAPE '\\' OR d.name ILIKE $4 ESCAPE '\\' OR p.name ILIKE $4 ESCAPE '\\')
+  WHERE ${scope} AND ${departmentFilter} AND ($3='all' OR e.status=$3) AND ($4::text IS NULL OR u.full_name ILIKE $4 ESCAPE '\\' OR e.employee_code ILIKE $4 ESCAPE '\\' OR d.name ILIKE $4 ESCAPE '\\' OR p.name ILIKE $4 ESCAPE '\\')
  ), calculated AS (
   SELECT *,year_difference-CASE WHEN $1::date<(date_of_birth+make_interval(years=>year_difference))::date THEN 1 ELSE 0 END AS age,
    retirement_date-$1::date AS days_remaining,

@@ -18,21 +18,25 @@ router.use(noStore, requirePermission('leave.read'));
 router.use((req,res,next)=>['GET','HEAD'].includes(req.method)?next():requirePermission('leave.manage')(req,res,next));
 
 // GET /requests?page&pageSize&status&year&employeeId&departmentId -> pending first, then newest
-router.get('/requests', validate(leaveHrListQuery, 'query'), wrap(async (req, res) => {
-  const q = req.query, params = [],where = [scopeSql(req.user,'leave.read','e',params)];
+export async function readLeaveRequests(user, q) {
+  const params = [], where = [scopeSql(user, 'leave.read', 'e', params)];
   const add = (sql, val) => { params.push(val); where.push(sql.replaceAll('?', `$${params.length}`)); };
   if (q.status) add('r.status = ?', q.status);
   if (q.employeeId) add('r.employee_id = ?', q.employeeId);
   if (q.departmentId) add('e.department_id = ?', q.departmentId);
   if (q.year) add('r.start_date BETWEEN make_date(?, 1, 1) AND make_date(?, 12, 31)', q.year);
   const WHERE = where.join(' AND '), n0 = params.length;
-  const FROM = 'FROM leave_requests r JOIN leave_types t ON t.id = r.leave_type_id JOIN employees e ON e.id = r.employee_id JOIN users u ON u.id = e.user_id';
+  const FROM = 'FROM leave_requests r JOIN leave_types t ON t.id = r.leave_type_id JOIN employees e ON e.id = r.employee_id JOIN users u ON u.id = e.user_id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN users reviewer ON reviewer.id=r.decided_by_user_id';
   const [{ rows }, { rows: [{ n }] }] = await Promise.all([
-    query(`SELECT ${REQUEST_COLUMNS}, r.employee_id, e.department_id, e.employee_code, u.full_name ${FROM} WHERE ${WHERE}
+    query(`SELECT ${REQUEST_COLUMNS}, r.employee_id, e.department_id, e.employee_code, u.full_name, d.name AS department_name, reviewer.full_name AS reviewer_name ${FROM} WHERE ${WHERE}
             ORDER BY (r.status = 'pending') DESC, r.start_date DESC, r.id DESC LIMIT $${n0 + 1} OFFSET $${n0 + 2}`, [...params, q.pageSize, pageOffset(q)]),
     query(`SELECT count(*)::int AS n ${FROM} WHERE ${WHERE}`, params),
   ]);
-  res.json(pageResult(rows.map((r) => ({ ...requestView(r),canManage:coversEmployee(req.user,'leave.manage',r.employee_id,r.department_id), employeeId: Number(r.employee_id), employeeCode: r.employee_code, employeeName: r.full_name })), q, n));
+  return pageResult(rows.map((r) => ({ ...requestView(r),canManage:coversEmployee(user,'leave.manage',r.employee_id,r.department_id), employeeId: Number(r.employee_id), employeeCode: r.employee_code, employeeName: r.full_name, departmentName: r.department_name, decidedBy: r.reviewer_name })), q, n);
+}
+
+router.get('/requests', validate(leaveHrListQuery, 'query'), wrap(async (req, res) => {
+  res.json(await readLeaveRequests(req.user, req.query));
 }));
 
 const decide = (decision, schema) => [validate(idParams, 'params'), validate(schema), wrap(async (req, res) => {
