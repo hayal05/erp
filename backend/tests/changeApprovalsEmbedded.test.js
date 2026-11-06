@@ -223,3 +223,17 @@ test('position grades are approved, paginated, and copy pay only when assigned',
  assert.equal(lastPage.body.items.length, 7);
  assert.equal((await admin.get(grades + '?search=grade%20a')).body.total, 1);
 });
+
+test('new positions can include their first grade in the same approval request', async () => {
+ const path = `/api/departments/${department}/positions`;
+ const grade = { name: 'Level 1', basicMinor: 120000, allowanceMinor: 10000 };
+ const body = { name: 'New position with grade', basicMinor: 100000, allowanceMinor: 0, initialGrade: grade };
+ assert.equal((await hr.post(path).send({ ...body, initialGrade: { ...grade, basicMinor: -1 } })).status, 400);
+ const id = await pending(await hr.post(path).send(body));
+ assert.equal((await q('SELECT id FROM positions WHERE name=$1', [body.name])).rows.length, 0);
+ await approve(hr2, id);
+ const [position] = (await q('SELECT id FROM positions WHERE name=$1', [body.name])).rows;
+ const response = await admin.get(`/api/positions/${position.id}/grades`);
+ assert.equal(response.status, 200);
+ assert.deepEqual(response.body.items.map(({ id, ...fields }) => fields), [grade]);
+});

@@ -5,7 +5,7 @@ import { query, withTransaction } from '../db/pool.js';
 import { HttpError } from '../middleware/error.js';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
 import { noStore } from '../middleware/noStore.js';
-import { validate, v } from '../middleware/validate.js';
+import { parse, validate, v } from '../middleware/validate.js';
 import { audit, diffFields } from '../services/audit.js';
 import { likePattern, pageOffset, pageResult } from '../services/sql.js';
 import { isFkViolation, translateDbError, validationError } from '../services/dbErrors.js';
@@ -35,6 +35,23 @@ function positionBody(req, res, next) {
   next();
 }
 
+function initialGradeBody(req, res, next) {
+  if (req.body?.initialGrade === undefined) return positionBody(req, res, next);
+  const grade = parse(jobGradeBody, req.body.initialGrade);
+  if (grade.errors) return next(validationError({ initialGrade: 'Enter a valid job grade name, basic salary and allowance' }));
+  const position = parsePosition(req.body);
+  if (position.errors) return next(validationError(position.errors));
+  req.body = { ...position.value, initialGrade: grade.value };
+  next();
+}
+
+async function insertGrade(db, positionId, grade) {
+  const { rows: [saved] } = await db.query(
+    'INSERT INTO position_job_grades(position_id,name,basic_minor,allowance_minor) VALUES($1,$2,$3,$4) RETURNING *',
+    [positionId, grade.name, grade.basicMinor, grade.allowanceMinor]);
+  return saved;
+}
+
 // ---- /api/departments/:id/positions
 export const departmentPositions = Router({ mergeParams: true });
 departmentPositions.use(noStore, requirePermission('organization.read'));
@@ -55,7 +72,7 @@ departmentPositions.get('/', validate(idParams, 'params'), validate(positionList
   res.json(pageResult(rows.map(r=>toPosition({...r,employee_count:counts.find(c=>Number(c.position_id)===Number(r.id))?.n??0})), q, total));
 }));
 
-departmentPositions.post('/', validate(idParams, 'params'), positionBody, wrap(async (req, res) => {
+departmentPositions.post('/', validate(idParams, 'params'), initialGradeBody, wrap(async (req, res) => {
   const { id } = req.params;
   const b = req.body;
   const created = await withTransaction(async (db) => {
@@ -66,6 +83,11 @@ departmentPositions.post('/', validate(idParams, 'params'), positionBody, wrap(a
       `INSERT INTO positions (department_id, ${cols.join(', ')}) VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(', ')}) RETURNING id`,
       [id, ...Object.keys(POSITION_COLUMNS).map((key) => b[key])]);
     await audit(db, { actorId: req.user.id, action: 'position.create', entityType: 'position', entityId: row.id, details: { departmentId: Number(id), ...b } });
+    if (b.initialGrade) {
+      const grade = await insertGrade(db, row.id, b.initialGrade);
+      await audit(db, { actorId: req.user.id, action: 'position.grade.create', entityType: 'position', entityId: row.id,
+        details: { gradeId: Number(grade.id), ...b.initialGrade } });
+    }
     return findPosition(db, row.id);
   }).catch((err) => { throw translateDbError(err); });
   res.status(201).json(created);
@@ -98,9 +120,9 @@ function saveGrade(editing) {
       const args = [id, name, basicMinor, allowanceMinor];
       const before = editing ? (await db.query('SELECT * FROM position_job_grades WHERE position_id=$1 AND id=$2', [id, gradeId])).rows[0] : null;
       if (editing && !before) throw jobGradeNotFound();
-      const { rows: [saved] } = editing
-        ? await db.query('UPDATE position_job_grades SET name=$2,basic_minor=$3,allowance_minor=$4 WHERE position_id=$1 AND id=$5 RETURNING *', [...args, gradeId])
-        : await db.query('INSERT INTO position_job_grades(position_id,name,basic_minor,allowance_minor) VALUES($1,$2,$3,$4) RETURNING *', args);
+      const saved = editing
+        ? (await db.query('UPDATE position_job_grades SET name=$2,basic_minor=$3,allowance_minor=$4 WHERE position_id=$1 AND id=$5 RETURNING *', [...args, gradeId])).rows[0]
+        : await insertGrade(db, id, req.body);
       const item = toJobGrade(saved);
       const changes = before ? diffFields(toJobGrade(before), item, Object.keys(jobGradeBody)) : undefined;
       await audit(db, { actorId: req.user.id, action: editing ? 'position.grade.update' : 'position.grade.create',
