@@ -65,6 +65,10 @@ try{
   {id:'category-1',name:'Service',weight:10000,criteria:[{id:'criterion-1',name:'Quality',weight:5000}]},
  ]};
  const appraisalWeights=await render('pages/AppraisalWeights.jsx','default',{template:{id:1,name:'Sample template'},onClose(){},onSaved(){}});
+ const scoringMarkup=await render('pages/AppraisalScoringRule.jsx','default',{scoring:{
+  method:'lookup',cap:100,missing:'required',allowNotApplicable:false,belowScore:0,thresholds:[{minimum:0,score:75}],
+ },onChange(){}});
+ for(const label of ['Custom scoring table','Score cap','Missing input','Allow not applicable','Add threshold']) assert.ok(scoringMarkup.includes(label));
  for(const label of ['Add category','Add criterion','Weights incomplete','50.00%','Save draft']) assert.ok(appraisalWeights.includes(label));
 
  const reportPicker=await render('pages/Reports.jsx');

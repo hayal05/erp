@@ -2,6 +2,8 @@ import { parse, v } from '../middleware/validate.js';
 import { validationError } from './dbErrors.js';
 import { appraisalWeightStatus, FULL_WEIGHT } from '../../../shared/appraisalWeights.mjs';
 
+import { parseScoringRule } from '../../../shared/appraisalScoring.mjs';
+
 const fields = {
   id: v.string({ required: true, pattern: /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i }),
   name: v.string({ max: 120, default: '' }),
@@ -32,6 +34,13 @@ export function structureBody(req, _res, next) {
     for (const criterion of category.criteria) {
       const item = read(criterion);
       if (!item) return next(validationError({ categories: 'Each criterion needs a unique ID and a valid weight' }));
+      if (Object.hasOwn(criterion, 'scoring')) {
+        try {
+          item.scoring = parseScoringRule(criterion.scoring);
+        } catch (error) {
+          return next(validationError({ categories: `${item.name || 'Criterion'}: ${error.message}` }));
+        }
+      }
       group.criteria.push(item);
     }
     normalized.push(group);

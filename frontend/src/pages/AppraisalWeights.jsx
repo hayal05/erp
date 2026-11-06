@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { appraisalWeightStatus, FULL_WEIGHT } from '../../../shared/appraisalWeights.mjs';
+import { scoringRuleError } from '../../../shared/appraisalScoring.mjs';
+import AppraisalScoringRule from './AppraisalScoringRule.jsx';
 import { put } from '../api/client.js';
 import { formatMoney, tryMoney } from '../api/money.js';
 import Button from '../components/Button.jsx';
@@ -55,13 +57,17 @@ function WeightEditor({ template, draft, path, onClose, onSaved }) {
   const invalidWeight = categories.some(category => [category, ...category.criteria]
     .some(row => row.weight.trim() && parseWeight(row.weight) === null));
 
+  const invalidScoring = categories.some(category => category.criteria
+    .some(criterion => criterion.scoring && scoringRuleError(criterion.scoring)));
+  const invalid = invalidWeight || invalidScoring;
+
   function editCategory(id, update) {
     setCategories(rows => changed(rows, id, update));
   }
 
   async function save(event) {
     event.preventDefault();
-    if (busy || invalidWeight) return;
+    if (busy || invalid) return;
     setBusy(true);
     setError('');
     try {
@@ -82,13 +88,14 @@ function WeightEditor({ template, draft, path, onClose, onSaved }) {
   return <Modal open wide title={`Weights · ${template.name}`} dismissible={!busy}
     onClose={() => !busy && onClose()} footer={<>
       <Button disabled={busy} onClick={onClose}>Cancel</Button>
-      <Button type="submit" form="appraisal-weight-form" variant="primary" busy={busy} disabled={invalidWeight}>Save draft</Button>
+      <Button type="submit" form="appraisal-weight-form" variant="primary" busy={busy} disabled={invalid}>Save draft</Button>
     </>}>
-    <form id="appraisal-weight-form" className="stack" onSubmit={save}>
+    <form id="appraisal-weight-form" className="stack" onSubmit={save} noValidate>
       <div className="row between">
         <strong aria-live="polite">Category weights · {percent(status.total)} / 100% · {status.ready ? 'Weights complete' : 'Weights incomplete'}</strong>
         <Button size="sm" disabled={busy} onClick={() => setCategories(rows => [...rows, { ...emptyRow(), criteria: [] }])}>Add category</Button>
       </div>
+      {invalidScoring && <p className="form-error" role="alert">Check the scoring rules marked Needs attention.</p>}
       {error && <p role="alert" className="form-error">{error}</p>}
       {categories.map((category, index) => {
         const group = status.groups[index];
@@ -118,6 +125,10 @@ function WeightEditor({ template, draft, path, onClose, onSaved }) {
               <WeightFields row={criterion} label={label} disabled={busy}
                 onChange={values => editCategory(category.id, row => ({
                   ...row, criteria: changed(row.criteria, criterion.id, item => ({ ...item, ...values })),
+                }))} />
+              <AppraisalScoringRule scoring={criterion.scoring} disabled={busy}
+                onChange={scoring => editCategory(category.id, row => ({
+                  ...row, criteria: changed(row.criteria, criterion.id, item => ({ ...item, scoring })),
                 }))} />
             </div>;
           })}

@@ -344,3 +344,21 @@ test('appraisal weight drafts preserve order and flag incomplete or invalid tota
  assert.equal(saved.body.weights.ready, true);
  assert.deepEqual((await get()).categories, complete);
 });
+
+test('criterion scoring rules survive draft approval and reject invalid configurations', async () => {
+ const template = await admin.post('/api/appraisals/templates').send({ name: 'Scoring rules draft', scope: 'company' });
+ assert.equal(template.status, 201);
+ const path = `/api/appraisals/templates/${template.body.id}/structure`;
+ const scoring = { method: 'lookup', cap: 95, missing: 'exclude', allowNotApplicable: true,
+  belowScore: 0, thresholds: [{ minimum: 100, score: 100 }, { minimum: 50, score: 60 }] };
+ const criterion = { id: randomUUID(), name: 'Output', weight: 10000, scoring };
+ const group = { id: randomUUID(), name: 'Delivery', weight: 10000, criteria: [criterion] };
+ const invalid = structuredClone(group);
+ invalid.criteria[0].scoring.cap = 101;
+ assert.equal((await hr.put(path).send({ version: 1, categories: [invalid] })).status, 400);
+ const id = await pending(await hr.put(path).send({ version: 1, categories: [group] }));
+ assert.deepEqual((await admin.get(path)).body.categories, []);
+ await approve(hr2, id);
+ const saved = (await admin.get(path)).body.categories[0].criteria[0];
+ assert.deepEqual(saved.scoring, { ...scoring, thresholds: [...scoring.thresholds].reverse() });
+});
