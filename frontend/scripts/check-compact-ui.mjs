@@ -74,8 +74,9 @@ try{
   for(const label of ['Employee ID','Full name','Gender','Date of birth','Field of study','Username','Department','Position','Start date'])assert.ok(html.includes(label),`Employee form lost ${label}`);
  }
  await render('pages/DepartmentDialog.jsx','default',{department});assert.match(await render('pages/PositionDialog.jsx','default',{departmentId:1,position:null}), /Save the position first to add job grades/);
- assert.match(await render('pages/PositionDialog.jsx','default',{departmentId:1,position:{id:1,name:'Officer',basicMinor:100000,allowanceMinor:0}}), />Job grades</);
+ assert.match(await render('pages/PositionDialog.jsx','default',{departmentId:1,position:{id:1,name:'Officer',basicMinor:100000,allowanceMinor:0}}), /position-name-row[\s\S]*Position name[\s\S]*>Add job grade</);
  assert.match(await render('pages/PositionGrades.jsx','PositionGradeList',{positionId:1,canManage:true}), />Add grade</);
+ assert.match(await render('pages/PositionGrades.jsx','PositionGradeList',{positionId:1,canManage:true,startAdding:true}), />Save grade</);
  for(const name of ['HolidayDialog','ShiftDialog'])await render('pages/SettingsDialogs.jsx',name,{holiday:null,year:2026,shift});
  const request={id:1,employee:person.fullName,code:person.employeeCode,type:'Annual',dates:'30 Oct 2026',days:1,reason:'Family event'};
  for(const decision of ['approve','reject'])await render('pages/LeaveDialogs.jsx','DecisionDialog',{request,decision});

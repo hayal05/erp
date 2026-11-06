@@ -11,7 +11,8 @@ import { EMPTY_POSITION, POSITION_NAME_MAX, buildPosition, monthlyTotal, positio
 // Add (position = null) or edit one position of a department. Mount with a `key` so the form resets each time it opens.
 export default function PositionDialog({ departmentId, position, onClose, onSaved }) {
   const toast = useToast();
-  const [showGrades, setShowGrades] = useState(false);
+  const [section, setSection] = useState('details');
+  const showGrades = section !== 'details';
   const [form, setForm] = useState(position ? positionForm(position) : EMPTY_POSITION);
   const [fields, setFields] = useState({});
   const [error, setError] = useState('');
@@ -49,12 +50,15 @@ export default function PositionDialog({ departmentId, position, onClose, onSave
         <Button variant="primary" type="submit" form="position-form" busy={busy}>{position ? 'Save' : 'Add position'}</Button>
       </>}>
       {position && <div className="row" role="group" aria-label="Position sections">
-        <Button size="sm" variant={showGrades ? 'default' : 'primary'} aria-pressed={!showGrades} disabled={busy} onClick={() => setShowGrades(false)}>Position details</Button>
-        <Button size="sm" variant={showGrades ? 'primary' : 'default'} aria-pressed={showGrades} disabled={busy} onClick={() => setShowGrades(true)}>Job grades</Button>
+        <Button size="sm" variant={showGrades ? 'default' : 'primary'} aria-pressed={!showGrades} disabled={busy} onClick={() => setSection('details')}>Position details</Button>
+        <Button size="sm" variant={showGrades ? 'primary' : 'default'} aria-pressed={showGrades} disabled={busy} onClick={() => setSection('grades')}>Job grades</Button>
       </div>}
-      {showGrades ? <PositionGradeList positionId={position.id} canManage /> : <form id="position-form" className="form-grid" onSubmit={submit} noValidate>
+      {showGrades ? <PositionGradeList positionId={position.id} canManage startAdding={section === 'add-grade'} /> : <form id="position-form" className="form-grid" onSubmit={submit} noValidate>
         {error && <div className="form-error full" role="alert">{error}</div>}
-        <Field className="full" label="Position name" maxLength={POSITION_NAME_MAX} autoComplete="off" value={form.name} error={fields.name} onChange={set('name')} />
+        <div className="position-name-row full">
+          <Field label="Position name" maxLength={POSITION_NAME_MAX} autoComplete="off" value={form.name} error={fields.name} onChange={set('name')} />
+          <Button size="sm" disabled={!position || busy} onClick={() => setSection('add-grade')}>Add job grade</Button>
+        </div>
         <Field label="Monthly basic salary" inputMode="decimal" autoComplete="off" value={form.basic} error={fields.basic} onChange={set('basic')} />
         <Field label="Monthly allowance" inputMode="decimal" autoComplete="off" value={form.allowance} error={fields.allowance} onChange={set('allowance')} />
         <fieldset className="salary-profile-flags full"><legend>Tax &amp; pension</legend>

@@ -44,15 +44,15 @@ export default function PositionGrades({ position, canManage, onClose }) {
   </Modal>;
 }
 
-export function PositionGradeList({ positionId, canManage }) {
+export function PositionGradeList({ positionId, canManage, startAdding = false }) {
   const grades = useGrades(positionId);
-  const [editing, setEditing] = useState(null);
+  const [editing, setEditing] = useState(() => startAdding && canManage ? {} : null);
   return (
     <div className="stack">
       <div className="row between">
         <Field type="search" label="Search job grades" placeholder="Grade name" maxLength={100}
           value={grades.search} onChange={e => grades.setSearch(e.target.value)} />
-        {canManage && <Button size="sm" variant="primary" onClick={() => setEditing({})}>Add grade</Button>}
+        {canManage && !editing && <Button size="sm" variant="primary" onClick={() => setEditing({})}>Add grade</Button>}
       </div>
       {editing && <GradeForm key={editing.id ?? 'new'} grade={editing} path={grades.path}
         onClose={() => setEditing(null)} onSaved={() => { setEditing(null); grades.reload(); }} />}
