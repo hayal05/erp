@@ -47,7 +47,7 @@ test('department grants are effective in existing sessions and scope lists, coun
  const a=await leader.get('/api/attendance-records?view=today');assert.equal(a.status,200,JSON.stringify(a.body));assert.ok(a.body.items.every(x=>x.departmentId===depA));assert.ok(a.body.items.every(x=>x.canCorrect===false));
  const catalog=await leader.get('/api/reports');
  assert.equal(catalog.status,200);
- assert.deepEqual(catalog.body.items.map(report=>report.id),['daily-attendance','monthly-attendance']);
+ assert.deepEqual(catalog.body.items.map(report=>report.id),['daily-attendance','monthly-attendance','attendance-exceptions']);
  assert.deepEqual((await plain.get('/api/reports')).body.items,[]);
  const previewPath='/api/reports/daily-attendance/preview';
  const filters='?date='+companyDate()+'&departmentId='+depA;
@@ -118,6 +118,19 @@ test('department grants are effective in existing sessions and scope lists, coun
   assert.equal((await plain.get(path)).status,403);
  }
 
+ const range='?from='+companyDate()+'&to='+companyDate();
+ const exceptions='/api/reports/attendance-exceptions';
+ const absences=await leader.get(exceptions+'/preview'+range+'&kind=absent');
+ assert.equal(absences.status,200,JSON.stringify(absences.body));
+ assert.ok(absences.body.items.some(row=>row.id===recordA&&row.exception==='Absence'));
+ assert.ok(absences.body.items.every(row=>row.departmentName==='A'));
+ assert.equal((await leader.get(exceptions+'/preview'+range+'&departmentId='+depB)).body.total,0);
+ assert.equal((await leader.get(exceptions+'/preview?from=2026-01-02&to=2026-01-01')).status,400);
+ for(const format of ['xlsx','pdf','docx']){
+  assert.equal((await leader.get(exceptions+'/export.'+format+range)).status,200);
+  assert.equal((await plain.get(exceptions+'/export.'+format+range)).status,403);
+ }
+ assert.equal((await leader.get('/api/reports/attendance-corrections/preview'+range)).status,403);
  const lookup=await leader.get('/api/attendance-records/lookups');assert.equal(lookup.status,200);assert.ok(lookup.body.employees.every(e=>Number(e.departmentId)===depA));
  assert.equal((await leader.get('/api/retirement')).body.total,3);
  assert.equal((await leader.get(`/api/employees/${outside.id}/attachments?direction=incoming`)).status,404);
@@ -144,6 +157,22 @@ test('corrections and approval queues enforce record scope, independent reviewer
  assert.ok([403,404].includes((await outsider.post(`/api/change-requests/${pending.body.requestId}/approve`).send({})).status));
  const assignments=await admin.get(`/api/custom-access/employees/${reviewerId}/custom-grants?pageSize=1`);assert.equal(assignments.body.total,1);assert.deepEqual(assignments.body.items[0].departmentNames,['A']);
  const approved=await reviewer.post(`/api/change-requests/${pending.body.requestId}/approve`).send({});assert.equal(approved.status,200,JSON.stringify(approved.body));
+ const range='?from='+companyDate()+'&to='+companyDate();
+ const corrections='/api/reports/attendance-corrections';
+ const history=await reviewer.get(corrections+'/preview'+range);
+ assert.equal(history.status,200,JSON.stringify(history.body));
+ assert.equal(history.body.total,1);
+ assert.match(history.body.items[0].changes,/Status: absent to incomplete/);
+ assert.match(history.body.items[0].modified,/team.leader/);
+ assert.match(history.body.items[0].approved,/department.manager/);
+ assert.equal((await outsider.get(corrections+'/preview'+range)).body.total,0);
+ for(const format of ['xlsx','pdf']){
+  assert.equal((await reviewer.get(corrections+'/export.'+format+range)).status,200);
+  assert.equal((await plain.get(corrections+'/export.'+format+range)).status,403);
+ }
+ const missing=await reviewer.get('/api/reports/attendance-exceptions/preview'+range+'&kind=missingIn');
+ assert.ok(missing.body.items.some(row=>row.id===recordA&&row.exception.includes('Missing check-in')));
+
  const audit=await reviewer.get('/api/audit-history?area=attendance');assert.equal(audit.status,200,JSON.stringify(audit.body));assert.ok(audit.body.items.every(e=>e.recordId===String(recordA)));assert.ok(audit.body.summary.approved);
  assert.equal((await reviewer.get(`/api/audit-history/attendance_record/${recordB}`)).status,404);
 });
