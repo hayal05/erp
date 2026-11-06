@@ -9,6 +9,7 @@ import { attendanceListQuery, ATTENDANCE_STATUSES } from '../services/hrSchemas.
 import { permissionScope } from '../services/accessScope.js';
 import { audit } from '../services/audit.js';
 import { query } from '../db/pool.js';
+import { appraisalReportLookups, appraisalReports } from '../services/appraisalReports.js';
 import { communicationReports } from '../services/communicationReports.js';
 import { approvalAuditReports } from '../services/approvalAuditReports.js';
 import { accessReports } from '../services/accessReportDefinitions.js';
@@ -167,6 +168,7 @@ const reports = new Map([
   ...accessReports,
   ...approvalAuditReports,
   ...communicationReports,
+  ...appraisalReports,
 ]);
 
 function reportColumns(report, filters) {
@@ -212,6 +214,10 @@ router.get('/company-cost-lookups', requirePermission('company_costs.read'), wra
 
 router.get('/access-lookups', requirePermission('access.manage'), wrap(async (req, res) => {
   res.json(await employeeReportLookups(req.user, 'access.read'));
+}));
+
+router.get('/appraisal-lookups', requirePermission('appraisals.read'), wrap(async (req, res) => {
+  res.json(await appraisalReportLookups(req.user));
 }));
 
 const MAX_EXPORT_ROWS = 5000;

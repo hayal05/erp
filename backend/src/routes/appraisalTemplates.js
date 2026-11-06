@@ -11,8 +11,11 @@ import { likePattern, pageOffset, pageResult, pageSchema } from '../services/sql
 import { structureBody, structureResult } from '../services/appraisalStructure.js';
 import { templateTargets, toAppraisalTemplate } from '../services/appraisalTemplates.js';
 
+import publicationRoutes from './appraisalPublications.js';
+
 const router = Router();
 router.use(requirePermission('appraisals.configure'));
+router.use('/:id/publications', publicationRoutes);
 
 const scopes = Object.keys(templateTargets);
 const templateBody = {
@@ -45,7 +48,7 @@ router.get('/', validate(pageSchema, 'query'), wrap(async (req, res) => {
   const filters = req.query;
   const { rows: [result] } = await query(`
     WITH selected AS (
-      SELECT t.*, COALESCE(gd.name || ' · ' || gp.name || ' · ' || g.name,
+      SELECT t.*, (SELECT max(version) FROM appraisal_template_publications WHERE template_id=t.id) AS published_version, COALESCE(gd.name || ' · ' || gp.name || ' · ' || g.name,
         pd.name || ' · ' || p.name, d.name) AS target_name
       FROM appraisal_templates t
       LEFT JOIN departments d ON d.id=t.department_id
@@ -125,6 +128,10 @@ function saveTemplate(editing) {
 }
 router.delete('/:id', validate(idParams, 'params'), approvalWrap(async (req, res) => {
   await withTransaction(async db => {
+    const { rows: [draft] } = await db.query('SELECT id FROM appraisal_templates WHERE id=$1 FOR UPDATE', [req.params.id]);
+    if (!draft) throw new HttpError(404, 'Appraisal template not found', 'not_found');
+    const { rows: [published] } = await db.query('SELECT 1 FROM appraisal_template_publications WHERE template_id=$1 LIMIT 1', [req.params.id]);
+    if (published) throw new HttpError(409, 'Published templates are kept for appraisal history.', 'in_use');
     const { rows: [removed] } = await db.query('DELETE FROM appraisal_templates WHERE id=$1 RETURNING *', [req.params.id]);
     if (!removed) throw new HttpError(404, 'Appraisal template not found', 'not_found');
     const { id, name, scope, targetId } = toAppraisalTemplate(removed);

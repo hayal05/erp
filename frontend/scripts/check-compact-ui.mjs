@@ -61,6 +61,10 @@ try{
   await render('components/HrLayout.jsx');await render('components/Skeleton.jsx','default',{variant:'dashboard'});
  }
  assert.match(await render('pages/AppraisalTemplates.jsx'), />New template</);
+ assert.match(await render('pages/AppraisalCycles.jsx'), />New cycle</);
+ assert.match(await render('pages/AppraisalApprovals.jsx'), /Awaiting approval/);
+ assert.match(await render('pages/portal/MyAppraisals.jsx','default',{},'/portal/appraisals'), /Approved appraisal results/);
+ assert.match(await render('pages/AppraisalCycles.jsx','MyAppraisalAssignments'), /My appraisal assignments/);
  fixtures['/appraisals/templates/1/structure']={version:1,categories:[
   {id:'category-1',name:'Service',weight:10000,criteria:[{id:'criterion-1',name:'Quality',weight:5000}]},
  ]};
@@ -69,6 +73,18 @@ try{
   method:'lookup',cap:100,missing:'required',allowNotApplicable:false,belowScore:0,thresholds:[{minimum:0,score:75}],
  },onChange(){}});
  for(const label of ['Custom scoring table','Score cap','Missing input','Allow not applicable','Add threshold']) assert.ok(scoringMarkup.includes(label));
+ const publication=await render('pages/AppraisalPublications.jsx','default',{template:{id:1,name:'Sample template'},onClose(){},onSaved(){}});
+ assert.match(publication, /Publish draft/);
+ const completeCategories=[{id:'category-1',name:'Service',weight:10000,criteria:[{id:'criterion-1',name:'Quality',weight:10000}]}];
+ const scorePreview=await render('pages/AppraisalScorePreview.jsx','default',{categories:completeCategories,brackets:[{label:'Standard',min:0,max:10000}]});
+ for(const label of ['Score preview','Category score','Quality','Input required']) assert.ok(scorePreview.includes(label));
+ fixtures['/appraisals/reviews/1/1']={employee:'Example Employee',cycle:'Q4',dueOn:'2027-01-15',
+  template:{name:'Sample template',version:2,categories:completeCategories,brackets:[{label:'Standard',min:0,max:10000}]},
+  review:{version:0,inputs:{},comment:'',submittedAt:null,result:null},
+ };
+ const reviewerForm=await render('pages/AppraisalReview.jsx','default',{assignment:{cycleId:1,employeeId:1},onClose(){},onChanged(){}});
+ for(const label of ['Save draft','Submit appraisal','Overall comment','Quality','Input required']) assert.ok(reviewerForm.includes(label));
+
  for(const label of ['Add category','Add criterion','Weights incomplete','50.00%','Save draft','Add bracket','Mandatory criterion']) assert.ok(appraisalWeights.includes(label));
 
  const reportPicker=await render('pages/Reports.jsx');
@@ -80,6 +96,15 @@ try{
  assert.match(reportPreview, /<button[^>]*disabled=""[^>]*>Export<\/button>/);
  assert.ok(!reportPreview.includes('Export Excel'));
  assert.ok(!reportPreview.includes('Date period'));
+ fixtures['/reports/appraisal-lookups']={cycles:[{id:1,name:'Q4 review'}],ratings:[{id:'Standard',name:'Standard'}]};
+ const appraisalReport={...report,title:'Appraisal results',lookupPath:'/reports/appraisal-lookups',filters:[
+  {key:'cycleId',label:'Cycle',type:'select',lookup:'cycles',placeholder:'All cycles'},
+  {key:'rating',label:'Rating',type:'select',lookup:'ratings',placeholder:'All ratings'},
+ ]};
+ const appraisalReportPreview=await render('pages/Reports.jsx','Preview',{report:appraisalReport,today:fixtures['/reports'].today});
+ assert.match(appraisalReportPreview, /Q4 review/);
+ assert.match(appraisalReportPreview, /Standard/);
+
  const rangedReport={...report,filters:[
   {key:'from',label:'From date',type:'date',required:true},
   {key:'to',label:'To date',type:'date',required:true},
