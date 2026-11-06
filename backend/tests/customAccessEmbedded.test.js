@@ -284,6 +284,11 @@ const scopeStatus=(res,status=200)=>assert.equal(res.status,status,JSON.stringif
 async function scopedApprove(response){scopeStatus(response,202);const id=response.body.requestId;
  const inbox=await reviewer.get('/api/change-requests');scopeStatus(inbox);assert.ok(inbox.body.items.some(r=>r.id===id&&r.canReview),JSON.stringify(inbox.body));
  scopeStatus(await outsider.get(`/api/change-requests/${id}`),404);
+ const path='/api/reports/approvals-pending/preview';
+ const scopedReport=await reviewer.get(path);scopeStatus(scopedReport);
+ assert.ok(scopedReport.body.items.some(row=>Number(row.id)===id));
+ const outsideReport=await outsider.get(path);scopeStatus(outsideReport);
+ assert.ok(!outsideReport.body.items.some(row=>Number(row.id)===id));
  const result=await reviewer.post(`/api/change-requests/${id}/approve`).send({});scopeStatus(result);return result.body.applied?.body;
 }
 test('employee activities support department assignment with dependencies in existing sessions',async()=>{

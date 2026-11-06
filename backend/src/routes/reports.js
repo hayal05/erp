@@ -7,6 +7,9 @@ import { hasPermission } from '../services/permissions.js';
 import { config } from '../config.js';
 import { attendanceListQuery, ATTENDANCE_STATUSES } from '../services/hrSchemas.js';
 import { permissionScope } from '../services/accessScope.js';
+import { audit } from '../services/audit.js';
+import { query } from '../db/pool.js';
+import { approvalAuditReports } from '../services/approvalAuditReports.js';
 import { accessReports } from '../services/accessReportDefinitions.js';
 import { financeReports } from '../services/financeReportDefinitions.js';
 import { payrollReports } from '../services/payrollReportDefinitions.js';
@@ -161,6 +164,7 @@ const reports = new Map([
   ...payrollReports,
   ...financeReports,
   ...accessReports,
+  ...approvalAuditReports,
 ]);
 
 function reportColumns(report, filters) {
@@ -174,12 +178,14 @@ function metadata(id, { title, group, description, lookupPath, exports, filters,
   return { id, title, group, description, lookupPath, formats: Object.keys(exports), filters, columns };
 }
 
+const reportPermissions = report => report.permissions ?? [report.permission];
+
 const router = Router();
 router.use(noStore, requireAuth);
 
 router.get('/', (req, res) => {
   const items = [...reports]
-    .filter(([, report]) => hasPermission(req.user, report.permission) &&
+    .filter(([, report]) => reportPermissions(report).some(permission => hasPermission(req.user, permission)) &&
       (!report.companyWide || permissionScope(req.user, report.permission) === null) &&
       (!report.additionalPermission || hasPermission(req.user, report.additionalPermission)))
     .map(([id, report]) => metadata(id, report));
@@ -214,15 +220,19 @@ const contentTypes = {
 };
 
 for (const [id, report] of reports) {
-  const guards = [requirePermission(report.permission)];
-  if (report.additionalPermission) guards.push(requirePermission(report.additionalPermission));
-  if (report.companyWide) guards.push((req, _res, next) => {
+  const permissions = reportPermissions(report);
+  const guards = permissions.map(permission => [permission, requirePermission(permission)]);
+  const requireReportPermission = (req, res, next) =>
+    (guards.find(([permission]) => hasPermission(req.user, permission)) ?? guards[0])[1](req, res, next);
+  const reportGuards = [requireReportPermission];
+  if (report.additionalPermission) reportGuards.push(requirePermission(report.additionalPermission));
+  if (report.companyWide) reportGuards.push((req, _res, next) => {
     if (permissionScope(req.user, report.permission) !== null) {
       return next(new HttpError(403, 'This report requires All employees scope', 'forbidden'));
     }
     next();
   });
-  router.get(`/${id}/preview`, ...guards, validate(report.schema, 'query'),
+  router.get(`/${id}/preview`, ...reportGuards, validate(report.schema, 'query'),
     wrap(async (req, res) => {
       const result = await report.preview(req.user, req.query);
       const columns = reportColumns(report, req.query);
@@ -234,20 +244,27 @@ for (const [id, report] of reports) {
       res.json({ ...result, columns, items });
     }));
   for (const [format, render] of Object.entries(report.exports)) {
-    router.get(`/${id}/export.${format}`, ...guards, validate(report.schema, 'query'),
+    router.get(`/${id}/export.${format}`, ...reportGuards, validate(report.schema, 'query'),
       wrap(async (req, res) => {
         const result = await report.preview(req.user, { ...req.query, page: 1, pageSize: MAX_EXPORT_ROWS + 1 });
         if (result.total > MAX_EXPORT_ROWS || result.items.length > MAX_EXPORT_ROWS) {
           throw new HttpError(422, 'This report exceeds 5,000 rows. Narrow the filters and try again.', 'export_limit');
         }
         const { date, month, year, from, to } = req.query;
-        const period = from ? `${from} to ${to}` : undefined;
+        const period = from && to ? `${from} to ${to}` : from ? `From ${from}` : to ? `Through ${to}` : undefined;
         const asOf = date || month || year || period ? undefined : result.today ?? companyDate();
         const buffer = await render({
           title: report.title, company: config.company.name, date, month, year, period, asOf, group: report.group, layout: report.layout,
           columns: reportColumns(report, req.query), rows: result.items,
         });
-        res.attachment(`${id}-${date ?? month ?? year ?? (from ? `${from}-to-${to}` : asOf)}.${format}`);
+        const filters = Object.fromEntries(report.filters
+          .filter(({ key }) => req.query[key] !== undefined)
+          .map(({ key }) => [key, req.query[key]]));
+        await audit({ query }, {
+          actorId: req.user.id, action: 'report.export', entityType: 'report', entityId: id,
+          details: { report: id, format, filters, rowCount: result.items.length },
+        });
+        res.attachment(`${id}-${date ?? month ?? year ?? (from && to ? `${from}-to-${to}` : from ?? to ?? asOf)}.${format}`);
         res.type(contentTypes[format]).send(Buffer.from(buffer));
       }));
   }
