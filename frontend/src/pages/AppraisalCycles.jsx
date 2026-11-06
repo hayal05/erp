@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import AppraisalReview from './AppraisalReview.jsx';
 import { post, put } from '../api/client.js';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
@@ -165,6 +166,7 @@ function AssignmentChoice({ path, label, value, onChange, disabled }) {
 
 export function MyAppraisalAssignments() {
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState(null);
   const assignments = useResource('/appraisals/assignments', { page, pageSize: PAGE_SIZE });
   return <div className="stack">
     <Table caption="My appraisal assignments" rows={assignments.loading ? [] : assignments.data?.items} loading={assignments.loading}
@@ -172,7 +174,12 @@ export function MyAppraisalAssignments() {
         { key: 'employeeCode', header: 'Employee ID' }, { key: 'employee', header: 'Employee' },
         { key: 'cycle', header: 'Cycle' }, { key: 'dueOn', header: 'Deadline' },
         { key: 'templateName', header: 'Template', render: template },
+        { key: 'status', header: 'Status' },
+        { key: 'action', header: 'Action', render: row => <Button size="sm" onClick={() => setSelected(row)}>
+          {['Submitted','Approved'].includes(row.status) ? 'View' : 'Review'}
+        </Button> },
       ]} />
     <Pager page={page} pageSize={PAGE_SIZE} total={assignments.data?.total ?? 0} onPage={setPage} disabled={assignments.loading} />
+    {selected && <AppraisalReview key={selected.id} assignment={selected} onClose={() => setSelected(null)} onChanged={assignments.reload} />}
   </div>;
 }
