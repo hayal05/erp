@@ -58,15 +58,15 @@ function Preview({ report, today }) {
     preview.reload();
   }
 
-  async function download() {
-    setExporting(true);
+  async function download(format) {
+    setExporting(format);
     setExportError('');
     try {
-      const file = await getFile(`/reports/${report.id}/export.xlsx`, { query: submitted });
+      const file = await getFile(`/reports/${report.id}/export.${format}`, { query: submitted });
       const url = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${report.id}-${submitted.date}.xlsx`;
+      link.download = `${report.id}-${submitted.date}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -95,9 +95,9 @@ function Preview({ report, today }) {
           [filter.key]: e.target.value,
         }))} />)}
       <Button size="sm" type="submit" variant="primary" busy={preview.loading} disabled={exporting}>Preview</Button>
-      {report.formats.includes('xlsx') && <Button size="sm" busy={exporting}
-        disabled={!submitted || filtersChanged || preview.loading || !preview.data || Boolean(preview.error)}
-        onClick={download}>Export Excel</Button>}
+      {report.formats.map(format => <Button key={format} size="sm" busy={exporting === format}
+        disabled={Boolean(exporting || !submitted || filtersChanged || preview.loading || !preview.data || preview.error)}
+        onClick={() => download(format)}>Export {format === 'xlsx' ? 'Excel' : format.toUpperCase()}</Button>)}
     </form>
     {exportError && <p role="alert" className="form-error">{exportError}</p>}
     {submitted && <>

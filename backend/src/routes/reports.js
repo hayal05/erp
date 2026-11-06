@@ -6,6 +6,7 @@ import { validate, v } from '../middleware/validate.js';
 import { hasPermission } from '../services/permissions.js';
 import { config } from '../config.js';
 import { attendanceListQuery, ATTENDANCE_STATUSES } from '../services/hrSchemas.js';
+import { attendancePdf } from '../services/attendancePdf.js';
 import { attendanceWorkbook } from '../services/attendanceWorkbook.js';
 import { pageSchema } from '../services/sql.js';
 import { companyDate } from '../services/attendance.js';
@@ -16,7 +17,7 @@ const reports = new Map([
     title: 'Daily attendance register',
     group: 'Attendance',
     permission: 'attendance.read',
-    formats: ['xlsx'],
+    exports: { xlsx: attendanceWorkbook, pdf: attendancePdf },
     filters: [
       { key: 'date', label: 'Attendance date', type: 'date', required: true },
       { key: 'departmentId', label: 'Department', type: 'select', placeholder: 'All departments', lookup: 'departments' },
@@ -40,12 +41,11 @@ const reports = new Map([
     ],
     preview: (user, { date, ...filters }) =>
       readAttendanceRecords(user, { ...filters, from: date, to: date }),
-    workbook: attendanceWorkbook,
   }],
 ]);
 
-function metadata(id, { title, group, formats, filters, columns }) {
-  return { id, title, group, formats, filters, columns };
+function metadata(id, { title, group, exports, filters, columns }) {
+  return { id, title, group, formats: Object.keys(exports), filters, columns };
 }
 
 const router = Router();
@@ -59,6 +59,10 @@ router.get('/', (req, res) => {
 });
 
 const MAX_EXPORT_ROWS = 5000;
+const contentTypes = {
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pdf: 'application/pdf',
+};
 
 for (const [id, report] of reports) {
   router.get(`/${id}/preview`, requirePermission(report.permission), validate(report.schema, 'query'),
@@ -71,19 +75,19 @@ for (const [id, report] of reports) {
       }));
       res.json({ ...result, items });
     }));
-  if (report.formats.includes('xlsx')) {
-    router.get(`/${id}/export.xlsx`, requirePermission(report.permission), validate(report.schema, 'query'),
+  for (const [format, render] of Object.entries(report.exports)) {
+    router.get(`/${id}/export.${format}`, requirePermission(report.permission), validate(report.schema, 'query'),
       wrap(async (req, res) => {
         const result = await report.preview(req.user, { ...req.query, page: 1, pageSize: MAX_EXPORT_ROWS + 1 });
         if (result.total > MAX_EXPORT_ROWS || result.items.length > MAX_EXPORT_ROWS) {
           throw new HttpError(422, 'This report exceeds 5,000 rows. Narrow the filters and try again.', 'export_limit');
         }
-        const buffer = await report.workbook({
+        const buffer = await render({
           title: report.title, company: config.company.name, date: req.query.date,
           columns: report.columns, rows: result.items,
         });
-        res.attachment(`${id}-${req.query.date}.xlsx`);
-        res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').send(Buffer.from(buffer));
+        res.attachment(`${id}-${req.query.date}.${format}`);
+        res.type(contentTypes[format]).send(Buffer.from(buffer));
       }));
   }
 }

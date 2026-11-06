@@ -75,6 +75,20 @@ test('department grants are effective in existing sessions and scope lists, coun
  assert.equal((await readExport(outsideFilters)).getCell('D3').value,0);
  assert.equal((await plain.get(exportPath+filters)).status,403);
  assert.equal((await leader.get(exportPath+filters+'&status=invalid')).status,400);
+ const pdfPath='/api/reports/daily-attendance/export.pdf';
+ const pdf=await leader.get(pdfPath+filters).buffer(true).parse((stream,done)=>{
+  const chunks=[];
+  stream.on('data',chunk=>chunks.push(chunk));
+  stream.on('end',()=>done(null,Buffer.concat(chunks)));
+  stream.on('error',done);
+ });
+ assert.equal(pdf.status,200);
+ assert.match(pdf.headers['content-type'],/^application\/pdf/);
+ assert.match(pdf.headers['content-disposition'],/\.pdf/);
+ assert.equal(pdf.body.subarray(0,5).toString(),'%PDF-');
+ assert.equal((await plain.get(pdfPath+filters)).status,403);
+ assert.equal((await leader.get(pdfPath+filters+'&status=invalid')).status,400);
+
  assert.equal(preview.status,200,JSON.stringify(preview.body));
  assert.ok(preview.body.items.some(row=>row.id===recordA));
  assert.ok(preview.body.items.every(row=>row.departmentName==='A'));
