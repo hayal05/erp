@@ -9,6 +9,7 @@ import { attendanceListQuery, ATTENDANCE_STATUSES } from '../services/hrSchemas.
 import { permissionScope } from '../services/accessScope.js';
 import { audit } from '../services/audit.js';
 import { query } from '../db/pool.js';
+import { communicationReports } from '../services/communicationReports.js';
 import { approvalAuditReports } from '../services/approvalAuditReports.js';
 import { accessReports } from '../services/accessReportDefinitions.js';
 import { financeReports } from '../services/financeReportDefinitions.js';
@@ -165,6 +166,7 @@ const reports = new Map([
   ...financeReports,
   ...accessReports,
   ...approvalAuditReports,
+  ...communicationReports,
 ]);
 
 function reportColumns(report, filters) {
