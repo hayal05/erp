@@ -3,9 +3,16 @@ import { getFile } from '../api/client.js';
 import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
 import Table, { Pager } from '../components/Table.jsx';
+import { reportPeriodRange } from './reportPeriod.js';
 import { ResourceState, useResource } from './payrollResource.jsx';
 
 const PAGE_SIZE = 20;
+const periods = [
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'custom', label: 'Custom range' },
+];
+const isRangeDate = filter => filter.key === 'from' || filter.key === 'to';
 const formatLabels = { xlsx: 'Excel', pdf: 'PDF', docx: 'Word' };
 
 export default function Reports() {
@@ -43,6 +50,9 @@ export default function Reports() {
 function Preview({ report, today }) {
   const [filters, setFilters] = useState(() => Object.fromEntries(
     report.filters.map(filter => [filter.key, filter.default ?? (filter.type === 'date' ? today : filter.type === 'month' ? today.slice(0, 7) : filter.key === 'year' ? today.slice(0, 4) : '')])));
+  const hasRange = report.filters.some(filter => filter.key === 'from') && report.filters.some(filter => filter.key === 'to');
+  const [period, setPeriod] = useState('custom');
+  const [periodAnchor, setPeriodAnchor] = useState(today);
   const [submitted, setSubmitted] = useState(null);
   const [page, setPage] = useState(1);
   const [format, setFormat] = useState(report.formats[0]);
@@ -58,6 +68,16 @@ function Preview({ report, today }) {
   };
   const preview = useResource(submitted ? `/reports/${report.id}/preview` : null,
     { ...submitted, page, pageSize: PAGE_SIZE });
+
+  function changePeriod(next) {
+    setPeriod(next);
+    if (next !== 'custom') updatePeriodAnchor(next, next === 'monthly' ? today.slice(0, 7) : today);
+  }
+
+  function updatePeriodAnchor(mode, anchor) {
+    setPeriodAnchor(anchor);
+    setFilters(current => ({ ...current, ...reportPeriodRange(mode, anchor) }));
+  }
 
   function run(event) {
     event.preventDefault();
@@ -94,12 +114,19 @@ function Preview({ report, today }) {
   return <section className="stack reports-preview" aria-label={report.title}>
     {lookups.error && <ResourceState error={lookups.error} onRetry={lookups.reload} />}
     <form className="reports-toolbar" onSubmit={run}>
-      <div className="reports-filters">{report.filters.map(filter => <Field key={filter.key} label={filter.label} hideLabel={filter.type === 'select' && Boolean(filter.placeholder)}
+      <div className="reports-filters">
+        {hasRange && <Field as="select" label="Date period" options={periods} value={period}
+          onChange={event => changePeriod(event.target.value)} />}
+        {hasRange && period !== 'custom' && <Field key={period} label={period === 'weekly' ? 'Week of' : 'Month'}
+          type={period === 'weekly' ? 'date' : 'month'} required value={periodAnchor}
+          onChange={event => updatePeriodAnchor(period, event.target.value)} />}
+        {report.filters.filter(filter => !hasRange || period === 'custom' || !isRangeDate(filter)).map(filter => <Field key={filter.key} label={filter.label} hideLabel={filter.type === 'select' && Boolean(filter.placeholder)}
         as={filter.type === 'select' ? 'select' : undefined}
         type={filter.type === 'select' ? undefined : filter.type}
         placeholder={filter.placeholder} options={filter.options ?? lookupOptions[filter.lookup]}
         disabled={Boolean(filter.lookup && lookups.loading)}
-        min={filter.min} max={filter.max}
+        min={filter.key === 'to' ? filters.from || filter.min : filter.min}
+        max={filter.key === 'from' ? filters.to || filter.max : filter.max}
         required={filter.required} value={filters[filter.key]}
         onChange={e => setFilters(current => ({
           ...current,
