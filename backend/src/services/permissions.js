@@ -11,16 +11,18 @@ export const PERMISSIONS = Object.freeze([
   'announcements.read', 'announcements.manage', 'payroll.read', 'payroll.prepare',
   'payroll.approve', 'payroll.pay', 'payroll_settings.read', 'payroll_settings.manage',
   'deductions.read', 'deductions.manage', 'company_costs.read', 'settlements.manage',
+  'appraisals.read', 'appraisals.configure', 'appraisals.review', 'appraisals.approve',
   'approvals.read', 'access.manage', 'audit.hr', 'audit.finance', 'audit.access',
 ]);
 const employeePermissions = Object.freeze(['self.profile', 'self.attendance', 'self.leave', 'self.payslips', 'announcements.read', 'vacancies.read']);
-const sharedManagementReads=['vacancies.read','vacancies.admin_read','dashboard.read','organization.read','attendance.qr.read','announcements.admin_read','company_costs.read','settlements.read','access.read'];
+const sharedManagementReads=['vacancies.read','vacancies.admin_read','dashboard.read','organization.read','attendance.qr.read','announcements.admin_read','company_costs.read','settlements.read','access.read','appraisals.read'];
 const hrPermissions = Object.freeze([
   'attendance.qr.lock','changes.hr.approve',...sharedManagementReads, 'vacancies.manage', 'vacancies.review',
   'employees.read', 'employees.manage', 'organization.manage', 'salary_profiles.manage',
   'attendance.read', 'attendance.manage', 'attendance.qr', 'leave.read', 'leave.manage',
   'announcements.read', 'announcements.manage', 'payroll.read', 'payroll.prepare',
   'payroll_settings.read', 'deductions.read', 'audit.hr', 'approvals.read',
+  'appraisals.configure', 'appraisals.review', 'appraisals.approve',
 ]);
 const financePermissions = Object.freeze([
   'changes.finance.approve',...sharedManagementReads,

@@ -46,7 +46,7 @@ try{
  }
  for(const roles of [['admin'],['hr'],['finance'],[]]){
   const user={...person,role:'employee',accessRoles:roles};user.permissions=permissionsFor(user);globalThis.__compactReview.user=user;
-  for(const file of ['Retirement','Dashboard','WorkspaceHome','Employees','Departments','DepartmentDetail','Attendance','QrAttendance','Leave','Payroll','CompanyCosts','PayrollSettings','Settlements','Approvals','AccessManagement','Announcements','Vacancies','Settings','Login','ChangePassword'])await render(`pages/${file}.jsx`);
+  for(const file of ['Retirement','Dashboard','PerformanceAppraisal','WorkspaceHome','Employees','Departments','DepartmentDetail','Attendance','QrAttendance','Leave','Payroll','CompanyCosts','PayrollSettings','Settlements','Approvals','AccessManagement','Announcements','Vacancies','Settings','Login','ChangePassword'])await render(`pages/${file}.jsx`);
   for(const file of ['Profile','History','Leave','Payslips','Scan'])await render(`pages/portal/${file}.jsx`,'default',{},'/portal');
   await render('pages/Vacancies.jsx','default',{employee:true},'/portal/vacancies');
   const postings=await render('pages/Vacancies.jsx');

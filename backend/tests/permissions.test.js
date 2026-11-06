@@ -76,3 +76,13 @@ test('internal vacancies share posting visibility while keeping recruitment revi
  for(const p of ['vacancies.manage','vacancies.review']){assert.equal(hasPermission(person('hr'),p),true);assert.equal(hasPermission(person('admin'),p),true);assert.equal(hasPermission(person('finance'),p),false);assert.equal(hasPermission(person(),p),false);}
  assert.equal(hasPermission(person(),'vacancies.read'),true);assert.equal(hasPermission(person(),'vacancies.admin_read'),false);assert.equal(hasPermission(person('finance'),'vacancies.admin_read'),true);
 });
+
+test('appraisals follow shared read access with HR and Admin managing the workflow',()=>{
+ for(const role of ['admin','hr','finance'])assert.ok(hasPermission(person(role),'appraisals.read'));
+ assert.equal(hasPermission(person(),'appraisals.read'),false);
+ for(const permission of ['appraisals.configure','appraisals.review','appraisals.approve']){
+  assert.ok(hasPermission(person('hr'),permission));
+  assert.ok(hasPermission(person('admin'),permission));
+  assert.equal(hasPermission(person('finance'),permission),false);
+ }
+});
