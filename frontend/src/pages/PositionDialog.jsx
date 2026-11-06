@@ -4,12 +4,14 @@ import Button from '../components/Button.jsx';
 import Field from '../components/Field.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { patch, post } from '../api/client.js';
+import { PositionGradeList } from './PositionGrades.jsx';
 import { saveErrorView } from './departmentView.js';
 import { EMPTY_POSITION, POSITION_NAME_MAX, buildPosition, monthlyTotal, positionChanged, positionForm, positionServerFields, validatePosition } from './positionForm.js';
 
 // Add (position = null) or edit one position of a department. Mount with a `key` so the form resets each time it opens.
 export default function PositionDialog({ departmentId, position, onClose, onSaved }) {
   const toast = useToast();
+  const [showGrades, setShowGrades] = useState(false);
   const [form, setForm] = useState(position ? positionForm(position) : EMPTY_POSITION);
   const [fields, setFields] = useState({});
   const [error, setError] = useState('');
@@ -42,11 +44,15 @@ export default function PositionDialog({ departmentId, position, onClose, onSave
 
   return (
     <Modal open wide title={position ? 'Edit position' : 'Add position'} onClose={() => !busy && onClose()}
-      footer={<>
+      footer={showGrades ? <Button onClick={onClose}>Close</Button> : <>
         <Button onClick={onClose} disabled={busy}>Cancel</Button>
         <Button variant="primary" type="submit" form="position-form" busy={busy}>{position ? 'Save' : 'Add position'}</Button>
       </>}>
-      <form id="position-form" className="form-grid" onSubmit={submit} noValidate>
+      {position && <div className="row" role="group" aria-label="Position sections">
+        <Button size="sm" variant={showGrades ? 'default' : 'primary'} aria-pressed={!showGrades} disabled={busy} onClick={() => setShowGrades(false)}>Position details</Button>
+        <Button size="sm" variant={showGrades ? 'primary' : 'default'} aria-pressed={showGrades} disabled={busy} onClick={() => setShowGrades(true)}>Job grades</Button>
+      </div>}
+      {showGrades ? <PositionGradeList positionId={position.id} canManage /> : <form id="position-form" className="form-grid" onSubmit={submit} noValidate>
         {error && <div className="form-error full" role="alert">{error}</div>}
         <Field className="full" label="Position name" maxLength={POSITION_NAME_MAX} autoComplete="off" value={form.name} error={fields.name} onChange={set('name')} />
         <Field label="Monthly basic salary" inputMode="decimal" autoComplete="off" value={form.basic} error={fields.basic} onChange={set('basic')} />
@@ -59,7 +65,8 @@ export default function PositionDialog({ departmentId, position, onClose, onSave
         </fieldset>
         {total && <div className="position-total full" aria-live="polite"><span>Monthly total</span><strong>{total}</strong></div>}
         <small className="muted full">Existing salaries stay unchanged. Renaming updates job titles.</small>
-      </form>
+        {!position && <small className="muted full">Save the position first to add job grades.</small>}
+      </form>}
     </Modal>
   );
 }

@@ -38,10 +38,16 @@ export function JobGradePicker({ positionId, value, current, onChange, disabled,
 }
 
 export default function PositionGrades({ position, canManage, onClose }) {
-  const grades = useGrades(position.id);
-  const [editing, setEditing] = useState(null);
   return <Modal open wide title={`Job grades · ${position.name}`} onClose={onClose}
     footer={<Button onClick={onClose}>Close</Button>}>
+    <PositionGradeList positionId={position.id} canManage={canManage} />
+  </Modal>;
+}
+
+export function PositionGradeList({ positionId, canManage }) {
+  const grades = useGrades(positionId);
+  const [editing, setEditing] = useState(null);
+  return (
     <div className="stack">
       <div className="row between">
         <Field type="search" label="Search job grades" placeholder="Grade name" maxLength={100}
@@ -61,7 +67,7 @@ export default function PositionGrades({ position, canManage, onClose }) {
       {(grades.data?.total > PAGE_SIZE || grades.page > 1) && <Pager page={grades.page} pageSize={PAGE_SIZE}
         total={grades.data?.total ?? 0} onPage={grades.setPage} disabled={grades.loading} />}
     </div>
-  </Modal>;
+  );
 }
 
 function GradeForm({ grade, path, onSaved, onClose }) {
