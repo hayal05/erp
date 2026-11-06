@@ -70,9 +70,9 @@ export function PositionGradeList({ positionId, canManage, startAdding = false }
   );
 }
 
-function GradeForm({ grade, path, onSaved, onClose }) {
+export function GradeForm({ grade, path, onSaved, onClose, onStage }) {
   const toast = useToast();
-  const [form, setForm] = useState(() => grade.id ? positionForm({ ...EMPTY_POSITION, ...grade }) : { ...EMPTY_POSITION });
+  const [form, setForm] = useState(() => grade.name ? positionForm({ ...EMPTY_POSITION, ...grade }) : { ...EMPTY_POSITION });
   const [fields, setFields] = useState({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -86,8 +86,12 @@ function GradeForm({ grade, path, onSaved, onClose }) {
     setFields(problems);
     setError('');
     if (Object.keys(problems).length) return;
-    setBusy(true);
     const { name, basicMinor, allowanceMinor } = buildPosition(form);
+    if (onStage) {
+      onStage({ name, basicMinor, allowanceMinor });
+      return;
+    }
+    setBusy(true);
     try {
       if (grade.id) await patch(`${path}/${grade.id}`, { name, basicMinor, allowanceMinor });
       else await post(path, { name, basicMinor, allowanceMinor });
