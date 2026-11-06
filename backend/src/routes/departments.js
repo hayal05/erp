@@ -90,6 +90,7 @@ router.delete('/:id', validate(idParams, 'params'), wrap(async (req, res) => {
     try {
       await db.query('DELETE FROM departments WHERE id = $1', [id]);
     } catch (err) {
+      if (isFkViolation(err) && err.constraint?.startsWith('appraisal_templates')) throw new HttpError(409, 'Department is used by an appraisal template.', 'in_use');
       if (isFkViolation(err)) throw new HttpError(409, 'Department still has employees. Move them first.', 'in_use');
       throw err;
     }
