@@ -95,3 +95,35 @@ test('months paginate and outstanding currency summaries use saved payroll snaps
  await q('UPDATE payroll_settings SET employee_pension_rate=0,company_pension_rate=0');
  assert.equal((await hr.get(`/api/settlements/${first.id}`)).body.pensionBalanceMinor,52500);
 });
+
+test('finance reports reconcile paid payroll and recorded remittances', async () => {
+ const report = (id, month = '2026-10', extra = '') => `/api/reports/${id}/preview?month=${month}${extra}`;
+ await period('2026-09', 'approved');
+ for (const id of ['employer-cost-summary', 'employer-cost-detail', 'settlement-balances', 'settlement-payments']) {
+  assert.equal((await hr.get(report(id, '2026-09'))).body.total, 0, id);
+  assert.equal((await employee.get(report(id))).status, 403, id);
+ }
+ const p = await period();
+ const summary = (await hr.get(report('employer-cost-summary'))).body.items[0];
+ const {items: details} = (await hr.get(report('employer-cost-detail'))).body;
+ assert.equal(summary.employeeCount, 2);
+ for (const key of ['gross', 'salaryPaid', 'companyPension', 'employerCost']) {
+  assert.equal(Math.round(summary[key] * 100), details.reduce((sum, row) => sum + Math.round(row[key] * 100), 0));
+ }
+ const url = `/api/settlements/${p.id}/payments`;
+ assert.equal((await hr.post(url).send(payment('income_tax', 10000))).status, 201);
+ assert.equal((await hr.post(url).send(payment('pension', 5000))).status, 201);
+ const [balance] = (await hr.get(report('settlement-balances'))).body.items;
+ assert.equal(balance.incomeTaxBalance, 125);
+ assert.equal(balance.pensionBalance, 475);
+ assert.equal(balance.companyPension, summary.companyPension);
+ const history = await hr.get(report('settlement-payments', '2026-10', '&kind=pension'));
+ assert.equal(history.body.total, 1);
+ assert.equal(history.body.items[0].amount, 50);
+ assert.equal(history.body.items[0].reference, 'BANK-REF-123');
+ for (const format of ['xlsx', 'pdf']) {
+  const path = `/api/reports/settlement-balances/export.${format}?month=2026-10`;
+  assert.equal((await hr.get(path)).status, 200);
+  assert.equal((await employee.get(path)).status, 403);
+ }
+});
