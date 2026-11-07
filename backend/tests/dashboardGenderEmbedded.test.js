@@ -14,6 +14,7 @@ after(()=>db.close());
 test('empty dashboard returns zero counts and percentages',async()=>{
  const d=await loadDashboard(db,{now});
  assert.equal(d.stats.totalEmployees,0);
+ assert.deepEqual(d.employeeDepartments,[]);
  assert.deepEqual(d.employeeGender,{male:{count:0,percentage:0},female:{count:0,percentage:0},unspecified:{count:0,percentage:0}});
 });
 test('gender share includes inactive and future employees like the total, preserves missing values and updates on reload',async()=>{
@@ -27,4 +28,22 @@ test('gender share includes inactive and future employees like the total, preser
  assert.deepEqual(d.employeeGender,{male:{count:1,percentage:33.3},female:{count:1,percentage:33.3},unspecified:{count:1,percentage:33.3}});
  await db.query("UPDATE employees SET gender='male' WHERE employee_code='G-3'");
  assert.deepEqual((await loadDashboard(db,{now})).employeeGender,{male:{count:2,percentage:66.7},female:{count:1,percentage:33.3},unspecified:{count:0,percentage:0}});
+});
+
+test('department chart totals match the full employee scope, including unassigned and inactive employees',async()=>{
+ const depA=(await db.query("INSERT INTO departments(name) VALUES('Chart A') RETURNING id")).rows[0].id;
+ const depB=(await db.query("INSERT INTO departments(name) VALUES('Chart B') RETURNING id")).rows[0].id;
+ await db.query("UPDATE employees SET department_id=$1 WHERE employee_code IN ('G-1','G-2')",[depA]);
+ await db.query("UPDATE employees SET department_id=$1 WHERE employee_code='G-3'",[depB]);
+ const all=await loadDashboard(db,{now});
+ assert.deepEqual(all.employeeDepartments.map(d=>[d.name,d.count]),[['Chart A',2],['Chart B',1]]);
+ assert.equal(all.employeeDepartments.reduce((n,d)=>n+d.count,0),all.stats.totalEmployees);
+ const user={accessRoles:[],customGrants:[{permissions:['dashboard.read'],scopeType:'departments',departmentIds:[Number(depA)],employeeIds:[]}]};
+ const scoped=await loadDashboard(db,{now,user});
+ assert.deepEqual(scoped.employeeDepartments.map(d=>[d.name,d.count]),[['Chart A',2]]);
+ assert.equal(scoped.stats.totalEmployees,2);
+ assert.equal(scoped.employeeGender.male.count,1);
+ assert.equal(scoped.employeeGender.female.count,1);
+ await db.query("UPDATE employees SET department_id=NULL WHERE employee_code='G-3'");
+ assert.deepEqual((await loadDashboard(db,{now})).employeeDepartments.map(d=>[d.name,d.count]),[['Chart A',2],['Unassigned',1]]);
 });

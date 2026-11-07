@@ -214,6 +214,10 @@ try{
  assert.ok(legacyGender.includes('Unspecified')&&legacyGender.includes('(50%)'),'Missing gender records hidden');
  const emptyGender=await genderDashboard({male:{count:0,percentage:0},female:{count:0,percentage:0},unspecified:{count:0,percentage:0}},0);
  assert.ok(emptyGender.includes('(0%)')&&!/NaN|Infinity/.test(emptyGender),'Empty employee percentages invalid');
+ const chartMarkup=await render('pages/Dashboard.jsx','DashboardContent',{data:{...fixtures['/dashboard'],employeeDepartments:[{id:1,name:'Operations',count:8},{id:null,name:'Unassigned',count:2}]}});
+ for(const value of ['Gender share','role="img"','Employees by department','Department headcount','Operations','Unassigned','width:100%','width:25%'])assert.ok(chartMarkup.includes(value),`Dashboard charts lost ${value}`);
+ assert.ok(!/NaN|Infinity/.test(emptyGender),'Empty chart has invalid geometry');
+ assert.ok(emptyGender.includes('No employees'),'Empty department chart missing');
  const skeleton=await render('components/Skeleton.jsx','default',{variant:'dashboard'});
  assert.ok(skeleton.includes('role="status"')&&skeleton.includes('aria-hidden="true"'),'Skeleton announcements/decorations lost');
  const field=await render('components/Field.jsx','default',{label:'Employee search',type:'search',placeholder:'Name or ID',error:'Example error'});
