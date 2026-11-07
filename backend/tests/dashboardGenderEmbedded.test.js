@@ -37,13 +37,17 @@ test('department chart totals match the full employee scope, including unassigne
  await db.query("UPDATE employees SET department_id=$1 WHERE employee_code='G-3'",[depB]);
  const all=await loadDashboard(db,{now});
  assert.deepEqual(all.employeeDepartments.map(d=>[d.name,d.count]),[['Chart A',2],['Chart B',1]]);
+ assert.deepEqual(all.employeeDepartments.map(d=>[d.male,d.female,d.unspecified]),[[1,1,0],[1,0,0]]);
  assert.equal(all.employeeDepartments.reduce((n,d)=>n+d.count,0),all.stats.totalEmployees);
  const user={accessRoles:[],customGrants:[{permissions:['dashboard.read'],scopeType:'departments',departmentIds:[Number(depA)],employeeIds:[]}]};
  const scoped=await loadDashboard(db,{now,user});
  assert.deepEqual(scoped.employeeDepartments.map(d=>[d.name,d.count]),[['Chart A',2]]);
+ assert.deepEqual(scoped.employeeDepartments.map(d=>[d.male,d.female,d.unspecified]),[[1,1,0]]);
  assert.equal(scoped.stats.totalEmployees,2);
  assert.equal(scoped.employeeGender.male.count,1);
  assert.equal(scoped.employeeGender.female.count,1);
+ await db.query("UPDATE employees SET gender=NULL WHERE employee_code='G-3'");
  await db.query("UPDATE employees SET department_id=NULL WHERE employee_code='G-3'");
  assert.deepEqual((await loadDashboard(db,{now})).employeeDepartments.map(d=>[d.name,d.count]),[['Chart A',2],['Unassigned',1]]);
+ assert.equal((await loadDashboard(db,{now})).employeeDepartments.find(d=>d.name==='Unassigned').unspecified,1);
 });

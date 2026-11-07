@@ -9,7 +9,9 @@ export async function loadDashboard(db,{now=null,user=null}={}){
   SELECT count(*)::int AS total_employees,count(*) FILTER(WHERE gender='male')::int AS male,
    count(*) FILTER(WHERE gender='female')::int AS female,count(*) FILTER(WHERE gender IS NULL)::int AS unspecified FROM employees e WHERE ${scope}
  ), department_totals AS (
-  SELECT e.department_id,d.name,count(*)::int AS count FROM employees e LEFT JOIN departments d ON d.id=e.department_id
+  SELECT e.department_id,d.name,count(*)::int AS count,
+   count(*) FILTER(WHERE e.gender='male')::int AS male,count(*) FILTER(WHERE e.gender='female')::int AS female,
+   count(*) FILTER(WHERE e.gender IS NULL)::int AS unspecified FROM employees e LEFT JOIN departments d ON d.id=e.department_id
   WHERE ${scope} GROUP BY e.department_id,d.name
  ), retirement_dates AS (
   SELECT s.retirement_age,(e.date_of_birth+make_interval(years=>s.retirement_age))::date AS retirement_date
@@ -27,7 +29,7 @@ export async function loadDashboard(db,{now=null,user=null}={}){
  SELECT (SELECT retirement_age FROM retirement_totals) AS retirement_age,
   (SELECT nearing FROM retirement_totals) AS retirement_nearing,(SELECT passed FROM retirement_totals) AS retirement_passed,
   (SELECT total_employees FROM employee_totals) AS total_employees,
-  COALESCE((SELECT jsonb_agg(jsonb_build_object('id',department_id,'name',COALESCE(name,'Unassigned'),'count',count)
+  COALESCE((SELECT jsonb_agg(jsonb_build_object('id',department_id,'name',COALESCE(name,'Unassigned'),'count',count,'male',male,'female',female,'unspecified',unspecified)
    ORDER BY count DESC,name NULLS LAST,department_id) FROM department_totals),'[]'::jsonb) AS department_counts,
   (SELECT male FROM employee_totals) AS male,(SELECT female FROM employee_totals) AS female,
   (SELECT unspecified FROM employee_totals) AS unspecified,
