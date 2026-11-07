@@ -942,3 +942,23 @@ body.modal-open .hr-shell > .content, body.modal-open .hr-shell > .sidebar { ove
 }
 
 .modal.wide:has(> .access-details) { width: min(100%, 680px); }
+
+/* Compact dashboard charts; department rows scroll within the card. */
+.dashboard-charts { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.5fr); gap: var(--space-sm); }
+.dashboard-chart { display: flex; flex-direction: column; gap: var(--space-sm); }
+.dashboard-donut-body { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-md); }
+.dashboard-donut { width: 160px; height: 160px; flex: 0 0 160px; }
+.dashboard-donut-total { fill: var(--text); font-size: 24px; font-weight: 700; }
+.dashboard-donut-label { fill: var(--muted); font-size: 12px; }
+.dashboard-donut-body .dashboard-gender { display: grid; gap: 8px; flex: 1; }
+.dashboard-donut-body .dashboard-gender > div { justify-content: space-between; }
+.dashboard-chart-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.dashboard-bars { max-height: 184px; overflow-y: auto; scrollbar-gutter: stable; }
+.dashboard-bars dl { display: grid; gap: 10px; margin: 0; padding: 4px 4px 4px 0; }
+.dashboard-bar-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,2fr); align-items: center; gap: 10px; font-size: .8rem; }
+.dashboard-bar-row dt { overflow-wrap: anywhere; }
+.dashboard-bar-row dd { display: flex; align-items: center; gap: 8px; margin: 0; }
+.dashboard-bar-row strong { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+.dashboard-bar-track { flex: 1; height: 14px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.dashboard-bar-track > span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+@media (max-width: 800px) { .dashboard-charts { grid-template-columns: minmax(0,1fr); } }
