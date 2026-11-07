@@ -41,9 +41,9 @@ function DashboardCharts({gender,departments,total}){
   .map(([key,label,color])=>({key,label,color,count:gender?.[key]?.count??0,percentage:gender?.[key]?.percentage??0}))
   .filter(s=>s.key!=='unspecified'||s.count>0);
  let offset=0;
- const max=Math.max(1,...departments.map(d=>d.count));
+ const max=Math.max(1,...departments.flatMap(d=>[d.male??0,d.female??0]));
  const chartWidth=Math.max(360,departments.length*80+40),barSpace=(chartWidth-40)/Math.max(1,departments.length);
- const departmentGenders=[['male','Male','var(--accent)'],['female','Female','var(--ok)'],['unspecified','Unspecified','var(--muted)']].filter(([key])=>key!=='unspecified'||departments.some(d=>d.unspecified>0));
+ const departmentGenders=[['male','Male','var(--accent)'],['female','Female','var(--ok)']];
  return <div className="dashboard-charts">
   <section className="card dashboard-chart"><h2>Gender share</h2><div className="dashboard-donut-body">
    <svg className="dashboard-donut" viewBox="0 0 160 160" role="img" aria-label={`Gender share · ${total} employees`}>
@@ -59,14 +59,16 @@ function DashboardCharts({gender,departments,total}){
    {departments.length?<div className="dashboard-bars" tabIndex="0" role="region" aria-label="Department headcount by gender">
     <svg width={chartWidth} height="184" viewBox={`0 0 ${chartWidth} 184`} role="img" aria-label="Employees by department and gender">
      <title>Department gender mix</title>
-     <path d={`M36 16V142H${chartWidth}`} fill="none" stroke="var(--border)"/>
-     <path d={`M36 16H${chartWidth}`} fill="none" stroke="var(--border)" strokeDasharray="3 3"/>
-     <text x="30" y="20" textAnchor="end" className="dashboard-axis-label">{max}</text><text x="30" y="145" textAnchor="end" className="dashboard-axis-label">0</text>
-     {departments.map((d,i)=>{const x=40+barSpace*(i+.5),height=d.count/max*120;let bottom=142;
-      const description=`${d.name}: ${d.count} employees. ${departmentGenders.map(([key,label])=>`${label}: ${d[key]??0} (${d.count?Math.round((d[key]??0)/d.count*1000)/10:0}%)`).join(', ')}`;
+     <path d={`M36 22V142H${chartWidth}`} fill="none" stroke="var(--border)"/>
+     <path d={`M36 22H${chartWidth}`} fill="none" stroke="var(--border)" strokeDasharray="3 3"/>
+     <text x="30" y="26" textAnchor="end" className="dashboard-axis-label">{max}</text><text x="30" y="145" textAnchor="end" className="dashboard-axis-label">0</text>
+     {departments.map((d,i)=>{const x=40+barSpace*(i+.5);
+      const description=`${d.name}: ${d.count} employees. ${departmentGenders.map(([key,label])=>`${label}: ${d[key]??0} (${d.count?Math.round((d[key]??0)/d.count*1000)/10:0}%)`).join(', ')}${d.unspecified?`, Unspecified: ${d.unspecified}`:''}`;
       return <g key={d.id??'unassigned'} tabIndex="0" role="img" aria-label={description}><title>{description}</title>
-       {departmentGenders.map(([key,,color])=>{const h=(d[key]??0)/max*120;bottom-=h;return h>0?<rect key={key} x={x-18} y={bottom} width="36" height={h} fill={color}/>:null;})}
-       <text x={x} y={142-height-5} textAnchor="middle" className="dashboard-bar-total">{d.count}</text>
+       {departmentGenders.map(([key,label,color],index)=>{const count=d[key]??0,h=count/max*120,center=x+(index-.5)*20;return <g key={key}>
+        {h>0&&<rect x={center-7} y={142-h} width="14" height={h} fill={color}><title>{`${label}: ${count}`}</title></rect>}
+        <text x={center} y={142-h-5} textAnchor="middle" className="dashboard-bar-total">{count}</text>
+       </g>;})}
        <text x={x} y="161" textAnchor="middle" className="dashboard-axis-label">{d.name.length>11?`${d.name.slice(0,10)}…`:d.name}</text>
       </g>;
      })}
