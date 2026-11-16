@@ -1,69 +1,103 @@
 import { createRequire } from 'node:module';
 import PDFDocument from 'pdfkit';
+import { reportPeriod } from './reportExportOverview.js';
 
 const require = createRequire(import.meta.url);
 const font = require.resolve('@expo-google-fonts/noto-sans-ethiopic/400Regular/NotoSansEthiopic_400Regular.ttf');
 const MARGIN = 36;
-const DAILY_WIDTHS = [73, 144, 118, 58, 58, 72];
 const PADDING = 5;
+const NAVY = '#18324d';
+const MUTED = '#43566b';
+const money = new Intl.NumberFormat('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export function attendancePdf({ title, company, date, month, year, period, asOf, columns, rows, layout = date ? 'portrait' : 'landscape' }) {
-  const doc = new PDFDocument({ size: 'A4', margin: MARGIN, layout, autoFirstPage: false, info: { Title: title } });
+export function attendancePdf(data) {
+  const { title, company, date, columns, rows, group, overview, layout = date ? 'portrait' : 'landscape' } = data;
+  const doc = new PDFDocument({ size: 'A4', margin: MARGIN, layout, autoFirstPage: false,
+    info: { Title: title, Author: company, Subject: group } });
   return new Promise((resolve, reject) => {
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
     doc.once('end', () => resolve(Buffer.concat(chunks)));
     doc.once('error', reject);
 
-    const tableWidth = layout === 'portrait' ? 523 : 769;
-    const weights = date ? DAILY_WIDTHS : columns.map(column => column.width ?? 14);
+    const tableWidth = (layout === 'portrait' ? 595.28 : 841.89) - 2 * MARGIN;
+    const weights = date && columns.length === 6 ? [73, 144, 118, 58, 58, 72] : columns.map(column => column.width ?? 14);
     const weightTotal = weights.reduce((total, width) => total + width, 0);
     const widths = weights.map(weight => tableWidth * weight / weightTotal);
+    const [periodLabel, periodValue] = reportPeriod(data);
     let page = 0;
     let y;
+    let tableTop;
 
-    function drawRow(values, heading = false) {
-      doc.fontSize(9);
-      const options = index => ({ width: widths[index] - 2 * PADDING, lineGap: 1 });
-      const heights = values.map((value, index) => {
-        const measured = doc.heightOfString(value, options(index));
-        return heading ? measured : Math.min(measured, columns[index]?.pdfMaxHeight ?? Infinity);
-      });
-      const height = Math.max(...heights) + 2 * PADDING;
-      if (!heading && y + height > doc.page.height - MARGIN - 18) addPage();
-      if (heading) doc.rect(MARGIN, y, tableWidth, height).fill('#e8edf3');
-
-      let x = MARGIN;
-      doc.fillColor('#17212b');
-      values.forEach((value, index) => {
-        const cell = options(index);
-        if (!heading && columns[index]?.pdfMaxHeight) Object.assign(cell, { height: heights[index] + 1, ellipsis: true });
-        doc.text(value, x + PADDING, y + PADDING, cell);
-        x += widths[index];
-      });
-      y += height;
-      doc.moveTo(MARGIN, y).lineTo(MARGIN + tableWidth, y).lineWidth(0.5).strokeColor('#cdd5df').stroke();
+    function bottom() {
+      return doc.page.height - MARGIN - 22;
     }
 
-    function addPage() {
+    function section(label, entries) {
+      if (!entries.length) return;
+      doc.fontSize(10).fillColor(NAVY).text(label, MARGIN, doc.y + 7, { width: tableWidth });
+      doc.fontSize(9).fillColor(MUTED).text(entries.map(([key, value]) => `${key}: ${value}`).join('  •  '),
+        MARGIN, doc.y + 3, { width: tableWidth, lineGap: 2 });
+    }
+
+    function addPage(first = false) {
       doc.addPage().font(font);
       page += 1;
-      doc.fontSize(9).fillColor('#405267').text(`Page ${page}`, MARGIN, doc.page.height - MARGIN - 14, {
-        width: tableWidth, align: 'right', lineBreak: false,
-      });
-      doc.fontSize(11).fillColor('#405267').text(company, MARGIN, MARGIN, { width: tableWidth });
-      doc.fontSize(18).fillColor('#17212b').text(title, MARGIN, doc.y + 5, { width: tableWidth });
-      doc.fontSize(10).text(date ? `Date: ${date}    Records: ${rows.length}` : month ? `Month: ${month}    Groups: ${rows.length}` : `${year ? `Year: ${year}` : period ? `Range: ${period}` : `As of: ${asOf}`}    Records: ${rows.length}`, MARGIN, doc.y + 5, { width: tableWidth });
-      y = doc.y + 12;
-      drawRow(columns.map(column => column.header), true);
+      doc.fontSize(8).fillColor(MUTED).text(`Page ${page}`, MARGIN, doc.page.height - MARGIN - 12,
+        { width: tableWidth, align: 'right', lineBreak: false });
+      doc.rect(MARGIN, MARGIN, tableWidth, 3).fill(NAVY);
+      doc.fontSize(10).fillColor(MUTED).text(first && group ? `${company}  /  ${group}` : company,
+        MARGIN, MARGIN + 11, { width: tableWidth });
+      doc.fontSize(first ? 20 : 14).fillColor(NAVY).text(title, MARGIN, doc.y + 3, { width: tableWidth });
+      doc.fontSize(9).fillColor(MUTED).text(`${periodLabel}: ${periodValue}    •    Exported rows: ${rows.length}`,
+        MARGIN, doc.y + 4, { width: tableWidth });
+      if (first && overview) {
+        doc.text(`Generated: ${overview.generated}`, MARGIN, doc.y + 3, { width: tableWidth });
+        section('Filters', overview.filterDetails);
+        section('Summary of exported records', overview.metrics);
+        if (overview.description) section('Methodology', [['Basis', overview.description]]);
+      }
+      y = doc.y + 13;
+      // Keep the table heading with at least one data row on the first page.
+      if (first && rows.length && bottom() - y < 105) {
+        addPage();
+        return;
+      }
+      drawRow(columns.map(column => column.header), { heading: true });
+      tableTop = y;
     }
 
-    addPage();
-    for (const row of rows) {
-      drawRow(columns.map(({ key, type }) =>
-        type === 'money' && typeof row[key] === 'number' ? row[key].toFixed(2) : String(row[key] ?? '')));
+    function drawRow(values, { heading = false, index = 0 } = {}) {
+      doc.fontSize(9);
+      const options = i => ({ width: widths[i] - 2 * PADDING, lineGap: 1 });
+      const measured = values.map((value, i) => doc.heightOfString(value, options(i)));
+      const heightLimit = heading ? Infinity : Math.max(12, bottom() - tableTop - 2 * PADDING);
+      const heights = measured.map((height, i) => heading ? height : Math.min(height, heightLimit, columns[i].pdfMaxHeight ?? Infinity));
+      const height = Math.max(...heights) + 2 * PADDING;
+      if (!heading && y + height > bottom() && y > tableTop) {
+        addPage();
+        drawRow(values, { index });
+        return;
+      }
+      if (heading || index % 2) doc.rect(MARGIN, y, tableWidth, height).fill(heading ? NAVY : '#f1f5f9');
+      let x = MARGIN;
+      doc.fillColor(heading ? '#ffffff' : '#17212b');
+      values.forEach((value, i) => {
+        const cell = options(i);
+        if (!heading && (heights[i] < measured[i] || y + height > bottom())) {
+          Object.assign(cell, { height: Math.min(heights[i] + 1, bottom() - y - PADDING), ellipsis: true });
+        }
+        if (!heading && columns[i].type === 'money') cell.align = 'right';
+        doc.text(value, x + PADDING, y + PADDING, cell);
+        x += widths[i];
+      });
+      y += height;
     }
-    if (!rows.length) doc.fontSize(10).text('No saved records match these filters.', MARGIN, y + 12);
+
+    addPage(true);
+    rows.forEach((row, index) => drawRow(columns.map(({ key, type }) =>
+      type === 'money' && typeof row[key] === 'number' ? money.format(row[key]) : String(row[key] ?? '')), { index }));
+    if (!rows.length) doc.fontSize(10).fillColor(MUTED).text('No saved records match these filters.', MARGIN, y + 12);
     doc.end();
   });
 }

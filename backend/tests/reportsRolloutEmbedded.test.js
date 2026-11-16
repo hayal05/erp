@@ -120,12 +120,17 @@ async function inspectFile(response, report, format, rowCount) {
     assert.equal(sheet.getCell('A1').value, report.title);
     assert.equal(sheet.getCell('D3').value, rowCount);
     assert.equal(sheet.rowCount, rowCount + 4);
+    const overview = workbook.getWorksheet('Overview');
+    assert.equal(overview.getCell('A5').value, 'Exported rows');
+    assert.equal(overview.getCell('B5').value, rowCount);
+    assert.ok(overview.getCell('B6').value.includes('Africa/Addis_Ababa'));
     return sheet;
   }
   if (format === 'docx') {
     const zip = await JSZip.loadAsync(bytes, { checkCRC32: true });
     const document = await zip.file('word/document.xml').async('string');
     assert.ok(document.includes(report.title), report.id);
+    assert.ok(document.includes('Generated:') && document.includes('Africa/Addis_Ababa'), report.id);
     if (rowCount) assert.ok(document.includes('<w:tbl>'), report.id);
     return document;
   }
@@ -135,6 +140,7 @@ async function inspectFile(response, report, format, rowCount) {
     const read = spawnSync('pdftotext', ['-layout', '-', '-'], { input: bytes, encoding: 'utf8' });
     assert.equal(read.status, 0, read.stderr);
     assert.ok(read.stdout.replace(/\s+/g, ' ').includes(report.title), report.id);
+    assert.match(read.stdout, /Generated:.*Africa\/Addis_Ababa/);
     return read.stdout;
   }
 }
@@ -212,9 +218,16 @@ test('a full month of 1,000 employees exports and oversized detail requests can 
   assert.ok(preview.items.every(row => row.total === 30));
   for (const format of monthly.formats) {
     const output = await inspectFile(await exportFile(admin, base + '/export.' + format + filters), monthly, format, 1000);
-    if (format === 'xlsx') assert.equal(output.getCell('I1004').value, 30);
-    if (format === 'docx') assert.ok(output.includes('bulk-0998'));
-    if (format === 'pdf' && pdfReader) assert.ok(output.includes('bulk-0998'));
+    if (format === 'xlsx') {
+      assert.equal(output.getCell('I1004').value, 30);
+      const overview = output.workbook.getWorksheet('Overview').getSheetValues();
+      assert.ok(overview.some(row => row?.[1] === 'Group by' && row[2] === 'Employee'));
+      assert.ok(overview.some(row => row?.[1] === 'Total' && row[2] === '30,000'));
+    }
+    if (format === 'docx' || (format === 'pdf' && pdfReader)) {
+      assert.ok(output.includes('bulk-0998'));
+      assert.match(output.replace(/\s+/g, ' '), /Total: 30,000/);
+    }
   }
   const exceptions = reports + '/attendance-exceptions/export.xlsx?from=' + from + '&to=';
   const boundary = await exportFile(admin, exceptions + month + '-05');
