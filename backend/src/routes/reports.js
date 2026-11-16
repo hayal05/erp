@@ -23,6 +23,7 @@ import { readMonthlyAttendance } from '../services/monthlyAttendance.js';
 import { attendanceWord } from '../services/attendanceWord.js';
 import { attendancePdf } from '../services/attendancePdf.js';
 import { attendanceWorkbook } from '../services/attendanceWorkbook.js';
+import { reportExportOverview } from '../services/reportExportOverview.js';
 import { pageSchema } from '../services/sql.js';
 import { companyDate } from '../services/attendance.js';
 import { readAttendanceRecords } from './attendanceRecords.js';
@@ -67,7 +68,7 @@ function exceptionWord(data) {
   return attendanceWord({
     ...data, rows, count: data.rows.length,
     columns: [{ key: 'label', header: 'Exception', width: 35 }, { key: 'count', header: 'Count' }],
-    note: 'A record can have more than one exception, so category counts can overlap.',
+    overview: { ...data.overview, metrics: [] },
   });
 }
 
@@ -129,7 +130,8 @@ const reports = new Map([
   }],
   ['attendance-exceptions', {
     title: 'Attendance exceptions',
-    description: 'Reviews late arrivals, absences and missing punches in saved attendance records.',
+    description: 'Reviews saved attendance records. A record can have multiple exceptions, so category counts can overlap.',
+    exportCounts: exceptionKinds,
     group: 'Attendance',
     permission: 'attendance.read',
     exports: { ...exportDetails, docx: exceptionWord },
@@ -261,13 +263,18 @@ for (const [id, report] of reports) {
         const { date, month, year, from, to } = req.query;
         const period = from && to ? `${from} to ${to}` : from ? `From ${from}` : to ? `Through ${to}` : undefined;
         const asOf = date || month || year || period ? undefined : result.today ?? companyDate();
-        const buffer = await render({
-          title: report.title, company: config.company.name, date, month, year, period, asOf, group: report.group, layout: report.layout,
-          columns: reportColumns(report, req.query), rows: result.items,
-        });
         const filters = Object.fromEntries(report.filters
           .filter(({ key }) => req.query[key] !== undefined)
           .map(({ key }) => [key, req.query[key]]));
+        const columns = reportColumns(report, req.query);
+        const generatedAt = new Date();
+        const overview = reportExportOverview({
+          id, report, filters, columns, rows: result.items, generatedAt, timeZone: config.company.timezone,
+        });
+        const buffer = await render({
+          title: report.title, company: config.company.name, date, month, year, period, asOf, group: report.group,
+          layout: report.layout, columns, rows: result.items, generatedAt, overview,
+        });
         await audit({ query }, {
           actorId: req.user.id, action: 'report.export', entityType: 'report', entityId: id,
           details: { report: id, format, filters, rowCount: result.items.length },
